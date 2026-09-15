@@ -321,6 +321,21 @@
       "title": "Assets Path",
       "type": "string"
     },
+    "assets_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Assets Sha256",
+      "type": "string"
+    },
+    "checked_assets_path": {
+      "minLength": 1,
+      "title": "Checked Assets Path",
+      "type": "string"
+    },
+    "checked_assets_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Checked Assets Sha256",
+      "type": "string"
+    },
     "mode": {
       "enum": [
         "abstract",
@@ -370,6 +385,9 @@
     "timeline_path",
     "timeline_sha256",
     "assets_path",
+    "assets_sha256",
+    "checked_assets_path",
+    "checked_assets_sha256",
     "mode",
     "seed",
     "duration_samples",

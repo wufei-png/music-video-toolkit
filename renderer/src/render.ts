@@ -4,6 +4,33 @@ import {readFile} from "node:fs/promises";
 import {dirname, join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {chromium} from "playwright";
+import {videoFrameAtSample} from "./media.js";
+
+interface MediaAssetConfig {
+  readonly type: "image" | "video";
+  readonly width: number;
+  readonly height: number;
+  readonly dataUrl?: string;
+  readonly framesDir?: string;
+  readonly frameCount?: number;
+  readonly fpsNum?: number;
+  readonly fpsDen?: number;
+}
+
+interface RenderLayerConfig {
+  readonly id: string;
+  readonly category: string;
+  readonly asset_id?: string;
+  readonly opacity: number;
+  readonly parameters: Record<string, any>;
+}
+
+interface RenderSpanConfig {
+  readonly start_sample: number;
+  readonly end_sample: number;
+  readonly transition_samples: number;
+  readonly layers: readonly RenderLayerConfig[];
+}
 
 interface RenderConfig {
   readonly sceneMode: "fixture" | "abstract";
@@ -18,15 +45,99 @@ interface RenderConfig {
   readonly sampleRate?: number;
   readonly seed?: number;
   readonly signals?: Readonly<Record<string, unknown>>;
-  readonly spans?: readonly unknown[];
+  readonly spans?: readonly RenderSpanConfig[];
   readonly routes?: readonly unknown[];
+  readonly mediaAssets?: Readonly<Record<string, MediaAssetConfig>>;
   readonly audioPath: string;
   readonly outputPath: string;
   readonly ffmpegPath: string;
 }
 
+interface MediaFrame {
+  readonly dataUrl: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+interface MediaFramePair {
+  readonly current: MediaFrame;
+  readonly previous?: MediaFrame;
+  readonly progress: number;
+}
+
 function positiveInteger(value: number, label: string): void {
   if (!Number.isSafeInteger(value) || value <= 0) throw new Error(`${label} must be positive`);
+}
+
+async function mediaFrame(
+  asset: MediaAssetConfig,
+  layer: RenderLayerConfig,
+  sample: number,
+  sampleRate: number,
+): Promise<MediaFrame> {
+  if (asset.type === "image") {
+    if (asset.dataUrl === undefined) throw new Error("image data is missing");
+    return {dataUrl: asset.dataUrl, width: asset.width, height: asset.height};
+  }
+  if (
+    asset.framesDir === undefined ||
+    asset.frameCount === undefined ||
+    asset.fpsNum === undefined ||
+    asset.fpsDen === undefined
+  ) {
+    throw new Error("decoded video metadata is missing");
+  }
+  const sourceFrame = videoFrameAtSample(
+    sample,
+    sampleRate,
+    {fpsNum: asset.fpsNum, fpsDen: asset.fpsDen, frameCount: asset.frameCount},
+    layer.parameters as any,
+  );
+  const path = join(asset.framesDir, `${String(sourceFrame).padStart(9, "0")}.png`);
+  const bytes = await readFile(path);
+  return {
+    dataUrl: `data:image/png;base64,${bytes.toString("base64")}`,
+    width: asset.width,
+    height: asset.height,
+  };
+}
+
+async function mediaFrames(
+  config: RenderConfig,
+  frame: number,
+): Promise<Record<string, MediaFramePair>> {
+  if (config.sceneMode !== "abstract" || config.spans === undefined) return {};
+  const sampleRate = config.sampleRate ?? 48000;
+  const sample = Math.floor((frame * sampleRate * config.fpsDen) / config.fpsNum);
+  const found = config.spans.findIndex(
+    (span) => sample >= span.start_sample && sample < span.end_sample,
+  );
+  const spanIndex = found < 0 ? config.spans.length - 1 : found;
+  const span = config.spans[spanIndex];
+  if (span === undefined) throw new Error("no resolved span for media frame");
+  const progress =
+    span.transition_samples > 0
+      ? Math.min(1, (sample - span.start_sample) / span.transition_samples)
+      : 1;
+  const previousSpan = spanIndex > 0 ? config.spans[spanIndex - 1] : undefined;
+  const payload: Record<string, MediaFramePair> = {};
+  for (const layer of span.layers.filter((item) => item.category === "media")) {
+    const asset = layer.asset_id === undefined ? undefined : config.mediaAssets?.[layer.asset_id];
+    if (asset === undefined) throw new Error(`missing media asset ${layer.asset_id}`);
+    const current = await mediaFrame(asset, layer, sample, sampleRate);
+    const previousLayer = previousSpan?.layers.find((item) => item.id === layer.id);
+    const previousAsset =
+      previousLayer?.asset_id === undefined
+        ? undefined
+        : config.mediaAssets?.[previousLayer.asset_id];
+    const previous =
+      progress < 1 && previousLayer !== undefined && previousAsset !== undefined
+        ? await mediaFrame(previousAsset, previousLayer, sample, sampleRate)
+        : undefined;
+    payload[layer.id] =
+      previous === undefined ? {current, progress} : {current, previous, progress};
+  }
+  return payload;
 }
 
 async function main(): Promise<void> {
@@ -121,9 +232,10 @@ async function main(): Promise<void> {
     if (encoderInput === null) throw new Error("ffmpeg stdin is unavailable");
     encoder.stderr?.on("data", (chunk: Buffer) => stderr.push(chunk));
     for (let frame = 0; frame < config.frameCount; frame += 1) {
-      await page.evaluate((currentFrame) => {
-        (globalThis as any).MvtScene.renderFrame(currentFrame);
-      }, frame);
+      const media = await mediaFrames(config, frame);
+      await page.evaluate(async ({currentFrame, mediaFrames}) => {
+        await (globalThis as any).MvtScene.renderFrame(currentFrame, mediaFrames);
+      }, {currentFrame: frame, mediaFrames: media});
       const png = await page.locator("#mvt-canvas").screenshot({type: "png"});
       if (!encoderInput.write(png)) await once(encoderInput, "drain");
     }

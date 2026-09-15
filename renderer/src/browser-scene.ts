@@ -22,7 +22,9 @@ export interface FixtureSceneConfig extends BaseConfig {
 
 interface LayerConfig {
   readonly id: string;
-  readonly kind: "orb" | "ribbon" | "particles";
+  readonly kind: "orb" | "ribbon" | "particles" | "image" | "video";
+  readonly category: "abstract" | "media" | "text";
+  readonly asset_id?: string;
   readonly enabled: boolean;
   readonly opacity: number;
   readonly parameters: Readonly<Record<string, number | string>>;
@@ -56,10 +58,29 @@ export interface AbstractSceneConfig extends BaseConfig {
 export type SceneConfig = FixtureSceneConfig | AbstractSceneConfig;
 
 interface AbstractObject {
-  readonly kind: LayerConfig["kind"];
+  readonly kind: "orb" | "ribbon" | "particles";
   readonly object: THREE.Object3D;
   readonly material: THREE.MeshBasicMaterial | THREE.PointsMaterial;
   readonly particleGeometry?: THREE.BufferGeometry;
+}
+
+interface MediaFrame {
+  readonly dataUrl: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+interface MediaFramePair {
+  readonly current: MediaFrame;
+  readonly previous?: MediaFrame;
+  readonly progress: number;
+}
+
+interface MediaObject {
+  readonly current: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+  readonly previous: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+  currentUrl?: string;
+  previousUrl?: string;
 }
 
 let renderer: THREE.WebGLRenderer;
@@ -71,6 +92,7 @@ let imageReady = false;
 let glyphInkPixels = 0;
 let abstractReady = false;
 const abstractObjects = new Map<string, AbstractObject>();
+const mediaObjects = new Map<string, MediaObject>();
 const smoothedRoutes = new Map<number, number>();
 
 function textTexture(text: string): THREE.CanvasTexture {
@@ -134,6 +156,7 @@ function createAbstractObject(layer: LayerConfig, seed: number, maximumCount: nu
     scene.add(object);
     return {kind: layer.kind, object, material};
   }
+  if (layer.kind !== "particles") throw new Error(`unsupported abstract kind ${layer.kind}`);
   const makeRandom = random(seed);
   const positions = new Float32Array(maximumCount * 3);
   for (let index = 0; index < maximumCount; index += 1) {
@@ -155,6 +178,109 @@ function createAbstractObject(layer: LayerConfig, seed: number, maximumCount: nu
   object.position.z = 0.3;
   scene.add(object);
   return {kind: layer.kind, object, material, particleGeometry: geometry};
+}
+
+function createMediaObject(layer: LayerConfig): MediaObject {
+  const makeGeometry = () =>
+    layer.parameters.mask === "circle"
+      ? new THREE.CircleGeometry(1, 96)
+      : new THREE.PlaneGeometry(2, 2);
+  const makeMaterial = () =>
+    new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      blending:
+        layer.parameters.blend === "add" ? THREE.AdditiveBlending : THREE.NormalBlending,
+    });
+  const previous = new THREE.Mesh(makeGeometry(), makeMaterial());
+  const current = new THREE.Mesh(makeGeometry(), makeMaterial());
+  scene.add(previous);
+  scene.add(current);
+  return {current, previous};
+}
+
+async function setMediaTexture(
+  object: MediaObject,
+  slot: "current" | "previous",
+  frame: MediaFrame | undefined,
+): Promise<void> {
+  const mesh = object[slot];
+  if (frame === undefined) {
+    mesh.visible = false;
+    return;
+  }
+  mesh.visible = true;
+  const key = slot === "current" ? "currentUrl" : "previousUrl";
+  if (object[key] !== frame.dataUrl) {
+    const old = mesh.material.map;
+    const texture = await new THREE.TextureLoader().loadAsync(frame.dataUrl);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    mesh.material.map = texture;
+    mesh.material.needsUpdate = true;
+    object[key] = frame.dataUrl;
+    old?.dispose();
+  }
+  const canvasAspect = config.width / config.height;
+  const assetAspect = frame.width / frame.height;
+  mesh.userData.assetAspect = assetAspect;
+  mesh.userData.canvasAspect = canvasAspect;
+}
+
+function placeMedia(
+  mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>,
+  layer: LayerConfig,
+  frame: MediaFrame,
+  opacity: number,
+  seconds: number,
+): void {
+  const mask = String(layer.parameters.mask);
+  if (mesh.userData.mask !== mask) {
+    mesh.geometry.dispose();
+    mesh.geometry =
+      mask === "circle" ? new THREE.CircleGeometry(1, 96) : new THREE.PlaneGeometry(2, 2);
+    mesh.userData.mask = mask;
+  }
+  mesh.material.blending =
+    layer.parameters.blend === "add" ? THREE.AdditiveBlending : THREE.NormalBlending;
+  mesh.material.needsUpdate = true;
+  const canvasAspect = config.width / config.height;
+  const assetAspect = frame.width / frame.height;
+  const cover = layer.parameters.fit === "cover";
+  const xScale = cover
+    ? Math.max(1, assetAspect / canvasAspect)
+    : Math.min(1, assetAspect / canvasAspect);
+  const yScale = cover
+    ? Math.max(1, canvasAspect / assetAspect)
+    : Math.min(1, canvasAspect / assetAspect);
+  const scale = Number(layer.parameters.scale);
+  mesh.scale.set(xScale * scale, yScale * scale, 1);
+  mesh.position.x = Number(layer.parameters.x) + Math.sin(seconds * 0.2) * Number(layer.parameters.motion);
+  mesh.position.y = Number(layer.parameters.y) + Math.cos(seconds * 0.17) * Number(layer.parameters.motion);
+  mesh.position.z = Number(layer.parameters.z) * 0.02 - 0.2;
+  mesh.material.opacity = opacity;
+}
+
+async function configureMedia(
+  layer: LayerConfig,
+  previousLayer: LayerConfig | undefined,
+  pair: MediaFramePair,
+  seconds: number,
+): Promise<void> {
+  const object = mediaObjects.get(layer.id);
+  if (object === undefined) throw new Error(`missing media object ${layer.id}`);
+  await setMediaTexture(object, "current", pair.current);
+  await setMediaTexture(object, "previous", pair.previous);
+  const currentOpacity =
+    (pair.previous === undefined ? layer.opacity : layer.opacity * pair.progress) *
+    Number(layer.enabled);
+  placeMedia(object.current, layer, pair.current, currentOpacity, seconds);
+  if (pair.previous !== undefined && previousLayer !== undefined) {
+    const previousOpacity =
+      previousLayer.opacity * (1 - pair.progress) * Number(previousLayer.enabled);
+    placeMedia(object.previous, previousLayer, pair.previous, previousOpacity, seconds);
+  }
 }
 
 function numericParameter(
@@ -214,6 +340,10 @@ function initializeAbstract(abstractConfig: AbstractSceneConfig): void {
   const first = abstractConfig.spans[0];
   if (first === undefined) throw new Error("abstract plan has no spans");
   for (const layer of first.layers) {
+    if (layer.category === "media") {
+      mediaObjects.set(layer.id, createMediaObject(layer));
+      continue;
+    }
     const maximumCount = Math.max(
       ...abstractConfig.spans.map((span) => {
         const candidate = span.layers.find((item) => item.id === layer.id);
@@ -225,7 +355,11 @@ function initializeAbstract(abstractConfig: AbstractSceneConfig): void {
   abstractReady = true;
 }
 
-function renderAbstract(frame: number, abstractConfig: AbstractSceneConfig): void {
+async function renderAbstract(
+  frame: number,
+  abstractConfig: AbstractSceneConfig,
+  mediaFrames: Readonly<Record<string, MediaFramePair>>,
+): Promise<void> {
   const sample = Math.floor(
     (frame * abstractConfig.sampleRate * abstractConfig.fpsDen) / abstractConfig.fpsNum,
   );
@@ -258,10 +392,17 @@ function renderAbstract(frame: number, abstractConfig: AbstractSceneConfig): voi
     routed.set(route.target_layer, layerValues);
   });
   const seconds = sample / abstractConfig.sampleRate;
-  span.layers.forEach((layer) => {
+  for (const layer of span.layers) {
+    if (layer.category === "media") {
+      const pair = mediaFrames[layer.id];
+      if (pair === undefined) throw new Error(`missing decoded frame for ${layer.id}`);
+      const prior = previous?.layers.find((item) => item.id === layer.id);
+      await configureMedia(layer, prior, pair, seconds);
+      continue;
+    }
     const prior = previous?.layers.find((item) => item.id === layer.id);
     configureObject(layer, prior, progress, routed.get(layer.id) ?? {}, seconds);
-  });
+  }
   background.material.color.setHex(0x08101f + Math.min(index, 5) * 0x010204);
   renderer.render(scene, camera);
 }
@@ -313,13 +454,16 @@ export async function initialize(sceneConfig: SceneConfig): Promise<void> {
   renderer.render(scene, camera);
 }
 
-export function renderFrame(frame: number): void {
+export async function renderFrame(
+  frame: number,
+  mediaFrames: Readonly<Record<string, MediaFramePair>> = {},
+): Promise<void> {
   if (config.sceneMode === "fixture") {
     const pulse = config.pulseFrames.includes(frame);
     background.material.color.setHex(pulse ? 0xf4f7ff : 0x10182c);
     renderer.render(scene, camera);
   } else {
-    renderAbstract(frame, config);
+    await renderAbstract(frame, config, mediaFrames);
   }
 }
 

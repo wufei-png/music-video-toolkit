@@ -2,7 +2,7 @@
 
 面向 AI agent 的音乐视频制作工具包。Skill 做创作协作，文件协议保存决策，代码执行可复现制作。
 
-**当前状态：S04 已完成。工具可统一解码音频、提取 mix/四轨特征、解析整曲默认值与段落覆盖，并以 orb/ribbon/particles 生成音乐驱动的 1080p30 抽象视频。外部媒体和歌词路径尚未实现。** 本仓库的 MIT 许可覆盖代码与 Skill，不改变外部素材、模型和依赖的许可证。
+**当前状态：S05 已完成。工具可统一解码音频、提取 mix/四轨特征、解析整曲默认值与段落覆盖，并用 orb/ribbon/particles 及经过预检的本地图片/视频生成 A 抽象、B 意境和 C 混合 1080p30 视频。歌词路径尚未实现。** 本仓库的 MIT 许可覆盖代码与 Skill，不改变外部素材、模型和依赖的许可证。
 
 ## 两个入口
 
@@ -31,6 +31,7 @@ uv run --locked mvt decode "/path/to/input.mp3" --project "/path/to/project"
 uv run --locked mvt analyze --project "/path/to/project" --stems none
 uv run --locked mvt analyze --project "/path/to/project" --stems four
 uv run --locked mvt plan resolve --project "/path/to/project" --plan "/path/to/plan.json"
+uv run --locked mvt assets check --project "/path/to/project"
 uv run --locked mvt validate --kind source "/path/to/project/source/source.json"
 uv run --locked mvt validate --kind stems "/path/to/project/stems/stems.json"
 uv run --locked mvt validate --kind timeline examples/timeline.json
@@ -49,9 +50,9 @@ pnpm --dir renderer exec playwright install chromium
 
 `doctor` 报告工具、锁定分析环境和浏览器是否可发现；模型未下载不等于 mix-only 分析不可用。`validate` 是单文件结构与部分语义校验；项目 preflight 由需要实际文件的命令执行。示例均为合成协议示例，不是实际成片；详见 [示例说明](examples/README.md)。
 
-`plan resolve` 对 orb、ribbon、particles 及 linear、threshold、smooth 做参数白名单和范围校验，把整曲默认值、手工或自动候选段落、gap 回退和段落过渡解析成覆盖全曲的 `resolved-plan.json`。route 缺少信号、未知参数/目标、未知段落或任一 span 禁用模式必需图层都会硬失败。`render` 可执行该抽象 resolved plan；S02 的 `s02.pulse`、`s02.image`、`s02.text` 验收计划仍保持兼容。S05 才加入通用媒体层。
+`assets check` 验证本地图片、恒定帧率视频和字体的实际类型、哈希与元数据；不会下载远程素材。`plan resolve` 对 orb/ribbon/particles、image/video 及 linear/threshold/smooth 做参数白名单和范围校验，把整曲默认值、手工或自动候选段落、gap 回退和段落过渡解析成覆盖全曲的 `resolved-plan.json`。route 缺少信号、未知参数/目标、未知素材、素材身份变化或任一 span 禁用模式必需图层都会硬失败。`render` 可执行 A/B/C resolved plan，按样本时钟确定性选择预解码视频帧并强制丢弃媒体音轨；S02 验收计划仍兼容。
 
-原始研究报告、两首歌及其制作资产留在父目录，公共工具仓库不依赖它们。新用户可以安装工具、检查协议、解码并分析自己的音频；生产视觉能力由后续切片逐步交付。
+原始研究报告、两首歌及其制作资产留在父目录，公共工具仓库不依赖它们。新用户可以安装工具、检查协议、解码、分析并渲染自己的本地媒体计划；歌词、预览和完整生产工作流由后续切片逐步交付。
 
 渲染器目前提供时间映射实现和 Three.js 图层接口；构建与测试：
 

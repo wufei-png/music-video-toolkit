@@ -1,6 +1,6 @@
 # S05 — 外部素材图层与混合合成
 
-状态：未开始。依赖：S04。
+状态：已完成（2026-09-15）。依赖：S04。
 
 ## 独立交付
 
@@ -28,6 +28,16 @@
 
 视觉生成由 harness 做；CLI 不偷偷下载 URL/调用生成 API。公开 fixture 使用自产合成素材。
 
+## 实施结果
+
+`mvt assets check` 对本地图片、恒定帧率视频和字体执行哈希、类型、尺寸、帧数、帧率、时长、音轨及字体族预检，原子写入 `assets.checked.json`。素材 manifest 和每个素材内容共同组成缓存身份；远程 URL、缺失文件、哈希或类型错误、可变帧率视频都会明确失败。
+
+`plan resolve` 已支持 image/video 媒体层，参数边界覆盖 cover/contain、位置、缩放、轻运动、z、opacity、circle mask、normal/add blend，以及视频的全曲样本 offset、半开帧范围 `[in_frame, out_frame)` 和 `error|loop|hold` 结束策略。offset 前保持入口帧，视频自身音轨强制静音。resolved plan 固定原始及已检查素材 manifest 的哈希。
+
+浏览器渲染器复用相同图层生命周期生成 A/B/C；视频先由 FFmpeg 完整解码成零起始编号 PNG，再由全局样本时钟选择源帧。段落切换同时保留前后媒体的独立素材、布局、mask、blend 和 opacity，并按 `transition_samples` 交叉淡化。
+
+自动验收用同一 1 秒 timeline 实际编码 30 帧 A/B/C。带 880 Hz 自有音轨的 6 帧、2 fps 彩色视频证明 trim/offset/loop/hold 与源帧编号；输出音轨仍为 canonical 静音。帧 14/18/23 证明红色背景经中间混合帧转为蓝色，circle mask、alpha 叠加和三模式输出差异均通过像素或哈希检查。持久演示及 contact sheets 位于 `/Users/wufei2/github.com/wufei-png/music/projects/synthetic-s05/project/`，不进入 Git；人工查看与像素证据一致。当前浏览器仍报告 SwiftShader。
+
 ## 提交与交接
 
-检查 tracked/untracked/ignored，显式 stage 本片代码、测试与状态文档，检查 staged diff 和 `git diff --check --cached` 后提交。更新 status：实际命令/版本、通过或失败、真实集成证据位置、尚未完成的用户审阅，以及下一片。没有通过的 live gate 不能记录成完成；必要时只记录受阻的工作进度，避免伪造验证结果。
+已检查 tracked/untracked/ignored；本片提交只包含代码、生成 schema、测试和文档。合成媒体、解码帧和输出视频留在外部项目目录。

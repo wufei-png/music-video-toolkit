@@ -312,6 +312,9 @@ class ResolvedPlan(Artifact):
     timeline_path: Text
     timeline_sha256: Sha256
     assets_path: Text
+    assets_sha256: Sha256
+    checked_assets_path: Text
+    checked_assets_sha256: Sha256
     mode: Literal["abstract", "mood", "hybrid"]
     seed: NonNegative
     output: OutputProfile = Field(default_factory=OutputProfile)
@@ -355,6 +358,69 @@ class AssetManifest(Artifact):
     @model_validator(mode="after")
     def unique_assets(self) -> Self:
         unique([asset.id for asset in self.assets], "asset id")
+        return self
+
+
+class AssetProbe(FileRef):
+    id: Name
+    type: Literal["image", "video", "font"]
+    width: Positive | None = None
+    height: Positive | None = None
+    frame_count: Positive | None = None
+    fps_num: Positive | None = None
+    fps_den: Positive | None = None
+    duration_seconds: Annotated[float, Field(gt=0)] | None = None
+    has_audio: bool | None = None
+    font_families: list[Text] | None = None
+
+    @model_validator(mode="after")
+    def type_metadata(self) -> Self:
+        media_clock = (
+            self.frame_count,
+            self.fps_num,
+            self.fps_den,
+            self.duration_seconds,
+            self.has_audio,
+        )
+        image_fields = (
+            self.width is not None
+            and self.height is not None
+            and all(value is None for value in media_clock)
+        )
+        video_fields = all(
+            value is not None
+            for value in (
+                self.width,
+                self.height,
+                self.frame_count,
+                self.fps_num,
+                self.fps_den,
+                self.duration_seconds,
+                self.has_audio,
+            )
+        )
+        font_fields = bool(self.font_families)
+        valid = {
+            "image": image_fields and self.font_families is None,
+            "video": video_fields and self.font_families is None,
+            "font": font_fields
+            and self.width is None
+            and self.height is None
+            and all(value is None for value in media_clock),
+        }[self.type]
+        if not valid:
+            raise ValueError(f"incomplete or mixed {self.type} probe metadata")
+        return self
+
+
+class CheckedAssetManifest(Artifact):
+    source_manifest: FileRef
+    cache_key: Sha256
+    assets: list[AssetProbe]
+
+    @model_validator(mode="after")
+    def unique_assets(self) -> Self:
+        unique([asset.id for asset in self.assets], "checked asset id")
         return self
 
 
@@ -403,6 +469,7 @@ CONTRACTS: dict[str, type[Artifact]] = {
     "plan": VisualPlan,
     "resolved-plan": ResolvedPlan,
     "assets": AssetManifest,
+    "checked-assets": CheckedAssetManifest,
     "lyrics": Lyrics,
     "render": RenderManifest,
 }

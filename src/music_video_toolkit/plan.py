@@ -9,7 +9,10 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from .assets import AssetError, check_assets
 from .contracts import (
+    AssetProbe,
+    CheckedAssetManifest,
     FileRef,
     Layer,
     LayerOverride,
@@ -49,6 +52,17 @@ ROUTE_TARGETS = {
     "orb": {"radius", "x", "y"},
     "ribbon": {"width", "amplitude", "y"},
     "particles": {"size", "spread"},
+}
+MEDIA_KINDS = {"image", "video"}
+MEDIA_COMMON_DEFAULTS = {
+    "fit": "cover",
+    "x": 0.0,
+    "y": 0.0,
+    "scale": 1.0,
+    "motion": 0.0,
+    "z": -5,
+    "mask": "none",
+    "blend": "normal",
 }
 
 
@@ -96,7 +110,23 @@ def _color(value: object, label: str) -> str:
     return value.lower()
 
 
-def _resolve_layer(layer: Layer) -> Layer:
+def _choice(value: object, label: str, choices: set[str]) -> str:
+    if not isinstance(value, str) or value not in choices:
+        raise PlanError(
+            "invalid_layer_parameter",
+            {"parameter": label, "value": value, "choices": sorted(choices)},
+        )
+    return value
+
+
+def _integer(value: object, label: str, minimum: int, maximum: int) -> int:
+    parsed = _number(value, label, minimum, maximum)
+    if not parsed.is_integer():
+        raise PlanError("invalid_layer_parameter", {"parameter": label, "value": value})
+    return int(parsed)
+
+
+def _resolve_abstract_layer(layer: Layer) -> Layer:
     if layer.category != "abstract" or layer.kind not in LAYER_SPECS:
         raise PlanError(
             "unsupported_layer",
@@ -112,19 +142,119 @@ def _resolve_layer(layer: Layer) -> Layer:
         if minimum is None or maximum is None:
             parameters[name] = _color(value, f"{layer.id}.{name}")
         elif name == "count":
-            parsed = _number(value, f"{layer.id}.{name}", minimum, maximum)
-            if not parsed.is_integer():
-                raise PlanError(
-                    "invalid_layer_parameter", {"parameter": f"{layer.id}.{name}", "value": value}
-                )
-            parameters[name] = int(parsed)
+            parameters[name] = _integer(value, f"{layer.id}.{name}", int(minimum), int(maximum))
         else:
             parameters[name] = _number(value, f"{layer.id}.{name}", minimum, maximum)
     return layer.model_copy(update={"parameters": parameters})
 
 
+def _resolve_media_layer(
+    layer: Layer, assets: dict[str, AssetProbe], duration_samples: int
+) -> Layer:
+    if layer.category != "media" or layer.kind not in MEDIA_KINDS:
+        raise PlanError(
+            "unsupported_layer",
+            {
+                "layer": layer.id,
+                "kind": layer.kind,
+                "supported": sorted(set(LAYER_SPECS) | MEDIA_KINDS),
+            },
+        )
+    if layer.asset_id is None or layer.asset_id not in assets:
+        raise PlanError("unknown_asset", {"layer": layer.id, "asset_id": layer.asset_id})
+    asset = assets[layer.asset_id]
+    if asset.type != layer.kind:
+        raise PlanError(
+            "asset_type_mismatch",
+            {"layer": layer.id, "kind": layer.kind, "asset_type": asset.type},
+        )
+    allowed = set(MEDIA_COMMON_DEFAULTS)
+    if layer.kind == "video":
+        allowed |= {"offset_samples", "in_frame", "out_frame", "end_behavior", "muted"}
+    unknown = sorted(set(layer.parameters) - allowed)
+    if unknown:
+        raise PlanError("unknown_layer_parameter", {"layer": layer.id, "parameters": unknown})
+    values = {**MEDIA_COMMON_DEFAULTS, **layer.parameters}
+    parameters: dict[str, object] = {
+        "fit": _choice(values["fit"], f"{layer.id}.fit", {"cover", "contain"}),
+        "x": _number(values["x"], f"{layer.id}.x", -1.0, 1.0),
+        "y": _number(values["y"], f"{layer.id}.y", -1.0, 1.0),
+        "scale": _number(values["scale"], f"{layer.id}.scale", 0.1, 4.0),
+        "motion": _number(values["motion"], f"{layer.id}.motion", -0.2, 0.2),
+        "z": _integer(values["z"], f"{layer.id}.z", -9, 9),
+        "mask": _choice(values["mask"], f"{layer.id}.mask", {"none", "circle"}),
+        "blend": _choice(values["blend"], f"{layer.id}.blend", {"normal", "add"}),
+    }
+    if layer.kind == "video":
+        assert (
+            asset.frame_count is not None
+            and asset.fps_num is not None
+            and asset.fps_den is not None
+        )
+        offset = _integer(
+            values.get("offset_samples", 0),
+            f"{layer.id}.offset_samples",
+            0,
+            duration_samples - 1,
+        )
+        in_frame = _integer(
+            values.get("in_frame", 0),
+            f"{layer.id}.in_frame",
+            0,
+            asset.frame_count - 1,
+        )
+        out_frame = _integer(
+            values.get("out_frame", asset.frame_count),
+            f"{layer.id}.out_frame",
+            in_frame + 1,
+            asset.frame_count,
+        )
+        end_behavior = _choice(
+            values.get("end_behavior", "error"),
+            f"{layer.id}.end_behavior",
+            {"error", "loop", "hold"},
+        )
+        muted = values.get("muted", True)
+        if muted is not True:
+            raise PlanError(
+                "media_audio_forbidden",
+                {"layer": layer.id, "message": "video layers are always muted"},
+            )
+        available_seconds = (out_frame - in_frame) * asset.fps_den / asset.fps_num
+        needed_seconds = (duration_samples - offset) / 48_000
+        if end_behavior == "error" and needed_seconds > available_seconds:
+            raise PlanError(
+                "media_too_short",
+                {
+                    "layer": layer.id,
+                    "needed_seconds": needed_seconds,
+                    "available_seconds": available_seconds,
+                },
+            )
+        parameters.update(
+            offset_samples=offset,
+            in_frame=in_frame,
+            out_frame=out_frame,
+            end_behavior=end_behavior,
+            muted=True,
+        )
+    return layer.model_copy(update={"parameters": parameters})
+
+
+def _resolve_layer(
+    layer: Layer,
+    assets: dict[str, AssetProbe] | None = None,
+    duration_samples: int | None = None,
+) -> Layer:
+    if layer.kind in LAYER_SPECS:
+        return _resolve_abstract_layer(layer)
+    if assets is None or duration_samples is None:
+        raise PlanError("unsupported_layer", {"layer": layer.id, "kind": layer.kind})
+    return _resolve_media_layer(layer, assets, duration_samples)
+
+
 def _target_bounds(layer: Layer, target: str) -> tuple[float, float]:
-    if target not in ROUTE_TARGETS[layer.kind]:
+    if layer.kind not in ROUTE_TARGETS or target not in ROUTE_TARGETS[layer.kind]:
         raise PlanError(
             "unsupported_route_target",
             {"layer": layer.id, "kind": layer.kind, "parameter": target},
@@ -235,10 +365,17 @@ def _automatic_sections(timeline: Timeline) -> list[Section]:
     ]
 
 
-def _span_layers(base: list[Layer], overrides: dict[str, LayerOverride]) -> list[Layer]:
+def _span_layers(
+    base: list[Layer],
+    overrides: dict[str, LayerOverride],
+    assets: dict[str, AssetProbe],
+    duration_samples: int,
+) -> list[Layer]:
     return [
         _resolve_layer(
-            _apply_override(layer, overrides[layer.id]) if layer.id in overrides else layer
+            _apply_override(layer, overrides[layer.id]) if layer.id in overrides else layer,
+            assets,
+            duration_samples,
         )
         for layer in base
     ]
@@ -254,7 +391,9 @@ def _check_mode(mode: str, layers: list[Layer], section_id: str | None) -> None:
         )
 
 
-def _make_spans(plan: VisualPlan, timeline: Timeline) -> list[ResolvedSpan]:
+def _make_spans(
+    plan: VisualPlan, timeline: Timeline, assets: dict[str, AssetProbe]
+) -> list[ResolvedSpan]:
     sections = timeline.sections or _automatic_sections(timeline)
     overrides = {item.section_id: item for item in plan.sections}
     known = {section.id for section in sections}
@@ -265,7 +404,7 @@ def _make_spans(plan: VisualPlan, timeline: Timeline) -> list[ResolvedSpan]:
     cursor = 0
     for section in sections:
         if cursor < section.start_sample:
-            layers = _span_layers(plan.layers, {})
+            layers = _span_layers(plan.layers, {}, assets, timeline.source.duration_samples)
             _check_mode(plan.mode, layers, None)
             spans.append(
                 ResolvedSpan(start_sample=cursor, end_sample=section.start_sample, layers=layers)
@@ -274,7 +413,9 @@ def _make_spans(plan: VisualPlan, timeline: Timeline) -> list[ResolvedSpan]:
         layer_overrides = (
             {item.layer_id: item for item in section_override.layers} if section_override else {}
         )
-        layers = _span_layers(plan.layers, layer_overrides)
+        layers = _span_layers(
+            plan.layers, layer_overrides, assets, timeline.source.duration_samples
+        )
         _check_mode(plan.mode, layers, section.id)
         spans.append(
             ResolvedSpan(
@@ -289,7 +430,7 @@ def _make_spans(plan: VisualPlan, timeline: Timeline) -> list[ResolvedSpan]:
         )
         cursor = section.end_sample
     if cursor < timeline.source.duration_samples:
-        layers = _span_layers(plan.layers, {})
+        layers = _span_layers(plan.layers, {}, assets, timeline.source.duration_samples)
         _check_mode(plan.mode, layers, None)
         spans.append(
             ResolvedSpan(
@@ -317,9 +458,14 @@ def _resolve_routes(plan: VisualPlan, timeline: Timeline, layers: list[Layer]) -
     return routes
 
 
-def validate_resolved_plan(plan: ResolvedPlan, timeline: Timeline) -> None:
+def validate_resolved_plan(
+    plan: ResolvedPlan, timeline: Timeline, checked_assets: CheckedAssetManifest
+) -> None:
+    assets = {asset.id: asset for asset in checked_assets.assets}
     for span in plan.spans:
-        layers = [_resolve_layer(layer) for layer in span.layers]
+        layers = [
+            _resolve_layer(layer, assets, timeline.source.duration_samples) for layer in span.layers
+        ]
         changed = any(
             resolved != original for resolved, original in zip(layers, span.layers, strict=True)
         )
@@ -360,8 +506,6 @@ def resolve_plan(
         raise PlanError(exc.code, exc.details, 4) from exc
     plan_path = plan_path.resolve()
     plan = _load(VisualPlan, plan_path, "plan")
-    if plan.mode != "abstract":
-        raise PlanError("unsupported_plan_mode", {"mode": plan.mode, "supported": ["abstract"]})
     timeline_path = resolve_record_path(plan_path, plan.timeline_path)
     assets_path = resolve_record_path(plan_path, plan.assets_path)
     timeline = _load(Timeline, timeline_path, "timeline")
@@ -370,8 +514,13 @@ def resolve_plan(
         or resolve_record_path(timeline_path, timeline.source.path) != source.canonical_path
     ):
         raise PlanError("timeline_source_mismatch", {"timeline": timeline.source.sha256})
+    try:
+        checked_assets, checked_path, _ = check_assets(source.project, assets_path)
+    except AssetError as exc:
+        raise PlanError(exc.code, exc.details, exc.exit_code) from exc
     output_path = (output_path or source.project / DEFAULT_OUTPUT).resolve()
-    spans = _make_spans(plan, timeline)
+    asset_map = {asset.id: asset for asset in checked_assets.assets}
+    spans = _make_spans(plan, timeline, asset_map)
     routes = _resolve_routes(plan, timeline, spans[0].layers)
     resolved = ResolvedPlan(
         schema_version="0.1",
@@ -381,6 +530,9 @@ def resolve_plan(
         timeline_path=os.path.relpath(timeline_path, output_path.parent),
         timeline_sha256=sha256_file(timeline_path),
         assets_path=os.path.relpath(assets_path, output_path.parent),
+        assets_sha256=sha256_file(assets_path),
+        checked_assets_path=os.path.relpath(checked_path, output_path.parent),
+        checked_assets_sha256=sha256_file(checked_path),
         mode=plan.mode,
         seed=plan.seed,
         output=plan.output,

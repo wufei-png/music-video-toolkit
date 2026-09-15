@@ -11,6 +11,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from .assets import AssetError, check_assets
 from .contracts import (
     AssetManifest,
     FileRef,
@@ -116,9 +117,9 @@ def _run(
 
 def _abstract_inputs(project: Path, plan_path: Path, source) -> dict[str, object]:
     plan = _load(ResolvedPlan, plan_path, "resolved-plan")
-    if plan.mode != "abstract":
-        raise RenderError("unsupported_render_plan", {"mode": plan.mode}, 4)
     timeline_path = resolve_record_path(plan_path, plan.timeline_path)
+    assets_path = resolve_record_path(plan_path, plan.assets_path)
+    checked_assets_path = resolve_record_path(plan_path, plan.checked_assets_path)
     timeline = _load(Timeline, timeline_path, "timeline")
     source_plan_path = resolve_record_path(plan_path, plan.source_plan.path)
     expected = {
@@ -141,7 +142,30 @@ def _abstract_inputs(project: Path, plan_path: Path, source) -> dict[str, object
     if missing:
         raise RenderError("missing_route_signal", {"signals": missing}, 4)
     try:
-        validate_resolved_plan(plan, timeline)
+        checked_assets, checked_path, _ = check_assets(project, assets_path, checked_assets_path)
+    except AssetError as exc:
+        raise RenderError(exc.code, exc.details, exc.exit_code) from exc
+    observed_assets = {
+        "assets_sha256": sha256_file(assets_path),
+        "checked_assets_path": checked_path,
+        "checked_assets_sha256": sha256_file(checked_path),
+    }
+    expected_assets = {
+        "assets_sha256": plan.assets_sha256,
+        "checked_assets_path": checked_assets_path,
+        "checked_assets_sha256": plan.checked_assets_sha256,
+    }
+    if observed_assets != expected_assets:
+        raise RenderError(
+            "resolved_plan_mismatch",
+            {
+                "expected": {**expected_assets, "checked_assets_path": str(checked_assets_path)},
+                "actual": {**observed_assets, "checked_assets_path": str(checked_path)},
+            },
+            4,
+        )
+    try:
+        validate_resolved_plan(plan, timeline, checked_assets)
     except PlanError as exc:
         raise RenderError(exc.code, exc.details, 4) from exc
     frame_count = (timeline.source.duration_samples * FPS_NUM + SAMPLE_RATE - 1) // SAMPLE_RATE
@@ -153,6 +177,9 @@ def _abstract_inputs(project: Path, plan_path: Path, source) -> dict[str, object
         "source_plan_path": source_plan_path,
         "timeline": timeline,
         "timeline_path": timeline_path,
+        "assets_path": assets_path,
+        "checked_assets_path": checked_assets_path,
+        "checked_assets": checked_assets,
         "frame_count": frame_count,
         "pulse_frames": [],
     }
@@ -327,6 +354,74 @@ def _probe_output(ffprobe: str, path: Path, frame_count: int) -> dict[str, objec
     return actual
 
 
+def _prepare_media(
+    inputs: dict[str, object], directory: Path, ffmpeg: str
+) -> dict[str, dict[str, object]]:
+    checked = inputs.get("checked_assets")
+    if checked is None:
+        return {}
+    checked_path = inputs["checked_assets_path"]
+    used_ids = {
+        layer.asset_id
+        for span in inputs["plan"].spans
+        for layer in span.layers
+        if layer.category == "media" and layer.asset_id is not None
+    }
+    media: dict[str, dict[str, object]] = {}
+    for asset in checked.assets:
+        if asset.id not in used_ids:
+            continue
+        path = resolve_record_path(checked_path, asset.path)
+        common: dict[str, object] = {
+            "type": asset.type,
+            "width": asset.width,
+            "height": asset.height,
+        }
+        if asset.type == "image":
+            suffix = path.suffix.lower().lstrip(".") or "png"
+            mime = "jpeg" if suffix in {"jpg", "jpeg"} else suffix
+            common["dataUrl"] = f"data:image/{mime};base64," + base64.b64encode(
+                path.read_bytes()
+            ).decode("ascii")
+        elif asset.type == "video":
+            frame_directory = directory / asset.id
+            frame_directory.mkdir(parents=True)
+            _run(
+                [
+                    ffmpeg,
+                    "-nostdin",
+                    "-v",
+                    "error",
+                    "-y",
+                    "-i",
+                    str(path),
+                    "-map",
+                    "0:v:0",
+                    "-vsync",
+                    "0",
+                    "-start_number",
+                    "0",
+                    str(frame_directory / "%09d.png"),
+                ],
+                code="media_decode_failed",
+            )
+            frames = list(frame_directory.glob("*.png"))
+            if len(frames) != asset.frame_count:
+                raise RenderError(
+                    "media_frame_count_mismatch",
+                    {"asset": asset.id, "expected": asset.frame_count, "actual": len(frames)},
+                    5,
+                )
+            common.update(
+                frameCount=asset.frame_count,
+                fpsNum=asset.fps_num,
+                fpsDen=asset.fps_den,
+                framesDir=str(frame_directory),
+            )
+        media[asset.id] = common
+    return media
+
+
 def render_minimal(project: Path, plan_path: Path, output: Path) -> dict[str, object]:
     project = project.resolve()
     output = output.resolve()
@@ -367,6 +462,7 @@ def render_minimal(project: Path, plan_path: Path, output: Path) -> dict[str, ob
     os.close(descriptor)
     temporary = Path(temporary_name)
     config_path: Path | None = None
+    media_temporary: tempfile.TemporaryDirectory[str] | None = None
     output_installed = False
     manifest_installed = False
     manifest_temporary: Path | None = None
@@ -375,6 +471,7 @@ def render_minimal(project: Path, plan_path: Path, output: Path) -> dict[str, ob
             dir=output.parent, prefix=".render-config-", suffix=".json"
         )
         config_path = Path(config_name)
+        media_temporary = tempfile.TemporaryDirectory(dir=output.parent, prefix=".render-media-")
         config = {
             "sceneMode": inputs["scene_mode"],
             "width": 1920,
@@ -402,6 +499,7 @@ def render_minimal(project: Path, plan_path: Path, output: Path) -> dict[str, ob
                 },
                 spans=[span.model_dump(mode="json") for span in inputs["plan"].spans],
                 routes=[route.model_dump(mode="json") for route in inputs["plan"].routes],
+                mediaAssets=_prepare_media(inputs, Path(media_temporary.name), ffmpeg),
             )
         with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
             json.dump(config, stream, ensure_ascii=False)
@@ -440,6 +538,11 @@ def render_minimal(project: Path, plan_path: Path, output: Path) -> dict[str, ob
             )
         else:
             manifest_inputs["source_plan"] = sha256_file(inputs["source_plan_path"])
+            manifest_inputs["assets"] = sha256_file(inputs["assets_path"])
+            manifest_inputs["checked_assets"] = sha256_file(inputs["checked_assets_path"])
+            for asset in inputs["checked_assets"].assets:
+                asset_path = resolve_record_path(inputs["checked_assets_path"], asset.path)
+                manifest_inputs[f"asset.{asset.id}"] = sha256_file(asset_path)
         render_manifest = RenderManifest(
             schema_version="0.1",
             status="completed",
@@ -486,6 +589,8 @@ def render_minimal(project: Path, plan_path: Path, output: Path) -> dict[str, ob
         temporary.unlink(missing_ok=True)
         if config_path is not None:
             config_path.unlink(missing_ok=True)
+        if media_temporary is not None:
+            media_temporary.cleanup()
         if manifest_temporary is not None:
             manifest_temporary.unlink(missing_ok=True)
         if output_installed and not manifest_installed:

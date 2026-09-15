@@ -39,6 +39,10 @@ S04 resolves editable abstract plans into `resolved-plan.json`. Its contiguous s
 
 Stable ID, local relative path, type `image|video|font`, SHA-256 and provenance (`user|harness|synthetic`). Optional license/source note. Paths resolve against the manifest directory, not cwd. Cross-directory references such as `../../mp3/...` are allowed for local production; portable export remaps them explicitly. Remote downloads and generation never happen implicitly in rendering. Videos have an explicit offset/loop/hold/trim policy in S05; their own audio is muted by default. Pin fonts for repeatable Chinese/English typography; do not rely on an unspecified system fallback.
 
+S05 writes `assets.checked.json` after probing actual content. It binds the source manifest hash and every asset hash to typed metadata: dimensions for images; dimensions, exact decoded frame count, constant rational frame rate, duration and audio presence for videos; and reported font families for fonts. The cache key changes when the manifest or any asset content changes. Remote URLs, mislabeled media, variable-frame-rate video and unavailable font metadata are rejected.
+
+Media parameters use `cover|contain`, normalized x/y, scale, bounded deterministic motion, integer z, `none|circle` mask and `normal|add` blend. Video trim is the half-open source-frame interval `[in_frame, out_frame)`. Global samples before `offset_samples` hold `in_frame`; after the trim range, `error`, `loop` or `hold` applies. Video audio is always muted. Section transitions crossfade previous and current media configurations on the canonical sample clock.
+
 ## Lyrics
 
 Language, supplied lyric source, source-audio hash, origin `imported|aligned|edited`, and ordered non-overlapping line cues. Stage headings such as `[Chorus]` are context, not sung text. Preserve supplied lyric order, including repeated choruses; missing/unmatched spans are surfaced for correction. `off` requires no timings; `imported` and `auto` both point to a saved lyrics artifact by render time. The render command must never trigger alignment automatically.
@@ -49,7 +53,7 @@ Status, hashes of input artifacts, source hash, seed, environment/backend versio
 
 ## Planned command contract
 
-Bootstrap commands are `--help`, `--version`, `capabilities`, `doctor`, `validate` and `schema`. S01 implements `decode`. S02 implements `render` for its three fixture layer kinds only. The remaining verbs below, and production render kinds, are specified future behavior:
+Bootstrap commands are `--help`, `--version`, `capabilities`, `doctor`, `validate` and `schema`. S01 implements `decode`; S02–S05 extend `render`; S03 implements `analyze`; S04 implements `plan resolve`; S05 implements `assets check`. Lyrics and preview verbs remain planned:
 
 ```text
 mvt decode INPUT --project DIR

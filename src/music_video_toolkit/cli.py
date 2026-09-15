@@ -12,6 +12,7 @@ from pydantic import ValidationError
 
 from . import __version__
 from .analysis import AnalysisError, analyze_project
+from .assets import AssetError, check_assets
 from .audio import DecodeError, decode_audio
 from .contracts import CONTRACTS
 from .documents import read_document
@@ -26,9 +27,10 @@ AVAILABLE = [
     "decode",
     "analyze",
     "plan resolve",
+    "assets check",
     "render",
 ]
-PLANNED = ["assets check", "lyrics", "preview"]
+PLANNED = ["lyrics", "preview"]
 
 
 def emit(value: object, *, error: bool = False) -> None:
@@ -58,6 +60,12 @@ def main(argv: list[str] | None = None) -> int:
     resolve.add_argument("--project", type=Path, required=True)
     resolve.add_argument("--plan", type=Path, required=True)
     resolve.add_argument("--output", type=Path)
+    assets = commands.add_parser("assets", help="Preflight local image, video and font assets")
+    asset_commands = assets.add_subparsers(dest="asset_command", required=True)
+    check = asset_commands.add_parser("check", help="Verify hashes, types and media metadata")
+    check.add_argument("--project", type=Path, required=True)
+    check.add_argument("--manifest", type=Path)
+    check.add_argument("--output", type=Path)
     render = commands.add_parser("render", help="Render the supported fixed-frame plan")
     render.add_argument("--project", type=Path, required=True)
     render.add_argument("--plan", type=Path, required=True)
@@ -73,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "version": __version__,
                 "schema_version": "0.1",
-                "stage": "s04",
+                "stage": "s05",
                 "available": AVAILABLE,
                 "planned": PLANNED,
                 "can_render": True,
@@ -158,6 +166,21 @@ def main(argv: list[str] | None = None) -> int:
                 "mode": resolved.mode,
                 "spans": len(resolved.spans),
                 "routes": len(resolved.routes),
+            }
+        )
+    elif args.command == "assets" and args.asset_command == "check":
+        try:
+            checked, output, cached = check_assets(args.project, args.manifest, args.output)
+        except AssetError as exc:
+            emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
+            return exc.exit_code
+        emit(
+            {
+                "ok": True,
+                "cached": cached,
+                "output": str(output),
+                "cache_key": checked.cache_key,
+                "assets": len(checked.assets),
             }
         )
     elif args.command == "render":
