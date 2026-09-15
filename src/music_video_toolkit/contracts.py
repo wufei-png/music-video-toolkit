@@ -450,6 +450,79 @@ class Lyrics(Artifact):
         return self
 
 
+class AlignmentLine(Contract):
+    source_line: Positive
+    text: Annotated[str, Field(min_length=1, max_length=240)]
+    normalized_characters: Positive
+    status: Literal["matched", "unmatched"]
+    coverage: Unit
+    start_sample: NonNegative | None = None
+    end_sample: Positive | None = None
+    reason: Text | None = None
+
+    @model_validator(mode="after")
+    def coherent_status(self) -> Self:
+        timed = self.start_sample is not None and self.end_sample is not None
+        if self.status == "matched":
+            if not timed or self.reason is not None or self.end_sample <= self.start_sample:
+                raise ValueError("matched alignment lines require an ordered range and no reason")
+        elif timed or self.reason is None:
+            raise ValueError("unmatched alignment lines require a reason and no range")
+        return self
+
+
+class AlignmentEvaluation(Contract):
+    reference_points: Annotated[int, Field(ge=12, le=MAX_INT)]
+    matched_reference_points: Positive
+    unmatched_reference_points: NonNegative
+    median_absolute_error_samples: NonNegative
+    p90_absolute_error_samples: NonNegative
+    median_limit_samples: Literal[12000] = 12000
+    p90_limit_samples: Literal[24000] = 24000
+    passed: bool
+
+    @model_validator(mode="after")
+    def threshold_result(self) -> Self:
+        if self.matched_reference_points + self.unmatched_reference_points != self.reference_points:
+            raise ValueError("alignment reference counts do not sum to reference_points")
+        expected = (
+            self.unmatched_reference_points == 0
+            and self.matched_reference_points == self.reference_points
+            and self.median_absolute_error_samples <= self.median_limit_samples
+            and self.p90_absolute_error_samples <= self.p90_limit_samples
+        )
+        if self.passed != expected:
+            raise ValueError("alignment evaluation result does not match the fixed thresholds")
+        return self
+
+
+class AlignmentReport(Artifact):
+    cache_key: Sha256
+    language: Literal["en", "zh"]
+    text_source: FileRef
+    audio: FileRef
+    audio_kind: Literal["canonical", "vocals"]
+    audio_offset_samples: Literal[0] = 0
+    runtime: Provenance
+    elapsed_seconds: Annotated[float, Field(ge=0)]
+    output: FileRef
+    lines: Annotated[list[AlignmentLine], Field(min_length=1)]
+    evaluation: AlignmentEvaluation | None = None
+
+    @model_validator(mode="after")
+    def line_order(self) -> Self:
+        source_lines = [line.source_line for line in self.lines]
+        if source_lines != sorted(source_lines) or len(source_lines) != len(set(source_lines)):
+            raise ValueError("alignment source lines must be unique and ordered")
+        matched = [
+            SampleRange(start_sample=line.start_sample, end_sample=line.end_sample)
+            for line in self.lines
+            if line.status == "matched"
+        ]
+        ordered_ranges(matched)
+        return self
+
+
 class RenderManifest(Artifact):
     status: Literal["completed", "failed"]
     source_sha256: Sha256
@@ -480,5 +553,6 @@ CONTRACTS: dict[str, type[Artifact]] = {
     "assets": AssetManifest,
     "checked-assets": CheckedAssetManifest,
     "lyrics": Lyrics,
+    "alignment": AlignmentReport,
     "render": RenderManifest,
 }

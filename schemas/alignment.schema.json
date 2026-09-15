@@ -1,0 +1,287 @@
+{
+  "$defs": {
+    "AlignmentEvaluation": {
+      "additionalProperties": false,
+      "properties": {
+        "reference_points": {
+          "maximum": 9007199254740991,
+          "minimum": 12,
+          "title": "Reference Points",
+          "type": "integer"
+        },
+        "matched_reference_points": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Matched Reference Points",
+          "type": "integer"
+        },
+        "unmatched_reference_points": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Unmatched Reference Points",
+          "type": "integer"
+        },
+        "median_absolute_error_samples": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Median Absolute Error Samples",
+          "type": "integer"
+        },
+        "p90_absolute_error_samples": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "P90 Absolute Error Samples",
+          "type": "integer"
+        },
+        "median_limit_samples": {
+          "const": 12000,
+          "default": 12000,
+          "title": "Median Limit Samples",
+          "type": "integer"
+        },
+        "p90_limit_samples": {
+          "const": 24000,
+          "default": 24000,
+          "title": "P90 Limit Samples",
+          "type": "integer"
+        },
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "reference_points",
+        "matched_reference_points",
+        "unmatched_reference_points",
+        "median_absolute_error_samples",
+        "p90_absolute_error_samples",
+        "passed"
+      ],
+      "title": "AlignmentEvaluation",
+      "type": "object"
+    },
+    "AlignmentLine": {
+      "additionalProperties": false,
+      "properties": {
+        "source_line": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Source Line",
+          "type": "integer"
+        },
+        "text": {
+          "maxLength": 240,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "normalized_characters": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Normalized Characters",
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "matched",
+            "unmatched"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "coverage": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Coverage",
+          "type": "number"
+        },
+        "start_sample": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Sample"
+        },
+        "end_sample": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Sample"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        }
+      },
+      "required": [
+        "source_line",
+        "text",
+        "normalized_characters",
+        "status",
+        "coverage"
+      ],
+      "title": "AlignmentLine",
+      "type": "object"
+    },
+    "FileRef": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "title": "FileRef",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "tool": {
+          "minLength": 1,
+          "title": "Tool",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "tool",
+        "version"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "0.1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "cache_key": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Cache Key",
+      "type": "string"
+    },
+    "language": {
+      "enum": [
+        "en",
+        "zh"
+      ],
+      "title": "Language",
+      "type": "string"
+    },
+    "text_source": {
+      "$ref": "#/$defs/FileRef"
+    },
+    "audio": {
+      "$ref": "#/$defs/FileRef"
+    },
+    "audio_kind": {
+      "enum": [
+        "canonical",
+        "vocals"
+      ],
+      "title": "Audio Kind",
+      "type": "string"
+    },
+    "audio_offset_samples": {
+      "const": 0,
+      "default": 0,
+      "title": "Audio Offset Samples",
+      "type": "integer"
+    },
+    "runtime": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "elapsed_seconds": {
+      "minimum": 0,
+      "title": "Elapsed Seconds",
+      "type": "number"
+    },
+    "output": {
+      "$ref": "#/$defs/FileRef"
+    },
+    "lines": {
+      "items": {
+        "$ref": "#/$defs/AlignmentLine"
+      },
+      "minItems": 1,
+      "title": "Lines",
+      "type": "array"
+    },
+    "evaluation": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AlignmentEvaluation"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "schema_version",
+    "cache_key",
+    "language",
+    "text_source",
+    "audio",
+    "audio_kind",
+    "runtime",
+    "elapsed_seconds",
+    "output",
+    "lines"
+  ],
+  "title": "AlignmentReport",
+  "type": "object"
+}

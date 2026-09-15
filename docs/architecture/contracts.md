@@ -49,6 +49,8 @@ Language, supplied lyric source, source-audio hash, origin `imported|aligned|edi
 
 S06 imports UTF-8 LRC/SRT only. LRC cues end at the next retained timestamp or canonical song end; the provenance records this rule, offset and skipped stage-heading count. SRT endpoints are explicit and overlaps fail. Each cue owns `[start_sample, end_sample)`, may contain explicit line breaks, and is limited to 240 characters for the bounded layout. Import records the source text hash and refuses to overwrite different or invalid existing `lyrics.json`, preserving hand edits.
 
+S07 aligns known UTF-8 text with isolated WhisperX CPU timing evidence. The ASR transcript is never emitted as lyric content. Exact-character matches map monotonically across the supplied text so repeated choruses retain source order; low-coverage lines remain explicit unmatched report entries. Optional independent reference points use fixed 250 ms median and 500 ms nearest-rank P90 limits. A complete reviewed onset document, including previously unmatched lines, produces a separate `edited` artifact whose cue ends are the next reviewed start or song end and does not rerun a model.
+
 Enabled lyrics require a checked local font asset and the resolved plan binds the lyrics artifact hash. The renderer embeds that font, wraps up to five centered lines inside a fixed safe-area panel and applies a 100 ms sample-clock fade capped to half the cue. Interludes have no caption. `off` carries no lyric path/font/hash and does not open a lyric artifact.
 
 ## Render manifest
@@ -57,7 +59,7 @@ Status, hashes of input artifacts, source hash, seed, environment/backend versio
 
 ## Planned command contract
 
-Bootstrap commands are `--help`, `--version`, `capabilities`, `doctor`, `validate` and `schema`. S01 implements `decode`; S02–S05 extend `render`; S03 implements `analyze`; S04 implements `plan resolve`; S05 implements `assets check`. Lyrics and preview verbs remain planned:
+Bootstrap commands are `--help`, `--version`, `capabilities`, `doctor`, `validate` and `schema`. S01 implements `decode`; S02–S05 extend `render`; S03 implements `analyze`; S04 implements `plan resolve`; S05 implements `assets check`; S06 implements `lyrics import`; S07 implements `lyrics align` and `lyrics apply-edits`. Preview remains planned:
 
 ```text
 mvt decode INPUT --project DIR
@@ -66,6 +68,7 @@ mvt plan resolve --project DIR --plan FILE
 mvt assets check --project DIR
 mvt lyrics import FILE --project DIR
 mvt lyrics align --project DIR --text FILE --language zh|en
+mvt lyrics apply-edits --project DIR --edits FILE
 mvt render --project DIR --plan FILE --output FILE
 mvt preview --project DIR --plan FILE --ranges FILE --output DIR
 ```

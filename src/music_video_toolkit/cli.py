@@ -11,6 +11,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from . import __version__
+from .alignment import AlignmentError, align_lyrics, apply_alignment_edits
 from .analysis import AnalysisError, analyze_project
 from .assets import AssetError, check_assets
 from .audio import DecodeError, decode_audio
@@ -30,9 +31,11 @@ AVAILABLE = [
     "plan resolve",
     "assets check",
     "lyrics import",
+    "lyrics align",
+    "lyrics apply-edits",
     "render",
 ]
-PLANNED = ["lyrics align", "preview"]
+PLANNED = ["preview"]
 
 
 def emit(value: object, *, error: bool = False) -> None:
@@ -75,6 +78,21 @@ def main(argv: list[str] | None = None) -> int:
     lyric_import.add_argument("--project", type=Path, required=True)
     lyric_import.add_argument("--language", required=True)
     lyric_import.add_argument("--output", type=Path)
+    lyric_align = lyric_commands.add_parser("align", help="Align known UTF-8 lyrics with WhisperX")
+    lyric_align.add_argument("--text", type=Path, required=True)
+    lyric_align.add_argument("--project", type=Path, required=True)
+    lyric_align.add_argument("--language", choices=("en", "zh"), required=True)
+    lyric_align.add_argument("--output", type=Path)
+    lyric_align.add_argument("--report", type=Path)
+    lyric_align.add_argument("--references", type=Path)
+    lyric_edits = lyric_commands.add_parser(
+        "apply-edits", help="Save reviewed line starts as an edited lyrics artifact"
+    )
+    lyric_edits.add_argument("--project", type=Path, required=True)
+    lyric_edits.add_argument("--edits", type=Path, required=True)
+    lyric_edits.add_argument("--aligned", type=Path)
+    lyric_edits.add_argument("--report", type=Path)
+    lyric_edits.add_argument("--output", type=Path)
     render = commands.add_parser("render", help="Render the supported fixed-frame plan")
     render.add_argument("--project", type=Path, required=True)
     render.add_argument("--plan", type=Path, required=True)
@@ -90,12 +108,13 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "version": __version__,
                 "schema_version": "0.1",
-                "stage": "s06",
+                "stage": "s07",
                 "available": AVAILABLE,
                 "planned": PLANNED,
                 "can_render": True,
                 "render_scope": (
-                    "fixed 1080p30 abstract, mood and hybrid plans with imported lyrics"
+                    "fixed 1080p30 abstract, mood and hybrid plans with imported lyrics "
+                    "or saved aligned/edited cues"
                 ),
                 "analysis_scope": (
                     "48 kHz mix features; optional htdemucs vocals/drums/bass/other"
@@ -134,7 +153,34 @@ def main(argv: list[str] | None = None) -> int:
         analysis_runtime["model_downloaded"] = (model_dir / "htdemucs.yaml").is_file() and (
             model_dir / "955717e8-8726e21a.th"
         ).is_file()
-        ready = all(tools.values()) and renderer["ready"] and analysis_runtime["ready"]
+        alignment_project = Path(
+            os.environ.get(
+                "MVT_ALIGNMENT_PROJECT",
+                str(Path(__file__).resolve().parents[2] / "environments/alignment"),
+            )
+        ).expanduser()
+        alignment_model_dir = Path(
+            os.environ.get(
+                "MVT_ALIGNMENT_MODEL_DIR",
+                str(Path.home() / "Library/Caches/music-video-toolkit/whisperx"),
+            )
+        ).expanduser()
+        alignment_runtime = {
+            "path": str(alignment_project),
+            "ready": all(
+                (alignment_project / name).is_file()
+                for name in ("pyproject.toml", "uv.lock", "align_audio.py")
+            ),
+            "model_cache": str(alignment_model_dir),
+            "model_cache_present": alignment_model_dir.is_dir()
+            and any(alignment_model_dir.iterdir()),
+        }
+        ready = (
+            all(tools.values())
+            and renderer["ready"]
+            and analysis_runtime["ready"]
+            and alignment_runtime["ready"]
+        )
         emit(
             {
                 "platform": platform.system(),
@@ -143,9 +189,11 @@ def main(argv: list[str] | None = None) -> int:
                 "tools": tools,
                 "renderer": renderer,
                 "analysis_runtime": analysis_runtime,
+                "alignment_runtime": alignment_runtime,
                 "pipeline_ready": ready,
                 "reason": (
-                    "S03 analysis and S06 fixed-frame rendering; optional models may be absent"
+                    "S03 analysis, S06 rendering and optional S07 alignment runtime; "
+                    "models may be absent"
                 ),
             }
         )
@@ -213,6 +261,29 @@ def main(argv: list[str] | None = None) -> int:
                 "cues": len(imported.cues),
             }
         )
+    elif args.command == "lyrics" and args.lyrics_command == "align":
+        try:
+            result = align_lyrics(
+                args.text,
+                args.project,
+                args.language,
+                args.output,
+                args.report,
+                args.references,
+            )
+        except AlignmentError as exc:
+            emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
+            return exc.exit_code
+        emit(result.summary())
+    elif args.command == "lyrics" and args.lyrics_command == "apply-edits":
+        try:
+            result = apply_alignment_edits(
+                args.project, args.edits, args.aligned, args.report, args.output
+            )
+        except AlignmentError as exc:
+            emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
+            return exc.exit_code
+        emit(result.summary())
     elif args.command == "render":
         try:
             result = render_minimal(args.project, args.plan, args.output)

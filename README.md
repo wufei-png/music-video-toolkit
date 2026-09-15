@@ -2,7 +2,7 @@
 
 面向 AI agent 的音乐视频制作工具包。Skill 做创作协作，文件协议保存决策，代码执行可复现制作。
 
-**当前状态：S06 已完成。工具可统一解码音频、提取 mix/四轨特征、解析整曲默认值与段落覆盖，并用抽象/本地媒体图层及导入的 LRC/SRT 双语逐句字幕生成 1080p30 视频。自动歌词对齐尚未实现。** 本仓库的 MIT 许可覆盖代码与 Skill，不改变外部素材、模型和依赖的许可证。
+**当前状态：S07 已完成。工具可统一解码音频、提取 mix/四轨特征、自动对齐或导入逐句歌词、保存人工修正，并用抽象/本地媒体图层生成带字幕的 1080p30 视频。** 本仓库的 MIT 许可覆盖代码与 Skill，不改变外部素材、模型和依赖的许可证。
 
 ## 两个入口
 
@@ -33,6 +33,8 @@ uv run --locked mvt analyze --project "/path/to/project" --stems four
 uv run --locked mvt plan resolve --project "/path/to/project" --plan "/path/to/plan.json"
 uv run --locked mvt assets check --project "/path/to/project"
 uv run --locked mvt lyrics import "/path/to/captions.srt" --project "/path/to/project" --language zh+en
+uv run --locked mvt lyrics align --text "/path/to/lyrics.md" --project "/path/to/project" --language zh
+uv run --locked mvt lyrics apply-edits --project "/path/to/project" --edits "/path/to/edited-onsets.json"
 uv run --locked mvt validate --kind source "/path/to/project/source/source.json"
 uv run --locked mvt validate --kind stems "/path/to/project/stems/stems.json"
 uv run --locked mvt validate --kind timeline examples/timeline.json
@@ -53,9 +55,9 @@ pnpm --dir renderer exec playwright install chromium
 
 `assets check` 验证本地图片、恒定帧率视频和字体的实际类型、哈希与元数据；不会下载远程素材。`plan resolve` 对 orb/ribbon/particles、image/video 及 linear/threshold/smooth 做参数白名单和范围校验，把整曲默认值、手工或自动候选段落、gap 回退和段落过渡解析成覆盖全曲的 `resolved-plan.json`。route 缺少信号、未知参数/目标、未知素材、素材身份变化或任一 span 禁用模式必需图层都会硬失败。`render` 可执行 A/B/C resolved plan，按样本时钟确定性选择预解码视频帧并强制丢弃媒体音轨；S02 验收计划仍兼容。
 
-`lyrics import` 将 UTF-8 LRC/SRT 转成绑定 canonical audio 的逐句 `lyrics.json`。LRC 的行尾规则、源文本哈希和导入 provenance 会保存；SRT 重叠直接失败。启用字幕的 plan 指定已预检字体，渲染器按半开样本范围显示、淡入淡出并在安全区内处理中文、英文、显式多行和长句。`off` 不读取歌词文件。自动对齐是 S07 能力，`render` 不会隐式运行它。
+`lyrics import` 将 UTF-8 LRC/SRT 转成绑定 canonical audio 的逐句 `lyrics.json`。`lyrics align` 在独立锁定的 WhisperX CPU 环境中把分离人声的识别时序单调映射回用户原文，保留重复副歌并显式列出未匹配行；它不会用识别文本替换歌词。`lyrics apply-edits` 接受完整人工行首并生成 `lyrics.edited.json`，无需再次运行模型。启用字幕的 plan 指定已预检字体，渲染器按半开样本范围显示、淡入淡出并在安全区内处理中文、英文、显式多行和长句。`off` 不读取歌词文件，`render` 不会隐式运行对齐。
 
-原始研究报告、两首歌及其制作资产留在父目录，公共工具仓库不依赖它们。新用户可以安装工具、检查协议、解码、分析、导入歌词并渲染自己的本地计划；自动对齐、预览和完整生产工作流由后续切片逐步交付。
+原始研究报告、两首歌及其制作资产留在父目录，公共工具仓库不依赖它们。新用户可以安装工具、检查协议、解码、分析、导入或自动对齐歌词并渲染自己的本地计划；预览和完整生产工作流由后续切片逐步交付。
 
 渲染器目前提供时间映射实现和 Three.js 图层接口；构建与测试：
 
