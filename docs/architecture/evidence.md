@@ -14,7 +14,7 @@ Checked 2026-09-15. Research report remains in the parent production workspace; 
 
 | Risk | First proof | If proof fails |
 | --- | --- | --- |
-| macOS frame capture/Chinese font/media/export | S02 short clip | Fix host/capture boundary before scene investment |
+| macOS frame capture/Chinese font/media/export | S02 short clip passed with pinned Chromium and software SwiftShader; hardware acceleration remains unproven | Prove hardware path when performance requires it; keep exact-frame software path as reference |
 | 4-stem model memory/quality | S03 excerpts from both songs | Change model/adapter configuration and record comparison; no fake stems |
 | Misleading beat/downbeat or sections | S03/S04 | Preserve unknowns and manual correction |
 | External video exact-frame seeking | S05 short known-frame video | Decode deterministic frames through FFmpeg, not wall-clock playback |

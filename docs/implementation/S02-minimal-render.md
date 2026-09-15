@@ -1,6 +1,6 @@
 # S02 — 最小固定帧渲染闭环
 
-状态：未开始。依赖：S01。
+状态：完成（2026-09-15）。依赖：S01。
 
 ## 独立交付
 
@@ -31,3 +31,10 @@
 ## 提交与交接
 
 检查 tracked/untracked/ignored，显式 stage 本片代码、测试与状态文档，检查 staged diff 和 `git diff --check --cached` 后提交。更新 status：实际命令/版本、通过或失败、真实集成证据位置、尚未完成的用户审阅，以及下一片。没有通过的 live gate 不能记录成完成；必要时只记录受阻的工作进度，避免伪造验证结果。
+
+## 完成证据
+
+- Playwright 1.63.0 锁定 Chromium 153.0.8010.12；Three.js 0.186.0 浏览器 scene 在字体与本地 PNG readiness 后逐帧捕获，FFmpeg 管道显式处理背压。
+- `uv run --locked pytest tests/stages/test_s02.py -q`：2 passed。5 秒/150 帧合成 click 项目在 1/2/3 秒产生音频 click 与第 30/60/90 帧视觉脉冲，解码后误差不超过 1 帧。
+- 两次输出的 MP4 SHA-256 完全相同；测试仍按同机解码 luma 最大误差≤2执行。ffprobe 确认 H.264、AAC、1920×1080、30/1、150 帧、48kHz 双声道。
+- 中文 canvas glyph ink 与本地 PNG readiness 均有机器检查。Chromium 报告 ANGLE SwiftShader，属于软件绘制；未证明硬件加速。

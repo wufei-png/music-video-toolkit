@@ -41,7 +41,7 @@ Status, hashes of input artifacts, source hash, seed, environment/backend versio
 
 ## Planned command contract
 
-Only `--help`, `--version`, `capabilities`, `doctor`, `validate` and `schema` are bootstrap commands. Future verbs below are **specified, not implemented**:
+Bootstrap commands are `--help`, `--version`, `capabilities`, `doctor`, `validate` and `schema`. S01 implements `decode`. S02 implements `render` for its three fixture layer kinds only. The remaining verbs below, and production render kinds, are specified future behavior:
 
 ```text
 mvt decode INPUT --project DIR
@@ -54,4 +54,4 @@ mvt render --project DIR --plan FILE --output FILE
 mvt preview --project DIR --plan FILE --ranges FILE --output DIR
 ```
 
-All tools eventually expose machine-readable results, nonzero failures, stable error codes and actionable missing-dependency messages. Planned commands become supported only after their slice tests pass. Rendering uses resolved artifacts; feature analysis, generation, model download and user decisions remain distinct operations.
+All tools expose machine-readable results, nonzero failures, stable error codes and actionable missing-dependency messages as their slices implement them. Commands and layer kinds become supported only after their slice tests pass. Rendering uses resolved artifacts; feature analysis, generation, model download and user decisions remain distinct operations.

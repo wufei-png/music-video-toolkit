@@ -13,9 +13,10 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_capabilities_are_honest(capsys):
     assert main(["capabilities"]) == 0
     report = json.loads(capsys.readouterr().out)
-    assert report["can_render"] is False
-    assert "render" not in report["available"]
-    assert "render" in report["planned"]
+    assert report["can_render"] is True
+    assert "render" in report["available"]
+    assert "render" not in report["planned"]
+    assert "S02" in report["render_scope"]
     assert "decode" in report["available"]
     assert "decode" not in report["planned"]
 
@@ -76,7 +77,7 @@ def test_installed_cli_from_different_directory(tmp_path):
     assert json.loads(result.stdout)["ok"] is True
 
 
-def test_unimplemented_render_is_not_a_success(tmp_path):
+def test_render_requires_explicit_inputs(tmp_path):
     result = subprocess.run(
         [sys.executable, "-m", "music_video_toolkit.cli", "render"],
         cwd=tmp_path,
@@ -84,4 +85,4 @@ def test_unimplemented_render_is_not_a_success(tmp_path):
         capture_output=True,
     )
     assert result.returncode != 0
-    assert "invalid choice" in result.stderr
+    assert "required" in result.stderr

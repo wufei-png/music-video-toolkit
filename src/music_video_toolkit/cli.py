@@ -13,9 +13,10 @@ from . import __version__
 from .audio import DecodeError, decode_audio
 from .contracts import CONTRACTS
 from .documents import read_document
+from .render import RenderError, render_minimal, renderer_doctor
 
-AVAILABLE = ["capabilities", "doctor", "validate", "schema", "decode"]
-PLANNED = ["analyze", "plan resolve", "assets check", "lyrics", "render", "preview"]
+AVAILABLE = ["capabilities", "doctor", "validate", "schema", "decode", "render"]
+PLANNED = ["analyze", "plan resolve", "assets check", "lyrics", "preview"]
 
 
 def emit(value: object, *, error: bool = False) -> None:
@@ -34,6 +35,10 @@ def main(argv: list[str] | None = None) -> int:
     decode = commands.add_parser("decode", help="Decode input audio to the canonical project WAV")
     decode.add_argument("input", type=Path)
     decode.add_argument("--project", type=Path, required=True)
+    render = commands.add_parser("render", help="Render the supported fixed-frame plan")
+    render.add_argument("--project", type=Path, required=True)
+    render.add_argument("--plan", type=Path, required=True)
+    render.add_argument("--output", type=Path, required=True)
     validate = commands.add_parser("validate", help="Validate a single JSON artifact, not media")
     validate.add_argument("--kind", choices=CONTRACTS, required=True)
     validate.add_argument("file", type=Path)
@@ -45,10 +50,11 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "version": __version__,
                 "schema_version": "0.1",
-                "stage": "s01",
+                "stage": "s02",
                 "available": AVAILABLE,
                 "planned": PLANNED,
-                "can_render": False,
+                "can_render": True,
+                "render_scope": "S02 fixture layers: s02.pulse, s02.image, s02.text",
                 "validation_scope": "single artifact structure and local semantics",
                 "project_preflight": [
                     "canonical source path",
@@ -60,17 +66,21 @@ def main(argv: list[str] | None = None) -> int:
         )
     elif args.command == "doctor":
         tools = {name: shutil.which(name) for name in ("ffmpeg", "ffprobe", "node", "pnpm")}
+        renderer = renderer_doctor()
         emit(
             {
                 "platform": platform.system(),
                 "machine": platform.machine(),
                 "python": platform.python_version(),
                 "tools": tools,
-                "pipeline_ready": False,
-                "reason": "Rendering and model adapters are not implemented",
+                "renderer": renderer,
+                "pipeline_ready": all(tools.values()) and renderer["ready"],
+                "reason": (
+                    "S02 fixed-frame renderer only; analysis and production layers are pending"
+                ),
             }
         )
-        return 0 if all(tools.values()) else 1
+        return 0 if all(tools.values()) and renderer["ready"] else 1
     elif args.command == "schema":
         emit(CONTRACTS[args.kind].model_json_schema())
     elif args.command == "decode":
@@ -80,6 +90,13 @@ def main(argv: list[str] | None = None) -> int:
             emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
             return exc.exit_code
         emit(result.report())
+    elif args.command == "render":
+        try:
+            result = render_minimal(args.project, args.plan, args.output)
+        except RenderError as exc:
+            emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
+            return exc.exit_code
+        emit(result)
     elif args.command == "validate":
         try:
             CONTRACTS[args.kind].model_validate(read_document(args.file))
