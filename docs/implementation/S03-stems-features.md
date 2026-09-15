@@ -1,6 +1,6 @@
 # S03 — 分轨与音乐特征
 
-状态：实现与自动/真实运行完成，等待两首外部样本的人工听检。依赖：S01, S02。
+状态：完成。依赖：S01, S02。
 
 ## 独立交付
 
@@ -39,5 +39,5 @@
 - `htdemucs.yaml` 四轨实跑通过；代码会验证四个实际输出，不能因上游 CLI 错误返回 0 而生成假成功。模型配置和权重 SHA-256、来源、未确认许可及禁止分发状态写入 manifest。
 - 模型 44.1kHz 输出先自然重采样为 48kHz，再按 canonical 精确点数显式补齐或裁剪，并记录原始、自然、目标点数及差值。两个真实片段均无需点数调整。
 - 特征固定 hop 1024、RMS frame 2048、chroma FFT 4096、`center=false`、末窗补零、逐信号 observed-max normalization、静音全零。beat 只标记 mix beat estimate，不声称 downbeat。
-- 外部工作区的两首 60–80 秒样本分别完成四轨、timeline、cache 复验和资源记录。soft-harm 8.14 秒 / 1,067,368,448 bytes RSS；zhi-mai-yi-ren-fen 7.34 秒 / 1,128,775,680 bytes RSS。人工串音/质量听检仍未完成，因此本片尚不标记 Complete。
+- 外部工作区的两首 60–80 秒样本分别完成四轨、timeline、cache 复验和资源记录。soft-harm 8.14 秒 / 1,067,368,448 bytes RSS；zhi-mai-yi-ren-fen 7.34 秒 / 1,128,775,680 bytes RSS。用户于 2026-09-15 通过两组四轨的串音、质量和边界听检。
 - soft-harm 的 18-signal timeline 已走 S02 固定帧路径生成 600 帧 MP4，55 个 mix beat 事件映射为 55 个 pulse frames；输出通过 H.264/AAC/1080p30/帧数检查。

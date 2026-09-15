@@ -1,12 +1,12 @@
 # Implementation status
 
-## S03 stems/features implementation complete; listening gate open — 2026-09-15
+## S03 stems/features complete — 2026-09-15
 
 `mvt analyze --project DIR --stems four|none` now produces a renderer-neutral `timeline.json`. `none` emits mix RMS, beat estimates and 12 chroma signals only. `four` runs the locked audio-separator 0.44.2 / `htdemucs.yaml` environment, requires actual vocals/drums/bass/other files, normalizes them to canonical 48kHz stereo 24-bit PCM and adds stem RMS, drums onset and bass low-energy signals. Beat events do not claim downbeat or bar phase.
 
 `stems/stems.json` records model/config hashes, source, license status and every alignment operation. `analysis/run.json` records the source/model/config cache key, runtime lock, timings and output hashes. Cache hits revalidate every referenced artifact and media hash. The adapter catches the observed upstream failure mode where audio-separator printed success and exited 0 without exported files.
 
-Both external 60–80 second song excerpts completed real four-stem inference on Apple Silicon MPS/CoreML. soft-harm took 8.14 seconds and 1,067,368,448 bytes maximum resident set size; zhi-mai-yi-ren-fen took 7.34 seconds and 1,128,775,680 bytes. All eight stems have exactly 960000 canonical samples; natural resampling required no padding/trimming. Objective summed-stem reconstruction SNR measured 35.30 dB and 36.05 dB. The external review files still have an open human crosstalk/quality gate, so S03 is not yet marked complete.
+Both external 60–80 second song excerpts completed real four-stem inference on Apple Silicon MPS/CoreML. soft-harm took 8.14 seconds and 1,067,368,448 bytes maximum resident set size; zhi-mai-yi-ren-fen took 7.34 seconds and 1,128,775,680 bytes. All eight stems have exactly 960000 canonical samples; natural resampling required no padding/trimming. Objective summed-stem reconstruction SNR measured 35.30 dB and 36.05 dB. The user accepted both four-track listening checks on 2026-09-15.
 
 The soft-harm timeline also drove the S02 renderer through its real `beat` events: the 20-second 1080p30 H.264/AAC result has exactly 600 frames, with all 55 beat events mapped to 55 pulse frames. Chromium still used SwiftShader software rendering.
 
@@ -62,8 +62,8 @@ Model installation/inference, browser/WebGL rendering and video export have now 
 | --- | --- |
 | S01 canonical audio | Complete — `8f1e4f6`, `77426ca` |
 | S02 minimal renderer | Complete — `380b9cf` |
-| S03 stems/features | Implementation/live run complete; human listening pending — **current** |
-| S04 abstract/sections | Not started |
+| S03 stems/features | Complete — `7c01627` plus accepted external review |
+| S04 abstract/sections | Not started — **next** |
 | S05 media/hybrid | Not started |
 | S06 imported lyrics | Not started |
 | S07 automatic alignment | Not started |
@@ -73,6 +73,6 @@ Model installation/inference, browser/WebGL rendering and video export have now 
 
 ## Exact next action
 
-Listen to vocals/drums/bass/other in both external 20-second S03 workspaces and record whether intelligibility, crosstalk, routing usefulness and boundary timing are acceptable. If accepted, mark S03 complete with this commit and begin [S04](S04-abstract-sections.md). If rejected, compare a specific alternate model/config on the same excerpts before changing the default.
+Read [S04](S04-abstract-sections.md), inspect the current plan/timeline renderer adapters, then implement the production abstract layer allowlist, deterministic signal routing and automatic/manual section precedence before rendering its synthetic acceptance clip.
 
 On the original host the parent workspace has `projects/README.md`, `projects/soft-harm/case.json` and `projects/zhi-mai-yi-ren-fen/case.json`. These are local source inventories, not runtime schemas. Case-specific lyric display mode, visual material/style and exact sample ranges await production decisions. Parent audio/lyrics/raw metadata and case notes are outside this Git history.
