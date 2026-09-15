@@ -38,3 +38,12 @@ uv run --locked python scripts/export_schemas.py --check
 `doctor` 仅报告工具是否可发现，不证明渲染可用。`validate` 是单文件结构与部分语义校验，不检查媒体是否存在。示例均为合成协议示例，不是实际成片；详见 [示例说明](examples/README.md)。
 
 原始研究报告、两首歌及其制作资产留在父目录，公共工具仓库不依赖它们。新用户可以安装此骨架并检查协议；实际音视频 pipeline 由后续切片逐步交付。
+
+渲染器目前提供时间映射实现和 Three.js 图层接口；构建与测试：
+
+```bash
+pnpm --dir renderer install --frozen-lockfile
+pnpm --dir renderer check
+```
+
+详情见 [renderer](renderer/README.md)。完整开发检查见 [CONTRIBUTING](CONTRIBUTING.md)。

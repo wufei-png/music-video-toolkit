@@ -1,0 +1,105 @@
+{
+  "frames": [
+    {
+      "frame": 0,
+      "clock": {
+        "sampleRate": 48000,
+        "fpsNum": 30,
+        "fpsDen": 1
+      },
+      "sample": 0
+    },
+    {
+      "frame": 30,
+      "clock": {
+        "sampleRate": 48000,
+        "fpsNum": 30,
+        "fpsDen": 1
+      },
+      "sample": 48000
+    },
+    {
+      "frame": 900,
+      "clock": {
+        "sampleRate": 48000,
+        "fpsNum": 30,
+        "fpsDen": 1
+      },
+      "sample": 1440000
+    },
+    {
+      "frame": 1,
+      "clock": {
+        "sampleRate": 48000,
+        "fpsNum": 30000,
+        "fpsDen": 1001
+      },
+      "sample": 1601
+    },
+    {
+      "frame": 30000,
+      "clock": {
+        "sampleRate": 48000,
+        "fpsNum": 30000,
+        "fpsDen": 1001
+      },
+      "sample": 48048000
+    },
+    {
+      "frame": 1000000,
+      "clock": {
+        "sampleRate": 48000,
+        "fpsNum": 30,
+        "fpsDen": 1
+      },
+      "sample": 1600000000
+    }
+  ],
+  "events": [
+    {
+      "sample": 0,
+      "clock": {
+        "sampleRate": 48000,
+        "fpsNum": 30,
+        "fpsDen": 1
+      },
+      "frame": 0
+    },
+    {
+      "sample": 1,
+      "clock": {
+        "sampleRate": 48000,
+        "fpsNum": 30,
+        "fpsDen": 1
+      },
+      "frame": 1
+    },
+    {
+      "sample": 1600,
+      "clock": {
+        "sampleRate": 48000,
+        "fpsNum": 30,
+        "fpsDen": 1
+      },
+      "frame": 1
+    },
+    {
+      "sample": 1601,
+      "clock": {
+        "sampleRate": 48000,
+        "fpsNum": 30,
+        "fpsDen": 1
+      },
+      "frame": 2
+    },
+    {
+      "sample": 48000,
+      "clock": {
+        "sampleRate": 48000,
+        "fpsNum": 30,
+        "fpsDen": 1
+      },
+      "frame": 30
+    }
+  ]
+}
