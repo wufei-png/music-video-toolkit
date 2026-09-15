@@ -30,7 +30,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--version", action="version", version=__version__)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("capabilities", help="List implemented and planned capabilities")
-    commands.add_parser("doctor", help="Report host and required future tool availability")
+    commands.add_parser("doctor", help="Report host and external tool availability")
     decode = commands.add_parser("decode", help="Decode input audio to the canonical project WAV")
     decode.add_argument("input", type=Path)
     decode.add_argument("--project", type=Path, required=True)

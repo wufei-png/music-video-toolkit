@@ -1,6 +1,6 @@
 # S01 — 统一音频与协议
 
-状态：未开始。依赖：none。
+状态：完成（2026-09-15）。依赖：none。
 
 ## 独立交付
 
@@ -31,3 +31,10 @@
 ## 提交与交接
 
 检查 tracked/untracked/ignored，显式 stage 本片代码、测试与状态文档，检查 staged diff 和 `git diff --check --cached` 后提交。更新 status：实际命令/版本、通过或失败、真实集成证据位置、尚未完成的用户审阅，以及下一片。没有通过的 live gate 不能记录成完成；必要时只记录受阻的工作进度，避免伪造验证结果。
+
+## 完成证据
+
+- `8f1e4f6`：新增权威 source record 模型/schema、相对记录文件的路径解析，以及 canonical 路径、哈希、WAV 格式和实际 PCM 帧数 preflight。
+- `77426ca`：新增原子 FFmpeg 解码、结构化 CLI 结果、缓存/冲突保护和真实 MP3→PCM 集成测试。
+- `uv run --locked pytest tests/stages/test_s01.py -q`：12 passed；当前主机实际调用 FFmpeg/ffprobe 8.1，未跳过集成测试。
+- 尚未执行真实歌曲主观听音；S01 的验收是解码、时钟与来源可追溯性，不把合成测试表述为歌曲质量证明。
