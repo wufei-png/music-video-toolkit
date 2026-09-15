@@ -1,0 +1,58 @@
+{
+  "schema_version": "0.1",
+  "source": {
+    "path": "source/canonical.wav",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "sample_rate": 48000,
+    "duration_samples": 480000
+  },
+  "analysis": [
+    {
+      "tool": "synthetic-fixture",
+      "version": "1",
+      "parameters": {}
+    }
+  ],
+  "signals": {
+    "bass.rms": {
+      "start_sample": 0,
+      "hop_samples": 48000,
+      "values": [
+        0.1,
+        0.8,
+        0.2,
+        0.6,
+        0.1,
+        0.8,
+        0.2,
+        0.6,
+        0.1,
+        0.2
+      ],
+      "unit": "normalized"
+    }
+  },
+  "events": [
+    {
+      "name": "onset",
+      "source": "drums",
+      "sample": 48000,
+      "confidence": 1.0
+    }
+  ],
+  "sections": [
+    {
+      "id": "intro",
+      "start_sample": 0,
+      "end_sample": 240000,
+      "label": "intro",
+      "origin": "manual"
+    },
+    {
+      "id": "main",
+      "start_sample": 240000,
+      "end_sample": 480000,
+      "origin": "manual"
+    }
+  ]
+}

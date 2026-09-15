@@ -1,0 +1,111 @@
+import copy
+import json
+from pathlib import Path
+
+import pytest
+from jsonschema import Draft202012Validator
+from pydantic import ValidationError
+
+from music_video_toolkit.contracts import CONTRACTS
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def document(name):
+    return json.loads((ROOT / "examples" / name).read_text())
+
+
+@pytest.mark.parametrize(
+    "kind,name",
+    [
+        ("timeline", "timeline.json"),
+        ("assets", "assets.json"),
+        ("lyrics", "lyrics.json"),
+        ("render", "render.json"),
+        ("plan", "plan-abstract.json"),
+        ("plan", "plan-mood.json"),
+        ("plan", "plan-hybrid.json"),
+    ],
+)
+def test_examples_and_generated_schemas(kind, name):
+    model = CONTRACTS[kind]
+    data = document(name)
+    parsed = model.model_validate(data)
+    assert parsed.schema_version == "0.1"
+    schema = json.loads((ROOT / "schemas" / f"{kind}.schema.json").read_text())
+    assert schema == model.model_json_schema()
+    Draft202012Validator.check_schema(schema)
+    Draft202012Validator(schema).validate(data)
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda d: d.update(schema_version="9.0"),
+        lambda d: d.update(unknown_field=1),
+        lambda d: d["source"].update(sample_rate=True),
+        lambda d: d["source"].update(duration_samples=0),
+        lambda d: d["source"].update(sha256="not-a-hash"),
+        lambda d: d["events"][0].update(sample=480000),
+        lambda d: d["events"][0].update(sample=1.5),
+        lambda d: d["signals"]["bass.rms"].update(hop_samples=480000),
+        lambda d: d["signals"]["bass.rms"].update(values=[float("nan")]),
+        lambda d: d["sections"][1].update(start_sample=239999),
+        lambda d: d["sections"][1].update(end_sample=480001),
+        lambda d: d["sections"][1].update(id="intro"),
+    ],
+)
+def test_timeline_rejects_invalid_clock_or_identity(mutate):
+    data = document("timeline.json")
+    mutate(data)
+    with pytest.raises(ValidationError):
+        CONTRACTS["timeline"].model_validate(data)
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda d: d.update(mode="mood"),
+        lambda d: d["layers"].append(copy.deepcopy(d["layers"][0])),
+        lambda d: d["layers"][0].update(opacity=1.1),
+        lambda d: d["routes"][0].update(target_layer="absent"),
+        lambda d: d.update(lyrics={"mode": "auto"}),
+        lambda d: d.update(lyrics={"mode": "off", "path": "lyrics.json"}),
+        lambda d: d.update(seed=2**53),
+        lambda d: d.update(output={"width": 3840}),
+    ],
+)
+def test_plan_rejects_unusable_local_structure(mutate):
+    data = document("plan-abstract.json")
+    mutate(data)
+    with pytest.raises(ValidationError):
+        CONTRACTS["plan"].model_validate(data)
+
+
+def test_lyric_overlap_and_empty_cues_rejected():
+    data = document("lyrics.json")
+    data["cues"][1]["start_sample"] = 95000
+    with pytest.raises(ValidationError):
+        CONTRACTS["lyrics"].model_validate(data)
+    data["cues"] = []
+    with pytest.raises(ValidationError):
+        CONTRACTS["lyrics"].model_validate(data)
+
+
+def test_duplicate_assets_rejected():
+    data = document("assets.json")
+    data["assets"] *= 2
+    with pytest.raises(ValidationError):
+        CONTRACTS["assets"].model_validate(data)
+
+
+def test_render_requires_evidence_or_error():
+    data = document("render.json")
+    data["outputs"] = []
+    with pytest.raises(ValidationError):
+        CONTRACTS["render"].model_validate(data)
+    data["status"] = "failed"
+    with pytest.raises(ValidationError):
+        CONTRACTS["render"].model_validate(data)
+    data["error"] = "encoder failed"
+    assert CONTRACTS["render"].model_validate(data).status == "failed"

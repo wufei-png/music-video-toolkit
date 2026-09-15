@@ -1,0 +1,13 @@
+{
+  "schema_version": "0.1",
+  "assets": [
+    {
+      "id": "background",
+      "path": "media/synthetic-background.png",
+      "type": "image",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "origin": "synthetic",
+      "source_note": "Illustrative placeholder; not an existing image"
+    }
+  ]
+}

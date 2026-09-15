@@ -1,0 +1,19 @@
+{
+  "schema_version": "0.1",
+  "language": "zh",
+  "text_source": "synthetic-lines.txt",
+  "audio_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "origin": "imported",
+  "cues": [
+    {
+      "start_sample": 48000,
+      "end_sample": 96000,
+      "text": "合成测试 / Synthetic test"
+    },
+    {
+      "start_sample": 240000,
+      "end_sample": 336000,
+      "text": "光随声音变化"
+    }
+  ]
+}

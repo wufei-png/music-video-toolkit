@@ -17,3 +17,24 @@
 - 用真实歌曲的样片反馈完善通用能力，歌曲专属决定留在制作工作区。
 
 参见 [设计](docs/architecture/design.md)、[协议语义](docs/architecture/contracts.md)、[技术依据](docs/architecture/evidence.md) 和 [当前状态](docs/implementation/status.md)。
+
+## 当前可运行的骨架
+
+在本仓库根目录运行（Python 3.12；uv 按锁文件安装）：
+
+```bash
+uv sync --locked --group dev
+uv run --locked mvt --help
+uv run --locked mvt capabilities
+uv run --locked mvt doctor
+uv run --locked mvt validate --kind timeline examples/timeline.json
+uv run --locked mvt validate --kind plan examples/plan-hybrid.json
+uv run --locked mvt schema --kind plan
+uv run --locked pytest
+uv run --locked ruff check .
+uv run --locked python scripts/export_schemas.py --check
+```
+
+`doctor` 仅报告工具是否可发现，不证明渲染可用。`validate` 是单文件结构与部分语义校验，不检查媒体是否存在。示例均为合成协议示例，不是实际成片；详见 [示例说明](examples/README.md)。
+
+原始研究报告、两首歌及其制作资产留在父目录，公共工具仓库不依赖它们。新用户可以安装此骨架并检查协议；实际音视频 pipeline 由后续切片逐步交付。

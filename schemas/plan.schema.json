@@ -1,0 +1,361 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "Layer": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Kind",
+          "type": "string"
+        },
+        "category": {
+          "enum": [
+            "abstract",
+            "media",
+            "text"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "opacity": {
+          "default": 1.0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Opacity",
+          "type": "number"
+        },
+        "asset_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^[a-zA-Z0-9_.-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Asset Id"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "category"
+      ],
+      "title": "Layer",
+      "type": "object"
+    },
+    "LayerOverride": {
+      "additionalProperties": false,
+      "properties": {
+        "layer_id": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Layer Id",
+          "type": "string"
+        },
+        "enabled": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Enabled"
+        },
+        "opacity": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Opacity"
+        },
+        "asset_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^[a-zA-Z0-9_.-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Asset Id"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "layer_id"
+      ],
+      "title": "LayerOverride",
+      "type": "object"
+    },
+    "LyricsChoice": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "default": "off",
+          "enum": [
+            "off",
+            "imported",
+            "auto"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Path"
+        }
+      },
+      "title": "LyricsChoice",
+      "type": "object"
+    },
+    "OutputProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "default": 1920,
+          "maximum": 1920,
+          "minimum": 1920,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "default": 1080,
+          "maximum": 1080,
+          "minimum": 1080,
+          "title": "Height",
+          "type": "integer"
+        },
+        "fps_num": {
+          "default": 30,
+          "maximum": 30,
+          "minimum": 30,
+          "title": "Fps Num",
+          "type": "integer"
+        },
+        "fps_den": {
+          "default": 1,
+          "maximum": 1,
+          "minimum": 1,
+          "title": "Fps Den",
+          "type": "integer"
+        }
+      },
+      "title": "OutputProfile",
+      "type": "object"
+    },
+    "Route": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Source",
+          "type": "string"
+        },
+        "target_layer": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Target Layer",
+          "type": "string"
+        },
+        "target_parameter": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Target Parameter",
+          "type": "string"
+        },
+        "transform": {
+          "$ref": "#/$defs/Transform"
+        }
+      },
+      "required": [
+        "source",
+        "target_layer",
+        "target_parameter",
+        "transform"
+      ],
+      "title": "Route",
+      "type": "object"
+    },
+    "SectionOverride": {
+      "additionalProperties": false,
+      "properties": {
+        "section_id": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Section Id",
+          "type": "string"
+        },
+        "layers": {
+          "items": {
+            "$ref": "#/$defs/LayerOverride"
+          },
+          "title": "Layers",
+          "type": "array"
+        },
+        "transition_samples": {
+          "default": 0,
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Transition Samples",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "section_id",
+        "layers"
+      ],
+      "title": "SectionOverride",
+      "type": "object"
+    },
+    "Transform": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "linear",
+            "threshold",
+            "smooth"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "Transform",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "0.1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "timeline_path": {
+      "minLength": 1,
+      "title": "Timeline Path",
+      "type": "string"
+    },
+    "assets_path": {
+      "minLength": 1,
+      "title": "Assets Path",
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "abstract",
+        "mood",
+        "hybrid"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "seed": {
+      "maximum": 9007199254740991,
+      "minimum": 0,
+      "title": "Seed",
+      "type": "integer"
+    },
+    "output": {
+      "$ref": "#/$defs/OutputProfile"
+    },
+    "layers": {
+      "items": {
+        "$ref": "#/$defs/Layer"
+      },
+      "minItems": 1,
+      "title": "Layers",
+      "type": "array"
+    },
+    "routes": {
+      "items": {
+        "$ref": "#/$defs/Route"
+      },
+      "title": "Routes",
+      "type": "array"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/SectionOverride"
+      },
+      "title": "Sections",
+      "type": "array"
+    },
+    "lyrics": {
+      "$ref": "#/$defs/LyricsChoice"
+    }
+  },
+  "required": [
+    "schema_version",
+    "timeline_path",
+    "assets_path",
+    "mode",
+    "seed",
+    "layers"
+  ],
+  "title": "VisualPlan",
+  "type": "object"
+}

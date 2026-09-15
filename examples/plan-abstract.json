@@ -1,0 +1,31 @@
+{
+  "schema_version": "0.1",
+  "timeline_path": "timeline.json",
+  "assets_path": "assets.json",
+  "mode": "abstract",
+  "seed": 42,
+  "layers": [
+    {
+      "id": "bass-orb",
+      "kind": "orb",
+      "category": "abstract",
+      "parameters": {
+        "radius": 1.0
+      }
+    }
+  ],
+  "routes": [
+    {
+      "source": "bass.rms",
+      "target_layer": "bass-orb",
+      "target_parameter": "radius",
+      "transform": {
+        "kind": "linear",
+        "parameters": {
+          "min": 0.8,
+          "max": 1.2
+        }
+      }
+    }
+  ]
+}

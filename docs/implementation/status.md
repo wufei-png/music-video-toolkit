@@ -2,7 +2,9 @@
 
 ## Bootstrap
 
-In progress: design, Skill and handoff documents are being initialized. No production audio analysis or rendering exists yet.
+Design/Skill/handoff committed in `8cd61d4`. Python bootstrap now provides `mvt capabilities`, `doctor`, single-artifact `validate`, and generated `schema` commands. Five strict artifact envelopes and synthetic examples are implemented. No production audio analysis or rendering exists yet.
+
+Python acceptance: locked uv install, contract/CLI tests, Ruff, generated-schema drift check. Exact final counts and renderer checks will be recorded when bootstrap completes. The current commit contains the Python implementation; S01 is still not started.
 
 ## Future slices
 

@@ -1,0 +1,56 @@
+{
+  "schema_version": "0.1",
+  "timeline_path": "timeline.json",
+  "assets_path": "assets.json",
+  "mode": "hybrid",
+  "seed": 42,
+  "layers": [
+    {
+      "id": "mood-background",
+      "kind": "image",
+      "category": "media",
+      "asset_id": "background",
+      "parameters": {
+        "fit": "cover"
+      }
+    },
+    {
+      "id": "bass-orb",
+      "kind": "orb",
+      "category": "abstract",
+      "parameters": {
+        "radius": 1.0
+      }
+    }
+  ],
+  "routes": [
+    {
+      "source": "bass.rms",
+      "target_layer": "bass-orb",
+      "target_parameter": "radius",
+      "transform": {
+        "kind": "linear",
+        "parameters": {
+          "min": 0.8,
+          "max": 1.2
+        }
+      }
+    }
+  ],
+  "sections": [
+    {
+      "section_id": "main",
+      "layers": [
+        {
+          "layer_id": "bass-orb",
+          "opacity": 0.75
+        }
+      ],
+      "transition_samples": 24000
+    }
+  ],
+  "lyrics": {
+    "mode": "imported",
+    "path": "lyrics.json"
+  }
+}
