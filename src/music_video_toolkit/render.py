@@ -15,6 +15,7 @@ from .assets import AssetError, check_assets
 from .contracts import (
     AssetManifest,
     FileRef,
+    Lyrics,
     RenderManifest,
     ResolvedPlan,
     SampleRange,
@@ -168,6 +169,30 @@ def _abstract_inputs(project: Path, plan_path: Path, source) -> dict[str, object
         validate_resolved_plan(plan, timeline, checked_assets)
     except PlanError as exc:
         raise RenderError(exc.code, exc.details, 4) from exc
+    lyrics = None
+    lyrics_path = None
+    if plan.lyrics.mode != "off":
+        assert plan.lyrics.path is not None and plan.lyrics.font_asset_id is not None
+        lyrics_path = resolve_record_path(plan_path, plan.lyrics.path)
+        if (
+            not lyrics_path.is_file()
+            or plan.lyrics_sha256 is None
+            or sha256_file(lyrics_path) != plan.lyrics_sha256
+        ):
+            raise RenderError("lyrics_hash_mismatch", {"path": str(lyrics_path)}, 4)
+        lyrics = _load(Lyrics, lyrics_path, "lyrics")
+        if lyrics.audio_sha256 != source.record.canonical.sha256:
+            raise RenderError("lyrics_audio_mismatch", {"actual": lyrics.audio_sha256}, 4)
+        if any(cue.end_sample > timeline.source.duration_samples for cue in lyrics.cues):
+            raise RenderError("lyrics_out_of_bounds", {"path": str(lyrics_path)}, 4)
+        font = next(
+            (asset for asset in checked_assets.assets if asset.id == plan.lyrics.font_asset_id),
+            None,
+        )
+        if font is None or font.type != "font" or not font.font_families:
+            raise RenderError(
+                "invalid_lyrics_font", {"font_asset_id": plan.lyrics.font_asset_id}, 4
+            )
     frame_count = (timeline.source.duration_samples * FPS_NUM + SAMPLE_RATE - 1) // SAMPLE_RATE
     return {
         "scene_mode": "abstract",
@@ -180,6 +205,8 @@ def _abstract_inputs(project: Path, plan_path: Path, source) -> dict[str, object
         "assets_path": assets_path,
         "checked_assets_path": checked_assets_path,
         "checked_assets": checked_assets,
+        "lyrics": lyrics,
+        "lyrics_path": lyrics_path,
         "frame_count": frame_count,
         "pulse_frames": [],
     }
@@ -422,6 +449,26 @@ def _prepare_media(
     return media
 
 
+def _prepare_lyrics(inputs: dict[str, object]) -> dict[str, object] | None:
+    lyrics = inputs.get("lyrics")
+    if lyrics is None:
+        return None
+    plan = inputs["plan"]
+    font_id = plan.lyrics.font_asset_id
+    font = next(asset for asset in inputs["checked_assets"].assets if asset.id == font_id)
+    assert font.font_families
+    font_path = resolve_record_path(inputs["checked_assets_path"], font.path)
+    suffix = font_path.suffix.lower()
+    mime = {".otf": "font/otf", ".ttc": "font/collection"}.get(suffix, "font/ttf")
+    return {
+        "cues": [cue.model_dump(mode="json") for cue in lyrics.cues],
+        "fontDataUrl": f"data:{mime};base64,"
+        + base64.b64encode(font_path.read_bytes()).decode("ascii"),
+        "fontFamily": font.font_families[0],
+        "fadeSamples": 4_800,
+    }
+
+
 def render_minimal(project: Path, plan_path: Path, output: Path) -> dict[str, object]:
     project = project.resolve()
     output = output.resolve()
@@ -490,6 +537,7 @@ def render_minimal(project: Path, plan_path: Path, output: Path) -> dict[str, ob
                 title=inputs["title"],
             )
         else:
+            lyric_config = _prepare_lyrics(inputs)
             config.update(
                 sampleRate=SAMPLE_RATE,
                 seed=inputs["plan"].seed,
@@ -501,6 +549,8 @@ def render_minimal(project: Path, plan_path: Path, output: Path) -> dict[str, ob
                 routes=[route.model_dump(mode="json") for route in inputs["plan"].routes],
                 mediaAssets=_prepare_media(inputs, Path(media_temporary.name), ffmpeg),
             )
+            if lyric_config is not None:
+                config["lyrics"] = lyric_config
         with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
             json.dump(config, stream, ensure_ascii=False)
         host_result = _run(
@@ -540,6 +590,8 @@ def render_minimal(project: Path, plan_path: Path, output: Path) -> dict[str, ob
             manifest_inputs["source_plan"] = sha256_file(inputs["source_plan_path"])
             manifest_inputs["assets"] = sha256_file(inputs["assets_path"])
             manifest_inputs["checked_assets"] = sha256_file(inputs["checked_assets_path"])
+            if inputs.get("lyrics_path") is not None:
+                manifest_inputs["lyrics"] = sha256_file(inputs["lyrics_path"])
             for asset in inputs["checked_assets"].assets:
                 asset_path = resolve_record_path(inputs["checked_assets_path"], asset.path)
                 manifest_inputs[f"asset.{asset.id}"] = sha256_file(asset_path)

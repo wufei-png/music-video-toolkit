@@ -1,6 +1,6 @@
 # S06 — 导入歌词与双语排版
 
-状态：未开始。依赖：S05。
+状态：已完成（2026-09-15）。依赖：S05。
 
 ## 独立交付
 
@@ -28,6 +28,14 @@
 
 用户提供歌词作为权威文本，bootstrap 两首歌词不进入公共 fixture。
 
+## 实施结果
+
+`mvt lyrics import FILE --project DIR --language TAG` 已支持严格 UTF-8 LRC/SRT。LRC 保留源文件顺序与重复文本，按下一保留时间点或歌曲终点补齐结束时间，并记录 offset、结束规则和跳过的 stage heading 数；SRT 保留显式多行文本与端点，重叠、倒序、空 cue、越界、未知格式及超过 240 字符均明确失败。输入文本哈希、canonical audio 哈希和 importer provenance 写入 `lyrics.json`。相同导入可复用；任何不同或损坏的既有输出都不会被覆盖，保护手工修正。
+
+启用字幕的 plan 必须指定已通过 S05 preflight 的 font asset。resolved plan 绑定歌词哈希并在自定义输出目录中重写相对路径。渲染器嵌入该字体，以半开样本范围选择 cue，在 100 ms 内轻淡入淡出；中英文、显式换行和长句会缩放并最多包为五行，字幕面板保持在 1080p 安全边距内。`off` 不解析默认 `lyrics.json`，无歌词间奏不显示面板。
+
+自动测试实际编码 2.5 秒、75 帧双语短片，帧 10 显示中英首句、帧 30 为无字幕间奏、帧 50 显示长双语句；区域像素和时间测试均通过。持久样片与 contact sheet 位于 `/Users/wufei2/github.com/wufei-png/music/projects/synthetic-s06/project/`。人工查看确认换行、标点和安全边距清楚。验收使用系统 Arial Unicode，仅作为本机证据，未复制或宣称字体可分发。
+
 ## 提交与交接
 
-检查 tracked/untracked/ignored，显式 stage 本片代码、测试与状态文档，检查 staged diff 和 `git diff --check --cached` 后提交。更新 status：实际命令/版本、通过或失败、真实集成证据位置、尚未完成的用户审阅，以及下一片。没有通过的 live gate 不能记录成完成；必要时只记录受阻的工作进度，避免伪造验证结果。
+本片提交只包含 importer、协议/schema、固定布局实现、合成测试与文档。系统字体、歌词输入、截图和生成视频留在外部 synthetic 项目，不进入 Git。

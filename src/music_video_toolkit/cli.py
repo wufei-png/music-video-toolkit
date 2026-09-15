@@ -16,6 +16,7 @@ from .assets import AssetError, check_assets
 from .audio import DecodeError, decode_audio
 from .contracts import CONTRACTS
 from .documents import read_document
+from .lyrics import LyricsError, import_lyrics
 from .plan import PlanError, resolve_plan
 from .render import RenderError, render_minimal, renderer_doctor
 
@@ -28,9 +29,10 @@ AVAILABLE = [
     "analyze",
     "plan resolve",
     "assets check",
+    "lyrics import",
     "render",
 ]
-PLANNED = ["lyrics", "preview"]
+PLANNED = ["lyrics align", "preview"]
 
 
 def emit(value: object, *, error: bool = False) -> None:
@@ -66,6 +68,13 @@ def main(argv: list[str] | None = None) -> int:
     check.add_argument("--project", type=Path, required=True)
     check.add_argument("--manifest", type=Path)
     check.add_argument("--output", type=Path)
+    lyrics = commands.add_parser("lyrics", help="Import or align line-level lyrics")
+    lyric_commands = lyrics.add_subparsers(dest="lyrics_command", required=True)
+    lyric_import = lyric_commands.add_parser("import", help="Import UTF-8 LRC or SRT cues")
+    lyric_import.add_argument("file", type=Path)
+    lyric_import.add_argument("--project", type=Path, required=True)
+    lyric_import.add_argument("--language", required=True)
+    lyric_import.add_argument("--output", type=Path)
     render = commands.add_parser("render", help="Render the supported fixed-frame plan")
     render.add_argument("--project", type=Path, required=True)
     render.add_argument("--plan", type=Path, required=True)
@@ -81,11 +90,13 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "version": __version__,
                 "schema_version": "0.1",
-                "stage": "s05",
+                "stage": "s06",
                 "available": AVAILABLE,
                 "planned": PLANNED,
                 "can_render": True,
-                "render_scope": "S02 fixture layers: s02.pulse, s02.image, s02.text",
+                "render_scope": (
+                    "fixed 1080p30 abstract, mood and hybrid plans with imported lyrics"
+                ),
                 "analysis_scope": (
                     "48 kHz mix features; optional htdemucs vocals/drums/bass/other"
                 ),
@@ -133,7 +144,9 @@ def main(argv: list[str] | None = None) -> int:
                 "renderer": renderer,
                 "analysis_runtime": analysis_runtime,
                 "pipeline_ready": ready,
-                "reason": "S03 analysis and S02 fixture rendering; production layers are pending",
+                "reason": (
+                    "S03 analysis and S06 fixed-frame rendering; optional models may be absent"
+                ),
             }
         )
         return 0 if ready else 1
@@ -181,6 +194,23 @@ def main(argv: list[str] | None = None) -> int:
                 "output": str(output),
                 "cache_key": checked.cache_key,
                 "assets": len(checked.assets),
+            }
+        )
+    elif args.command == "lyrics" and args.lyrics_command == "import":
+        try:
+            imported, output, cached = import_lyrics(
+                args.file, args.project, args.language, args.output
+            )
+        except LyricsError as exc:
+            emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
+            return exc.exit_code
+        emit(
+            {
+                "ok": True,
+                "cached": cached,
+                "output": str(output),
+                "language": imported.language,
+                "cues": len(imported.cues),
             }
         )
     elif args.command == "render":

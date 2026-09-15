@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import {activeCueAtSample, lyricOpacity, type LyricCue} from "./lyrics.js";
 import {
   sampleSignal,
   smoothValue,
@@ -44,6 +45,13 @@ interface RouteConfig {
   readonly transform: ResolvedTransform;
 }
 
+interface LyricsConfig {
+  readonly cues: readonly LyricCue[];
+  readonly fontDataUrl: string;
+  readonly fontFamily: string;
+  readonly fadeSamples: number;
+}
+
 export interface AbstractSceneConfig extends BaseConfig {
   readonly sceneMode: "abstract";
   readonly sampleRate: number;
@@ -53,6 +61,7 @@ export interface AbstractSceneConfig extends BaseConfig {
   readonly signals: Readonly<Record<string, SignalSeries>>;
   readonly spans: readonly SpanConfig[];
   readonly routes: readonly RouteConfig[];
+  readonly lyrics?: LyricsConfig;
 }
 
 export type SceneConfig = FixtureSceneConfig | AbstractSceneConfig;
@@ -91,6 +100,9 @@ let config: SceneConfig;
 let imageReady = false;
 let glyphInkPixels = 0;
 let abstractReady = false;
+let lyricsReady = false;
+let caption: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial> | undefined;
+let captionCue = -1;
 const abstractObjects = new Map<string, AbstractObject>();
 const mediaObjects = new Map<string, MediaObject>();
 const smoothedRoutes = new Map<number, number>();
@@ -116,6 +128,114 @@ function textTexture(text: string): THREE.CanvasTexture {
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.needsUpdate = true;
   return texture;
+}
+
+function wrapCharacters(
+  context: CanvasRenderingContext2D,
+  paragraph: string,
+  maximumWidth: number,
+): string[] {
+  const lines: string[] = [];
+  let current = "";
+  const tokens =
+    paragraph.match(/\s+|[A-Za-z0-9]+(?:['’_-][A-Za-z0-9]+)*(?:[.,;:!?]+)?|./gu) ?? [];
+  for (const token of tokens) {
+    const segments = context.measureText(token).width > maximumWidth ? Array.from(token) : [token];
+    for (const segment of segments) {
+      const candidate = current + segment;
+      if (current && context.measureText(candidate).width > maximumWidth) {
+        lines.push(current.trim());
+        current = segment.trimStart();
+      } else {
+        current = candidate;
+      }
+    }
+  }
+  if (current.trim()) lines.push(current.trim());
+  return lines.length > 0 ? lines : [""];
+}
+
+function captionTexture(text: string): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1600;
+  canvas.height = 420;
+  const context = canvas.getContext("2d", {willReadFrequently: true});
+  if (context === null) throw new Error("2D canvas is unavailable");
+  let fontSize = 76;
+  let lines: string[] = [];
+  while (fontSize >= 24) {
+    context.font = `700 ${fontSize}px "MVT Subtitle"`;
+    lines = text.split("\n").flatMap((line) => wrapCharacters(context, line, 1460));
+    if (lines.length <= 5) break;
+    fontSize -= 4;
+  }
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = "rgba(0, 0, 0, 0.58)";
+  context.beginPath();
+  context.roundRect(24, 24, canvas.width - 48, canvas.height - 48, 34);
+  context.fill();
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.font = `700 ${fontSize}px "MVT Subtitle"`;
+  context.lineJoin = "round";
+  context.lineWidth = Math.max(3, fontSize * 0.09);
+  const lineHeight = fontSize * 1.2;
+  const firstY = canvas.height / 2 - ((lines.length - 1) * lineHeight) / 2;
+  lines.forEach((line, index) => {
+    const y = firstY + index * lineHeight;
+    context.strokeStyle = "rgba(0, 0, 0, 0.9)";
+    context.strokeText(line, canvas.width / 2, y);
+    context.fillStyle = "white";
+    context.fillText(line, canvas.width / 2, y);
+  });
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+  glyphInkPixels = 0;
+  for (let index = 3; index < pixels.length; index += 4) {
+    if ((pixels[index] ?? 0) > 0) glyphInkPixels += 1;
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+async function initializeLyrics(lyrics: LyricsConfig | undefined): Promise<void> {
+  if (lyrics === undefined) {
+    lyricsReady = true;
+    return;
+  }
+  const font = new FontFace("MVT Subtitle", `url(${lyrics.fontDataUrl})`);
+  await font.load();
+  document.fonts.add(font);
+  await document.fonts.ready;
+  caption = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.76, 0.44),
+    new THREE.MeshBasicMaterial({transparent: true, opacity: 0, depthWrite: false}),
+  );
+  caption.position.set(0, -0.65, 0.42);
+  caption.visible = false;
+  scene.add(caption);
+  lyricsReady = true;
+}
+
+function configureLyrics(sample: number, lyrics: LyricsConfig | undefined): void {
+  if (lyrics === undefined || caption === undefined) return;
+  const cueIndex = activeCueAtSample(lyrics.cues, sample);
+  if (cueIndex < 0) {
+    caption.visible = false;
+    captionCue = -1;
+    return;
+  }
+  const cue = lyrics.cues[cueIndex];
+  if (cue === undefined) throw new Error("lyric cue index is invalid");
+  caption.visible = true;
+  if (cueIndex !== captionCue) {
+    caption.material.map?.dispose();
+    caption.material.map = captionTexture(cue.text);
+    caption.material.needsUpdate = true;
+    captionCue = cueIndex;
+  }
+  caption.material.opacity = lyricOpacity(cue, sample, lyrics.fadeSamples);
 }
 
 function random(seed: number): () => number {
@@ -403,6 +523,7 @@ async function renderAbstract(
     const prior = previous?.layers.find((item) => item.id === layer.id);
     configureObject(layer, prior, progress, routed.get(layer.id) ?? {}, seconds);
   }
+  configureLyrics(sample, abstractConfig.lyrics);
   background.material.color.setHex(0x08101f + Math.min(index, 5) * 0x010204);
   renderer.render(scene, camera);
 }
@@ -450,6 +571,7 @@ export async function initialize(sceneConfig: SceneConfig): Promise<void> {
     scene.add(title);
   } else {
     initializeAbstract(config);
+    await initializeLyrics(config.lyrics);
   }
   renderer.render(scene, camera);
 }
@@ -471,8 +593,9 @@ export function readiness(): {
   imageReady: boolean;
   glyphInkPixels: number;
   abstractReady: boolean;
+  lyricsReady: boolean;
 } {
-  return {imageReady, glyphInkPixels, abstractReady};
+  return {imageReady, glyphInkPixels, abstractReady, lyricsReady};
 }
 
 export function webglInfo(): {vendor: string; renderer: string} {

@@ -16,9 +16,11 @@ def test_capabilities_are_honest(capsys):
     assert report["can_render"] is True
     assert "render" in report["available"]
     assert "render" not in report["planned"]
-    assert "S02" in report["render_scope"]
+    assert "imported lyrics" in report["render_scope"]
     assert "decode" in report["available"]
     assert "decode" not in report["planned"]
+    assert "lyrics import" in report["available"]
+    assert "lyrics align" in report["planned"]
 
 
 def test_doctor_reports_missing_tools(monkeypatch, capsys):

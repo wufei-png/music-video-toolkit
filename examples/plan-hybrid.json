@@ -51,6 +51,7 @@
   ],
   "lyrics": {
     "mode": "imported",
-    "path": "lyrics.json"
+    "path": "lyrics.json",
+    "font_asset_id": "subtitle-font"
   }
 }

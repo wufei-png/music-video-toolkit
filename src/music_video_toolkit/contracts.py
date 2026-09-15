@@ -247,11 +247,15 @@ class SectionOverride(Contract):
 class LyricsChoice(Contract):
     mode: Literal["off", "imported", "auto"] = "off"
     path: Text | None = None
+    font_asset_id: Name | None = None
 
     @model_validator(mode="after")
     def stored_cues(self) -> Self:
-        if (self.mode == "off") != (self.path is None):
-            raise ValueError("off has no path; enabled lyrics require a saved cue path")
+        disabled = self.mode == "off"
+        if disabled != (self.path is None) or disabled != (self.font_asset_id is None):
+            raise ValueError(
+                "off has no lyric fields; enabled lyrics require saved cues and a font asset"
+            )
         return self
 
 
@@ -322,9 +326,12 @@ class ResolvedPlan(Artifact):
     routes: list[Route] = Field(default_factory=list)
     spans: Annotated[list[ResolvedSpan], Field(min_length=1)]
     lyrics: LyricsChoice = Field(default_factory=LyricsChoice)
+    lyrics_sha256: Sha256 | None = None
 
     @model_validator(mode="after")
     def complete_timeline(self) -> Self:
+        if (self.lyrics.mode == "off") != (self.lyrics_sha256 is None):
+            raise ValueError("enabled resolved lyrics require a lyrics artifact hash")
         ranges = [
             SampleRange(start_sample=span.start_sample, end_sample=span.end_sample)
             for span in self.spans
@@ -425,14 +432,16 @@ class CheckedAssetManifest(Artifact):
 
 
 class Cue(SampleRange):
-    text: Text
+    text: Annotated[str, Field(min_length=1, max_length=240)]
 
 
 class Lyrics(Artifact):
     language: Text
     text_source: Text
+    text_source_sha256: Sha256
     audio_sha256: Sha256
     origin: Literal["imported", "aligned", "edited"]
+    provenance: Provenance
     cues: Annotated[list[Cue], Field(min_length=1)]
 
     @model_validator(mode="after")

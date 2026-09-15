@@ -2,7 +2,7 @@
 
 JSON is the initial interchange format. It has one parse path and can be schema-validated. YAML convenience input can be added later without changing the canonical JSON artifacts. Every root has `schema_version: "0.1"`. Unknown fields are rejected; model-generated plans cannot carry executable code.
 
-Python models under `src/music_video_toolkit/contracts.py` are the source of truth once installed. JSON Schema files under `schemas/` are generated from them. Schema validation checks structure; Python validators additionally check ordering, range and identity. Project preflight resolves paths relative to the record that contains them and checks actual files, hashes and cross-file identities as each slice introduces those relationships. Backend support remains a separate check. A structurally valid file is not proof it can render.
+Python models under `src/music_video_toolkit/contracts.py` are the source of truth once installed. JSON Schema files under `schemas/` are generated from them. Schema validation checks structure; Python validators additionally check ordering, range and identity. Project preflight resolves paths relative to the record that contains them and checks actual files, hashes and cross-file identities as each slice introduces those relationships. Backend support remains a separate check. A structurally valid file is not proof it can render. Bootstrap field changes and regeneration steps are recorded in [migration notes](migrations.md).
 
 ## Source record
 
@@ -46,6 +46,10 @@ Media parameters use `cover|contain`, normalized x/y, scale, bounded determinist
 ## Lyrics
 
 Language, supplied lyric source, source-audio hash, origin `imported|aligned|edited`, and ordered non-overlapping line cues. Stage headings such as `[Chorus]` are context, not sung text. Preserve supplied lyric order, including repeated choruses; missing/unmatched spans are surfaced for correction. `off` requires no timings; `imported` and `auto` both point to a saved lyrics artifact by render time. The render command must never trigger alignment automatically.
+
+S06 imports UTF-8 LRC/SRT only. LRC cues end at the next retained timestamp or canonical song end; the provenance records this rule, offset and skipped stage-heading count. SRT endpoints are explicit and overlaps fail. Each cue owns `[start_sample, end_sample)`, may contain explicit line breaks, and is limited to 240 characters for the bounded layout. Import records the source text hash and refuses to overwrite different or invalid existing `lyrics.json`, preserving hand edits.
+
+Enabled lyrics require a checked local font asset and the resolved plan binds the lyrics artifact hash. The renderer embeds that font, wraps up to five centered lines inside a fixed safe-area panel and applies a 100 ms sample-clock fade capped to half the cue. Interludes have no caption. `off` carries no lyric path/font/hash and does not open a lyric artifact.
 
 ## Render manifest
 

@@ -1,5 +1,13 @@
 # Implementation status
 
+## S06 imported lyrics and bilingual layout complete — 2026-09-15
+
+`mvt lyrics import FILE --project DIR --language TAG` now converts strict UTF-8 LRC/SRT into canonical sample-clock cues. LRC preserves source order and repeated lines, derives each end from the next retained timestamp or song end, and records that policy, offset and skipped stage headings. SRT preserves explicit multiline text and endpoints; overlaps, malformed/empty/overlong cues and out-of-bounds times fail. The artifact binds source text and canonical audio hashes plus importer provenance. Identical imports reuse the result, while different, edited or invalid existing output is never overwritten.
+
+Enabled lyrics now require a checked font asset. Resolved plans rebase the lyric path and bind its hash; render verifies lyric/audio/font identity without running alignment. The browser embeds the pinned font, uses half-open cue ownership and a 100 ms sample-clock fade, wraps up to five centered lines inside a fixed safe-area panel, and leaves lyric gaps clear. Off mode carries no lyric path, font or hash and does not open the default lyric file.
+
+The 2.5-second acceptance encoded 75 frames with Chinese/English multiline text, punctuation, a long sentence and an empty interlude. Frame 10 showed the first bilingual cue, frame 30 had no caption, and frame 50 showed the wrapped long cue; automated lower-frame comparisons and visual inspection confirmed timing and margins. Persistent output is outside Git at `/Users/wufei2/github.com/wufei-png/music/projects/synthetic-s06/project/`. The local Arial Unicode system font proves this host only and is neither copied nor claimed as distributable.
+
 ## S05 media and hybrid composition complete — 2026-09-15
 
 `mvt assets check` now preflights local images, constant-frame-rate videos and fonts, writes a typed `assets.checked.json`, and binds both manifest and material asset hashes into its cache identity. It records image dimensions; video dimensions, exact decoded frame count, rational frame rate, duration and audio presence; and macOS font families. Missing, remote, hash-mismatched, mislabeled and variable-frame-rate inputs fail explicitly.
@@ -48,30 +56,31 @@ Commits: `8f1e4f6` (source contract/preflight), `77426ca` (decode/CLI/integratio
 | Python skeleton | Installable CLI, five strict file contracts, schema exporter, synthetic examples, 41 tests | `be08bd7` |
 | Renderer and final handoff | Typed Three.js layer/frame interfaces, exact frame/sample mapping, cross-language vectors, final local-case handoff | Commit containing this status update |
 
-Current commands: `mvt --help`, `--version`, `capabilities`, `doctor`, `decode`, `analyze`, `assets check`, `plan resolve`, `render`, `validate`, `schema`. Single-artifact validation includes structure and local semantic invariants. Decode, analyze, asset checking, plan resolution and render perform the project preflight they need. `can_render` is true for the S02 fixture plus S04/S05 A/B/C layer scope.
+Current commands: `mvt --help`, `--version`, `capabilities`, `doctor`, `decode`, `analyze`, `assets check`, `lyrics import`, `plan resolve`, `render`, `validate`, `schema`. Single-artifact validation includes structure and local semantic invariants. Decode, analyze, asset/lyric checking, plan resolution and render perform the project preflight they need. `can_render` is true for the S02 fixture plus S04–S06 A/B/C and imported-lyric scope.
 
-Current analyzer: isolated locked librosa/audio-separator environment, explicit feature window/padding/normalization policy, real four-file verification and exact canonical sample alignment. Current renderer: integer clock, Playwright/Three.js WebGL host, bounded abstract/media layers, deterministic FFmpeg video-frame extraction, PNG frame pipe and FFmpeg MP4 encoder. Caption layout does not exist yet. Repository JSON examples still contain synthetic hashes and absent media; they are protocol examples rather than render results.
+Current analyzer: isolated locked librosa/audio-separator environment, explicit feature window/padding/normalization policy, real four-file verification and exact canonical sample alignment. Current renderer: integer clock, Playwright/Three.js WebGL host, bounded abstract/media layers, deterministic FFmpeg video-frame extraction, embedded checked fonts, line-level caption layout, PNG frame pipe and FFmpeg MP4 encoder. Repository JSON examples still contain synthetic hashes and absent media; they are protocol examples rather than render results.
 
 ## Verified
 
 - `uv sync --locked --group dev`: succeeded with Python 3.12.13.
-- `uv run --locked pytest -q`: **79 passed** (including 9 S04 tests and 8 S05 cases with real browser/FFmpeg renders).
+- `uv run --locked pytest -q`: **85 passed** (including real browser/FFmpeg renders through S06).
 - `uv run --locked pytest tests/stages/test_s01.py -q`: **12 passed** with real FFmpeg/ffprobe 8.1. A generated 11,025-frame mono 44.1kHz WAV was encoded to MP3, decoded from a different cwd through Chinese/space-bearing paths, and verified as 48kHz stereo 24-bit PCM with its actual decoded frame count. Cache reuse, different-input conflict, missing tools, corrupt input, partial output and cleanup paths passed.
 - `uv run --locked ruff check .` and `ruff format --check .`: passed.
 - `uv run --locked python scripts/export_schemas.py --check`: ten schemas match models; tests also validate JSON Schema structure and examples.
 - `pnpm --dir renderer install --frozen-lockfile`: passed.
-- `pnpm --dir renderer check`: TypeScript build plus **18 tests passed**; also explicitly verified with Node 24.15.0 on PATH.
+- `pnpm --dir renderer check`: TypeScript build plus **20 tests passed**; also explicitly verified with Node 24.15.0 on PATH.
 - `pnpm --dir renderer install --frozen-lockfile` and `pnpm --dir renderer exec playwright install chromium`: Playwright 1.63.0 / Chromium revision 1243 installed; browser version 153.0.8010.12.
 - `uv run --locked pytest tests/stages/test_s02.py -q`: **2 passed** with actual Chromium and FFmpeg; no browser skip.
 - `uv sync --project environments/separation --locked`: Python 3.12 environment resolved with audio-separator 0.44.2, librosa 0.10.2.post1, torch 2.14.0 and ONNX Runtime 1.30.0. `audio-separator --env_info` selected MPS/CoreML.
 - `uv run --locked pytest tests/stages/test_s03.py -q`: **6 passed**. Synthetic four-track tests cover canonical timing, final-window padding, silence, required signals/events, explicit pad/trim records, cache reuse and false-success rejection.
 - `uv run --locked pytest tests/stages/test_s05.py -q`: **8 passed**. Asset identity/type/cache failures, bounded media policies, exact numbered video frames, section crossfade, A/B/C encoding and media-audio exclusion passed.
+- `uv run --locked pytest tests/stages/test_s06.py -q`: **6 passed**. LRC/SRT semantics, CLI output, edit preservation, off mode, cross-file identity and a real 75-frame bilingual caption render passed.
 - Two external 20-second excerpts completed the formal `mvt analyze --stems four` path, artifact/schema validation and a second cached run. Reports and generated media remain outside Git in each case's `s03/` directory.
 - `uv build`: wheel and source archive built; isolated wheel-installed `mvt capabilities` worked. Archive inspection found no original songs, local production workspace or generated media.
 - skill-creator `quick_validate.py`: passed using PyYAML in the project environment. Markdown local links checked.
 - Two external song audio hashes match their supplied metadata; actual ffprobe container durations are in the external case records.
 
-Model installation/inference, browser/WebGL rendering, external media composition and video export have now been exercised on the stated bounded S02–S05 paths. Human stem listening QA was accepted for the two S03 excerpts. Imported/automatic lyrics, production workflow, Skill behavioral forward-test and public release remain open. Automated and objective checks do not establish subjective visual or song quality.
+Model installation/inference, browser/WebGL rendering, external media composition, imported lyrics and video export have now been exercised on the stated bounded S02–S06 paths. Human stem listening QA was accepted for the two S03 excerpts. Automatic lyric alignment, production workflow, Skill behavioral forward-test and public release remain open. Automated and objective checks do not establish subjective visual or song quality.
 
 ## Future slices
 
@@ -82,14 +91,14 @@ Model installation/inference, browser/WebGL rendering, external media compositio
 | S03 stems/features | Complete — `7c01627` plus accepted external review |
 | S04 abstract/sections | Complete — commit containing this handoff |
 | S05 media/hybrid | Complete — commit containing this handoff |
-| S06 imported lyrics | Not started — **next** |
-| S07 automatic alignment | Not started |
+| S06 imported lyrics | Complete — commit containing this handoff |
+| S07 automatic alignment | Not started — **next** |
 | S08 samples/reproduction | Not started |
 | S09 production workflow | Not started |
 | S10 songs/release readiness | Not started |
 
 ## Exact next action
 
-Read [S06](S06-lyrics-import.md), then implement imported line timing and bilingual text layout against the S05 fixed sample clock and checked font assets.
+Read [S07](S07-lyrics-auto.md), then validate an isolated known-text singing alignment adapter on Chinese/English repeated choruses while preserving manual lyric edits and honest unmatched spans.
 
 On the original host the parent workspace has `projects/README.md`, `projects/soft-harm/case.json` and `projects/zhi-mai-yi-ren-fen/case.json`. These are local source inventories, not runtime schemas. Case-specific lyric display mode, visual material/style and exact sample ranges await production decisions. Parent audio/lyrics/raw metadata and case notes are outside this Git history.

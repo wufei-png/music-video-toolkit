@@ -32,6 +32,13 @@ interface RenderSpanConfig {
   readonly layers: readonly RenderLayerConfig[];
 }
 
+interface LyricsConfig {
+  readonly cues: readonly {start_sample: number; end_sample: number; text: string}[];
+  readonly fontDataUrl: string;
+  readonly fontFamily: string;
+  readonly fadeSamples: number;
+}
+
 interface RenderConfig {
   readonly sceneMode: "fixture" | "abstract";
   readonly width: number;
@@ -48,6 +55,7 @@ interface RenderConfig {
   readonly spans?: readonly RenderSpanConfig[];
   readonly routes?: readonly unknown[];
   readonly mediaAssets?: Readonly<Record<string, MediaAssetConfig>>;
+  readonly lyrics?: LyricsConfig;
   readonly audioPath: string;
   readonly outputPath: string;
   readonly ffmpegPath: string;
@@ -175,7 +183,7 @@ async function main(): Promise<void> {
     const ready =
       config.sceneMode === "fixture"
         ? readiness.imageReady && readiness.glyphInkPixels > 0
-        : readiness.abstractReady;
+        : readiness.abstractReady && readiness.lyricsReady;
     if (!ready) {
       throw new Error(`scene readiness failed: ${JSON.stringify(readiness)}`);
     }

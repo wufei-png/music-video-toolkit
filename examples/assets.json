@@ -8,6 +8,15 @@
       "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
       "origin": "synthetic",
       "source_note": "Illustrative placeholder; not an existing image"
+    },
+    {
+      "id": "subtitle-font",
+      "path": "fonts/synthetic-subtitle.ttf",
+      "type": "font",
+      "sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+      "origin": "synthetic",
+      "license": "Illustrative placeholder only",
+      "source_note": "No font file is distributed by this example"
     }
   ]
 }

@@ -2,8 +2,17 @@
   "schema_version": "0.1",
   "language": "zh",
   "text_source": "synthetic-lines.txt",
+  "text_source_sha256": "6666666666666666666666666666666666666666666666666666666666666666",
   "audio_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
   "origin": "imported",
+  "provenance": {
+    "tool": "mvt lyrics import",
+    "version": "0.1.0",
+    "parameters": {
+      "format": "lrc",
+      "end_time_policy": "next_start_or_song_end"
+    }
+  },
   "cues": [
     {
       "start_sample": 48000,

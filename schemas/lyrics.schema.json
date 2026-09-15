@@ -16,6 +16,7 @@
           "type": "integer"
         },
         "text": {
+          "maxLength": 240,
           "minLength": 1,
           "title": "Text",
           "type": "string"
@@ -27,6 +28,35 @@
         "text"
       ],
       "title": "Cue",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "tool": {
+          "minLength": 1,
+          "title": "Tool",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "tool",
+        "version"
+      ],
+      "title": "Provenance",
       "type": "object"
     }
   },
@@ -47,6 +77,11 @@
       "title": "Text Source",
       "type": "string"
     },
+    "text_source_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Text Source Sha256",
+      "type": "string"
+    },
     "audio_sha256": {
       "pattern": "^[a-f0-9]{64}$",
       "title": "Audio Sha256",
@@ -61,6 +96,9 @@
       "title": "Origin",
       "type": "string"
     },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
     "cues": {
       "items": {
         "$ref": "#/$defs/Cue"
@@ -74,8 +112,10 @@
     "schema_version",
     "language",
     "text_source",
+    "text_source_sha256",
     "audio_sha256",
     "origin",
+    "provenance",
     "cues"
   ],
   "title": "Lyrics",

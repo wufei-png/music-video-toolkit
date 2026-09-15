@@ -16,6 +16,7 @@ from .contracts import (
     FileRef,
     Layer,
     LayerOverride,
+    Lyrics,
     ResolvedPlan,
     ResolvedSpan,
     Route,
@@ -520,6 +521,32 @@ def resolve_plan(
         raise PlanError(exc.code, exc.details, exc.exit_code) from exc
     output_path = (output_path or source.project / DEFAULT_OUTPUT).resolve()
     asset_map = {asset.id: asset for asset in checked_assets.assets}
+    resolved_lyrics = plan.lyrics
+    lyrics_sha256 = None
+    if plan.lyrics.mode != "off":
+        assert plan.lyrics.path is not None and plan.lyrics.font_asset_id is not None
+        lyrics_path = resolve_record_path(plan_path, plan.lyrics.path)
+        lyrics = _load(Lyrics, lyrics_path, "lyrics")
+        if lyrics.audio_sha256 != source.record.canonical.sha256:
+            raise PlanError(
+                "lyrics_audio_mismatch",
+                {"expected": source.record.canonical.sha256, "actual": lyrics.audio_sha256},
+            )
+        font = asset_map.get(plan.lyrics.font_asset_id)
+        if font is None or font.type != "font":
+            raise PlanError(
+                "invalid_lyrics_font",
+                {"font_asset_id": plan.lyrics.font_asset_id},
+            )
+        if any(cue.end_sample > source.record.canonical.duration_samples for cue in lyrics.cues):
+            raise PlanError(
+                "lyrics_out_of_bounds",
+                {"duration_samples": source.record.canonical.duration_samples},
+            )
+        lyrics_sha256 = sha256_file(lyrics_path)
+        resolved_lyrics = plan.lyrics.model_copy(
+            update={"path": os.path.relpath(lyrics_path, output_path.parent)}
+        )
     spans = _make_spans(plan, timeline, asset_map)
     routes = _resolve_routes(plan, timeline, spans[0].layers)
     resolved = ResolvedPlan(
@@ -539,7 +566,8 @@ def resolve_plan(
         duration_samples=timeline.source.duration_samples,
         routes=routes,
         spans=spans,
-        lyrics=plan.lyrics,
+        lyrics=resolved_lyrics,
+        lyrics_sha256=lyrics_sha256,
     )
     _write(output_path, resolved)
     return resolved, output_path

@@ -113,6 +113,20 @@
           ],
           "default": null,
           "title": "Path"
+        },
+        "font_asset_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^[a-zA-Z0-9_.-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Font Asset Id"
         }
       },
       "title": "LyricsChoice",
@@ -377,6 +391,19 @@
     },
     "lyrics": {
       "$ref": "#/$defs/LyricsChoice"
+    },
+    "lyrics_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Lyrics Sha256"
     }
   },
   "required": [
