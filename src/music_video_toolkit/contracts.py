@@ -523,7 +523,24 @@ class AlignmentReport(Artifact):
         return self
 
 
+class PreviewRange(SampleRange):
+    id: Name
+    role: Literal["sparse", "climax", "transition", "other"] = "other"
+    label: Text | None = None
+
+
+class PreviewRequest(Artifact):
+    ranges: Annotated[list[PreviewRange], Field(min_length=1)]
+
+    @model_validator(mode="after")
+    def ordered_unique_ranges(self) -> Self:
+        ordered_ranges(self.ranges)
+        unique([item.id for item in self.ranges], "preview range id")
+        return self
+
+
 class RenderManifest(Artifact):
+    cache_key: Sha256
     status: Literal["completed", "failed"]
     source_sha256: Sha256
     inputs: Annotated[dict[Name, Sha256], Field(min_length=1)]
@@ -554,5 +571,6 @@ CONTRACTS: dict[str, type[Artifact]] = {
     "checked-assets": CheckedAssetManifest,
     "lyrics": Lyrics,
     "alignment": AlignmentReport,
+    "preview": PreviewRequest,
     "render": RenderManifest,
 }

@@ -52,6 +52,11 @@
       "title": "Schema Version",
       "type": "string"
     },
+    "cache_key": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Cache Key",
+      "type": "string"
+    },
     "status": {
       "enum": [
         "completed",
@@ -130,6 +135,7 @@
   },
   "required": [
     "schema_version",
+    "cache_key",
     "status",
     "source_sha256",
     "inputs",

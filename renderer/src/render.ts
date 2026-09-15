@@ -46,6 +46,7 @@ interface RenderConfig {
   readonly fpsNum: number;
   readonly fpsDen: number;
   readonly frameCount: number;
+  readonly frameStart?: number;
   readonly pulseFrames?: readonly number[];
   readonly imageDataUrl?: string;
   readonly title?: string;
@@ -57,6 +58,7 @@ interface RenderConfig {
   readonly mediaAssets?: Readonly<Record<string, MediaAssetConfig>>;
   readonly lyrics?: LyricsConfig;
   readonly audioPath: string;
+  readonly audioStartSeconds?: number;
   readonly outputPath: string;
   readonly ffmpegPath: string;
 }
@@ -75,6 +77,18 @@ interface MediaFramePair {
 
 function positiveInteger(value: number, label: string): void {
   if (!Number.isSafeInteger(value) || value <= 0) throw new Error(`${label} must be positive`);
+}
+
+function nonNegativeInteger(value: number, label: string): void {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new Error(`${label} must be a non-negative integer`);
+  }
+}
+
+function nonNegativeFinite(value: number, label: string): void {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`${label} must be a non-negative finite number`);
+  }
 }
 
 async function mediaFrame(
@@ -157,6 +171,8 @@ async function main(): Promise<void> {
   positiveInteger(config.fpsNum, "fpsNum");
   positiveInteger(config.fpsDen, "fpsDen");
   positiveInteger(config.frameCount, "frameCount");
+  nonNegativeInteger(config.frameStart ?? 0, "frameStart");
+  nonNegativeFinite(config.audioStartSeconds ?? 0, "audioStartSeconds");
 
   const browser = await chromium.launch({headless: true});
   let encoder: ReturnType<typeof spawn> | undefined;
@@ -204,6 +220,8 @@ async function main(): Promise<void> {
         "png",
         "-i",
         "pipe:0",
+        "-ss",
+        (config.audioStartSeconds ?? 0).toFixed(9),
         "-i",
         config.audioPath,
         "-map",
@@ -239,11 +257,13 @@ async function main(): Promise<void> {
     const encoderInput = encoder.stdin;
     if (encoderInput === null) throw new Error("ffmpeg stdin is unavailable");
     encoder.stderr?.on("data", (chunk: Buffer) => stderr.push(chunk));
+    const frameStart = config.frameStart ?? 0;
     for (let frame = 0; frame < config.frameCount; frame += 1) {
-      const media = await mediaFrames(config, frame);
+      const globalFrame = frameStart + frame;
+      const media = await mediaFrames(config, globalFrame);
       await page.evaluate(async ({currentFrame, mediaFrames}) => {
         await (globalThis as any).MvtScene.renderFrame(currentFrame, mediaFrames);
-      }, {currentFrame: frame, mediaFrames: media});
+      }, {currentFrame: globalFrame, mediaFrames: media});
       const png = await page.locator("#mvt-canvas").screenshot({type: "png"});
       if (!encoderInput.write(png)) await once(encoderInput, "drain");
     }

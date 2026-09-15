@@ -57,9 +57,13 @@ Enabled lyrics require a checked local font asset and the resolved plan binds th
 
 Status, hashes of input artifacts, source hash, seed, environment/backend versions, ordered excerpt ranges and output references. Completed manifests require outputs; failed manifests require an error. Wall-clock run metadata can vary, but cache keys exclude it. Full graph cache keys must include material content, fonts, audio, analysis configuration/model, resolved plan, renderer, fps and seed. Manual edits must survive reruns; never overwrite corrected lyrics/sections with cached automatic proposals.
 
+S08 adds a `preview` request containing uniquely named, ordered and non-overlapping global sample ranges. Executable ranges must also align to 30 fps boundaries (multiples of 1600 samples) and remain inside the canonical song. Each independent clip retains the whole-song frame/sample clock while its MP4 starts at local time zero. An optional review reel concatenates those clips in request order.
+
+Every completed render manifest now requires a cache key. Preview cache identity covers the source record, timeline/analysis provenance, editable and resolved plans, asset manifests and material files including fonts, renderer source and dependency lock, seed, fps, range request and review-reel choice. A cache hit revalidates every declared output hash. Existing stale, incomplete or differently keyed output directories fail without overwrite; failed temporary jobs are removed before any completed aggregate manifest is installed.
+
 ## Planned command contract
 
-Bootstrap commands are `--help`, `--version`, `capabilities`, `doctor`, `validate` and `schema`. S01 implements `decode`; S02–S05 extend `render`; S03 implements `analyze`; S04 implements `plan resolve`; S05 implements `assets check`; S06 implements `lyrics import`; S07 implements `lyrics align` and `lyrics apply-edits`. Preview remains planned:
+Bootstrap commands are `--help`, `--version`, `capabilities`, `doctor`, `validate` and `schema`. S01 implements `decode`; S02–S05 extend `render`; S03 implements `analyze`; S04 implements `plan resolve`; S05 implements `assets check`; S06 implements `lyrics import`; S07 implements `lyrics align` and `lyrics apply-edits`; S08 implements `preview`:
 
 ```text
 mvt decode INPUT --project DIR
@@ -73,4 +77,4 @@ mvt render --project DIR --plan FILE --output FILE
 mvt preview --project DIR --plan FILE --ranges FILE --output DIR
 ```
 
-All tools expose machine-readable results, nonzero failures, stable error codes and actionable missing-dependency messages as their slices implement them. Commands and layer kinds become supported only after their slice tests pass. Rendering uses resolved artifacts; feature analysis, generation, model download and user decisions remain distinct operations.
+All tools expose machine-readable results, nonzero failures, stable error codes and actionable missing-dependency messages as their slices implement them. Commands and layer kinds become supported only after their slice tests pass. Rendering and preview use saved artifacts; feature analysis, generation, model download and user decisions remain distinct operations.

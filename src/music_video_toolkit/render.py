@@ -1,6 +1,7 @@
 """S02 Python adapter for deterministic browser frame capture and MP4 encoding."""
 
 import base64
+import hashlib
 import json
 import os
 import platform
@@ -29,6 +30,7 @@ from .project import ProjectPreflightError, preflight_source, resolve_record_pat
 FPS_NUM = 30
 FPS_DEN = 1
 SAMPLE_RATE = 48000
+SAMPLES_PER_FRAME = SAMPLE_RATE * FPS_DEN // FPS_NUM
 SUPPORTED_LAYER_KINDS = {"s02.pulse", "s02.image", "s02.text"}
 
 
@@ -469,7 +471,61 @@ def _prepare_lyrics(inputs: dict[str, object]) -> dict[str, object] | None:
     }
 
 
-def render_minimal(project: Path, plan_path: Path, output: Path) -> dict[str, object]:
+def _manifest_inputs(inputs: dict[str, object]) -> dict[str, str]:
+    root = renderer_root()
+    values = {
+        "source_record": sha256_file(inputs["source"].record_path),
+        "timeline": sha256_file(inputs["timeline_path"]),
+        "plan": sha256_file(inputs["plan_path"]),
+        "render_adapter": sha256_file(Path(__file__)),
+        "renderer_package": sha256_file(root / "package.json"),
+        "renderer_lock": sha256_file(root / "pnpm-lock.yaml"),
+        "renderer_host": sha256_file(root / "src/render.ts"),
+        "renderer_scene": sha256_file(root / "src/browser-scene.ts"),
+        "renderer_frame": sha256_file(root / "src/frame.ts"),
+        "renderer_media": sha256_file(root / "src/media.ts"),
+        "renderer_lyrics": sha256_file(root / "src/lyrics.ts"),
+        "renderer_routing": sha256_file(root / "src/routing.ts"),
+    }
+    if inputs["scene_mode"] == "fixture":
+        values.update(
+            assets=sha256_file(inputs["assets_path"]),
+            fixture_image=sha256_file(inputs["image_path"]),
+        )
+    else:
+        values["source_plan"] = sha256_file(inputs["source_plan_path"])
+        values["assets"] = sha256_file(inputs["assets_path"])
+        values["checked_assets"] = sha256_file(inputs["checked_assets_path"])
+        if inputs.get("lyrics_path") is not None:
+            values["lyrics"] = sha256_file(inputs["lyrics_path"])
+        for asset in inputs["checked_assets"].assets:
+            asset_path = resolve_record_path(inputs["checked_assets_path"], asset.path)
+            values[f"asset.{asset.id}"] = sha256_file(asset_path)
+    return values
+
+
+def _render_cache_key(
+    inputs: dict[str, object], hashes: dict[str, str], selected_range: SampleRange
+) -> str:
+    value = {
+        "source_sha256": inputs["source"].record.original.sha256,
+        "inputs": hashes,
+        "seed": inputs["plan"].seed,
+        "range": selected_range.model_dump(mode="json"),
+        "fps_num": FPS_NUM,
+        "fps_den": FPS_DEN,
+    }
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+
+
+def render_minimal(
+    project: Path,
+    plan_path: Path,
+    output: Path,
+    sample_range: SampleRange | None = None,
+) -> dict[str, object]:
     project = project.resolve()
     output = output.resolve()
     manifest_path = output.with_suffix(output.suffix + ".render.json")
@@ -478,6 +534,32 @@ def render_minimal(project: Path, plan_path: Path, output: Path) -> dict[str, ob
             "output_conflict", {"output": str(output), "manifest": str(manifest_path)}, 4
         )
     inputs = _renderer_inputs(project, plan_path)
+    full_duration = inputs["timeline"].source.duration_samples
+    selected_range = sample_range or SampleRange(start_sample=0, end_sample=full_duration)
+    if selected_range.end_sample > full_duration:
+        raise RenderError(
+            "render_range_out_of_bounds",
+            {"range": selected_range.model_dump(mode="json"), "duration_samples": full_duration},
+            4,
+        )
+    if sample_range is None:
+        frame_start = 0
+        frame_count = int(inputs["frame_count"])
+    else:
+        if (
+            selected_range.start_sample % SAMPLES_PER_FRAME
+            or selected_range.end_sample % SAMPLES_PER_FRAME
+        ):
+            raise RenderError(
+                "render_range_not_frame_aligned",
+                {
+                    "range": selected_range.model_dump(mode="json"),
+                    "frame_samples": SAMPLES_PER_FRAME,
+                },
+                4,
+            )
+        frame_start = selected_range.start_sample // SAMPLES_PER_FRAME
+        frame_count = (selected_range.end_sample - selected_range.start_sample) // SAMPLES_PER_FRAME
     node = _dependency("node")
     pnpm = _dependency("pnpm")
     ffmpeg = _dependency("ffmpeg")
@@ -525,7 +607,9 @@ def render_minimal(project: Path, plan_path: Path, output: Path) -> dict[str, ob
             "height": 1080,
             "fpsNum": FPS_NUM,
             "fpsDen": FPS_DEN,
-            "frameCount": inputs["frame_count"],
+            "frameCount": frame_count,
+            "frameStart": frame_start,
+            "audioStartSeconds": selected_range.start_sample / SAMPLE_RATE,
             "audioPath": str(inputs["source"].canonical_path),
             "outputPath": str(temporary),
             "ffmpegPath": ffmpeg,
@@ -562,7 +646,7 @@ def render_minimal(project: Path, plan_path: Path, output: Path) -> dict[str, ob
             host = json.loads(host_result.stdout)
         except json.JSONDecodeError as exc:
             raise RenderError("renderer_failed", "renderer returned invalid JSON", 5) from exc
-        probe = _probe_output(ffprobe, temporary, int(inputs["frame_count"]))
+        probe = _probe_output(ffprobe, temporary, frame_count)
         os.replace(temporary, output)
         output_installed = True
 
@@ -576,27 +660,10 @@ def render_minimal(project: Path, plan_path: Path, output: Path) -> dict[str, ob
             if any(word in webgl_renderer.lower() for word in ("swiftshader", "software"))
             else "hardware_or_system"
         )
-        manifest_inputs = {
-            "source_record": sha256_file(inputs["source"].record_path),
-            "timeline": sha256_file(inputs["timeline_path"]),
-            "plan": sha256_file(inputs["plan_path"]),
-        }
-        if inputs["scene_mode"] == "fixture":
-            manifest_inputs.update(
-                assets=sha256_file(inputs["assets_path"]),
-                fixture_image=sha256_file(inputs["image_path"]),
-            )
-        else:
-            manifest_inputs["source_plan"] = sha256_file(inputs["source_plan_path"])
-            manifest_inputs["assets"] = sha256_file(inputs["assets_path"])
-            manifest_inputs["checked_assets"] = sha256_file(inputs["checked_assets_path"])
-            if inputs.get("lyrics_path") is not None:
-                manifest_inputs["lyrics"] = sha256_file(inputs["lyrics_path"])
-            for asset in inputs["checked_assets"].assets:
-                asset_path = resolve_record_path(inputs["checked_assets_path"], asset.path)
-                manifest_inputs[f"asset.{asset.id}"] = sha256_file(asset_path)
+        manifest_inputs = _manifest_inputs(inputs)
         render_manifest = RenderManifest(
             schema_version="0.1",
+            cache_key=_render_cache_key(inputs, manifest_inputs, selected_range),
             status="completed",
             source_sha256=inputs["source"].record.original.sha256,
             inputs=manifest_inputs,
@@ -612,9 +679,7 @@ def render_minimal(project: Path, plan_path: Path, output: Path) -> dict[str, ob
                 "webgl_renderer": webgl_renderer,
                 "acceleration": acceleration,
             },
-            ranges=[
-                SampleRange(start_sample=0, end_sample=inputs["timeline"].source.duration_samples)
-            ],
+            ranges=[selected_range],
             outputs=[
                 FileRef(
                     path=os.path.relpath(output, manifest_path.parent), sha256=sha256_file(output)
@@ -652,7 +717,8 @@ def render_minimal(project: Path, plan_path: Path, output: Path) -> dict[str, ob
         "ok": True,
         "output": str(output),
         "manifest": str(manifest_path),
-        "frame_count": inputs["frame_count"],
+        "frame_count": frame_count,
+        "global_frame_start": frame_start,
         "pulse_frames": inputs["pulse_frames"],
         "probe": probe,
         "readiness": host["readiness"],

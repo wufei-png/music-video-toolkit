@@ -21,6 +21,7 @@ def document(name):
         ("timeline", "timeline.json"),
         ("assets", "assets.json"),
         ("lyrics", "lyrics.json"),
+        ("preview", "preview.json"),
         ("render", "render.json"),
         ("plan", "plan-abstract.json"),
         ("plan", "plan-mood.json"),

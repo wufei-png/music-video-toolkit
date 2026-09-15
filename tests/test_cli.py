@@ -22,7 +22,8 @@ def test_capabilities_are_honest(capsys):
     assert "lyrics import" in report["available"]
     assert "lyrics align" in report["available"]
     assert "lyrics apply-edits" in report["available"]
-    assert "preview" in report["planned"]
+    assert "preview" in report["available"]
+    assert "preview" not in report["planned"]
 
 
 def test_doctor_reports_missing_tools(monkeypatch, capsys):

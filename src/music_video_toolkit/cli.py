@@ -19,6 +19,7 @@ from .contracts import CONTRACTS
 from .documents import read_document
 from .lyrics import LyricsError, import_lyrics
 from .plan import PlanError, resolve_plan
+from .preview import PreviewError, render_preview
 from .render import RenderError, render_minimal, renderer_doctor
 
 AVAILABLE = [
@@ -33,9 +34,10 @@ AVAILABLE = [
     "lyrics import",
     "lyrics align",
     "lyrics apply-edits",
+    "preview",
     "render",
 ]
-PLANNED = ["preview"]
+PLANNED = []
 
 
 def emit(value: object, *, error: bool = False) -> None:
@@ -93,6 +95,12 @@ def main(argv: list[str] | None = None) -> int:
     lyric_edits.add_argument("--aligned", type=Path)
     lyric_edits.add_argument("--report", type=Path)
     lyric_edits.add_argument("--output", type=Path)
+    preview = commands.add_parser("preview", help="Render explicit global-time preview ranges")
+    preview.add_argument("--project", type=Path, required=True)
+    preview.add_argument("--plan", type=Path, required=True)
+    preview.add_argument("--ranges", type=Path, required=True)
+    preview.add_argument("--output", type=Path, required=True)
+    preview.add_argument("--review-reel", action="store_true")
     render = commands.add_parser("render", help="Render the supported fixed-frame plan")
     render.add_argument("--project", type=Path, required=True)
     render.add_argument("--plan", type=Path, required=True)
@@ -108,13 +116,13 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "version": __version__,
                 "schema_version": "0.1",
-                "stage": "s07",
+                "stage": "s08",
                 "available": AVAILABLE,
                 "planned": PLANNED,
                 "can_render": True,
                 "render_scope": (
                     "fixed 1080p30 abstract, mood and hybrid plans with imported lyrics "
-                    "or saved aligned/edited cues"
+                    "or saved aligned/edited cues; explicit global-time multi-range previews"
                 ),
                 "analysis_scope": (
                     "48 kHz mix features; optional htdemucs vocals/drums/bass/other"
@@ -281,6 +289,19 @@ def main(argv: list[str] | None = None) -> int:
                 args.project, args.edits, args.aligned, args.report, args.output
             )
         except AlignmentError as exc:
+            emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
+            return exc.exit_code
+        emit(result.summary())
+    elif args.command == "preview":
+        try:
+            result = render_preview(
+                args.project,
+                args.plan,
+                args.ranges,
+                args.output,
+                review_reel=args.review_reel,
+            )
+        except PreviewError as exc:
             emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
             return exc.exit_code
         emit(result.summary())

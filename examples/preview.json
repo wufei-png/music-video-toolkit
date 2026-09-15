@@ -1,0 +1,18 @@
+{
+  "schema_version": "0.1",
+  "ranges": [
+    {
+      "id": "sparse-intro",
+      "role": "sparse",
+      "label": "Sparse opening context",
+      "start_sample": 0,
+      "end_sample": 480000
+    },
+    {
+      "id": "climax",
+      "role": "climax",
+      "start_sample": 1440000,
+      "end_sample": 2400000
+    }
+  ]
+}
