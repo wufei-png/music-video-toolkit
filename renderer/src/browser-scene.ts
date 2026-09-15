@@ -250,12 +250,59 @@ function color(value: number | string | undefined): THREE.Color {
   return new THREE.Color(typeof value === "string" ? value : "#ffffff");
 }
 
+function glowTexture(size: number): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  if (context === null) throw new Error("2D canvas is unavailable");
+  const center = size / 2;
+  const gradient = context.createRadialGradient(center, center, 0, center, center, center);
+  gradient.addColorStop(0, "rgba(255, 255, 255, 1)");
+  gradient.addColorStop(0.2, "rgba(255, 255, 255, 0.9)");
+  gradient.addColorStop(0.55, "rgba(255, 255, 255, 0.25)");
+  gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, size, size);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function ribbonTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 256;
+  const context = canvas.getContext("2d");
+  if (context === null) throw new Error("2D canvas is unavailable");
+  context.lineCap = "round";
+  const drawWave = (offset: number, width: number, opacity: number) => {
+    context.beginPath();
+    context.moveTo(-32, 132 + offset);
+    context.bezierCurveTo(220, 12 + offset, 354, 244 + offset, 540, 126 + offset);
+    context.bezierCurveTo(724, 6 + offset, 844, 218 + offset, 1056, 112 + offset);
+    context.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
+    context.lineWidth = width;
+    context.stroke();
+  };
+  drawWave(0, 88, 0.07);
+  drawWave(0, 44, 0.16);
+  drawWave(0, 13, 0.75);
+  drawWave(-25, 5, 0.32);
+  drawWave(27, 4, 0.25);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
 function createAbstractObject(layer: LayerConfig, seed: number, maximumCount: number): AbstractObject {
   if (layer.kind === "orb") {
     const material = new THREE.MeshBasicMaterial({
       color: color(layer.parameters.color),
+      map: glowTexture(256),
       transparent: true,
       opacity: layer.opacity,
+      depthWrite: false,
       blending: THREE.AdditiveBlending,
     });
     const object = new THREE.Mesh(new THREE.CircleGeometry(1, 96), material);
@@ -266,9 +313,11 @@ function createAbstractObject(layer: LayerConfig, seed: number, maximumCount: nu
   if (layer.kind === "ribbon") {
     const material = new THREE.MeshBasicMaterial({
       color: color(layer.parameters.color),
+      map: ribbonTexture(),
       transparent: true,
       opacity: layer.opacity,
       side: THREE.DoubleSide,
+      depthWrite: false,
       blending: THREE.AdditiveBlending,
     });
     const object = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1), material);
@@ -288,10 +337,12 @@ function createAbstractObject(layer: LayerConfig, seed: number, maximumCount: nu
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
   const material = new THREE.PointsMaterial({
     color: color(layer.parameters.color),
+    map: glowTexture(64),
     transparent: true,
     opacity: layer.opacity,
     size: Number(layer.parameters.size),
     sizeAttenuation: false,
+    depthWrite: false,
     blending: THREE.AdditiveBlending,
   });
   const object = new THREE.Points(geometry, material);
@@ -494,6 +545,28 @@ async function renderAbstract(
     span.transition_samples > 0
       ? Math.min(1, (sample - span.start_sample) / span.transition_samples)
       : 1;
+  const routed = advanceRoutes(sample, abstractConfig);
+  const seconds = sample / abstractConfig.sampleRate;
+  for (const layer of span.layers) {
+    if (layer.category === "media") {
+      const pair = mediaFrames[layer.id];
+      if (pair === undefined) throw new Error(`missing decoded frame for ${layer.id}`);
+      const prior = previous?.layers.find((item) => item.id === layer.id);
+      await configureMedia(layer, prior, pair, seconds);
+      continue;
+    }
+    const prior = previous?.layers.find((item) => item.id === layer.id);
+    configureObject(layer, prior, progress, routed.get(layer.id) ?? {}, seconds);
+  }
+  configureLyrics(sample, abstractConfig.lyrics);
+  background.material.color.setHex(0x08101f + Math.min(index, 5) * 0x010204);
+  renderer.render(scene, camera);
+}
+
+function advanceRoutes(
+  sample: number,
+  abstractConfig: AbstractSceneConfig,
+): Map<string, Record<string, number>> {
   const routed = new Map<string, Record<string, number>>();
   abstractConfig.routes.forEach((route, routeIndex) => {
     const signal = abstractConfig.signals[route.source];
@@ -511,21 +584,7 @@ async function renderAbstract(
     layerValues[route.target_parameter] = value;
     routed.set(route.target_layer, layerValues);
   });
-  const seconds = sample / abstractConfig.sampleRate;
-  for (const layer of span.layers) {
-    if (layer.category === "media") {
-      const pair = mediaFrames[layer.id];
-      if (pair === undefined) throw new Error(`missing decoded frame for ${layer.id}`);
-      const prior = previous?.layers.find((item) => item.id === layer.id);
-      await configureMedia(layer, prior, pair, seconds);
-      continue;
-    }
-    const prior = previous?.layers.find((item) => item.id === layer.id);
-    configureObject(layer, prior, progress, routed.get(layer.id) ?? {}, seconds);
-  }
-  configureLyrics(sample, abstractConfig.lyrics);
-  background.material.color.setHex(0x08101f + Math.min(index, 5) * 0x010204);
-  renderer.render(scene, camera);
+  return routed;
 }
 
 export async function initialize(sceneConfig: SceneConfig): Promise<void> {
@@ -586,6 +645,18 @@ export async function renderFrame(
     renderer.render(scene, camera);
   } else {
     await renderAbstract(frame, config, mediaFrames);
+  }
+}
+
+export function seekFrame(frame: number): void {
+  if (!Number.isSafeInteger(frame) || frame < 0) throw new RangeError("frame must be non-negative");
+  smoothedRoutes.clear();
+  if (config.sceneMode === "fixture") return;
+  for (let priorFrame = 0; priorFrame < frame; priorFrame += 1) {
+    const sample = Math.floor(
+      (priorFrame * config.sampleRate * config.fpsDen) / config.fpsNum,
+    );
+    advanceRoutes(sample, config);
   }
 }
 

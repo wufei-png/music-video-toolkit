@@ -195,6 +195,9 @@ async function main(): Promise<void> {
       },
       config,
     );
+    await page.evaluate((frameStart) => {
+      (globalThis as any).MvtScene.seekFrame(frameStart);
+    }, config.frameStart ?? 0);
     const readiness = await page.evaluate(() => (globalThis as any).MvtScene.readiness());
     const ready =
       config.sceneMode === "fixture"

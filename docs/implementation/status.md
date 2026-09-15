@@ -1,5 +1,33 @@
 # Implementation status
 
+## S10 songs and release readiness in progress — 2026-09-16
+
+Two external C-mode production projects now use the reviewed S07 lyric artifacts, manual neutral
+sections and two generated local backgrounds each. Their 36-second reviews cover sparse,
+transition and climax ranges. The first soft-harm preview exposed two generic issues: excerpt
+renders initialized smooth routes at the excerpt boundary instead of replaying the prior global
+state, and the abstract orb/ribbon/particles had conspicuous hard edges. The renderer now pre-rolls
+route state from frame zero and uses soft glow, wave and particle textures. A real render regression
+compares a late smooth-route preview with the corresponding full-render frames and also produces A
+and B clips from the same timeline.
+
+The repaired `preview-v2` reels and their manifests, probes, black scans, audio statistics, contact
+sheets and pending feedback records remain outside Git under `../projects/soft-harm/s10/` and
+`../projects/zhi-mai-yi-ren-fen/s10/`. Both reels are H.264 1920x1080 at 30 fps with exactly 1080
+frames and AAC 48 kHz stereo audio. The configured scan found no black interval; measured peaks are
+-1.06 dBFS and -2.47 dBFS. Agent contact-sheet inspection found both material changes, captions and
+safe areas present; this is not user visual approval. The old soft-harm output is retained as
+`preview-v1-invalid-pre-roll` and excluded from review.
+
+An isolated source copy with environments, build output and caches excluded completed locked Python
+and Node installation, Playwright Chromium discovery, distribution build and the autonomous public
+demo. With analysis, alignment and model paths deliberately unavailable, its saved-artifact full
+rerender was byte-identical. Evidence is outside Git at
+`../projects/synthetic-s10-clean-install/`. The S10 release checklist is now explicit about protocol,
+package, production-media, rights and publication gates. `tests/stages/test_s10.py` passed in 32.54
+seconds; the complete suite passed 99 tests in 234.05 seconds. Full-song rendering and endpoint/tail
+QA remain deliberately pending until the user confirms these exact sample versions.
+
 ## S09 production workflow complete — 2026-09-16
 
 The production Skill now routes to current capabilities, `mvt doctor`, exact saved-artifact commands and a rights-safe public production demo. It records the review mode before rendering, keeps full-render commands out of sample-approval runs until feedback accepts the shown plan/material version, and labels autonomous self-review accurately. It also documents the 1600-sample preview frame grid, cache/output-directory behavior and current decode → analyze → assets/lyrics → plan → preview → render sequence.
@@ -122,10 +150,14 @@ Model installation/inference, browser/WebGL rendering, external media compositio
 | S07 automatic alignment | Complete — commit containing this handoff |
 | S08 samples/reproduction | Complete — commit containing this handoff |
 | S09 production workflow | Complete — commit containing this handoff |
-| S10 songs/release readiness | Not started — **next** |
+| S10 songs/release readiness | In progress — repaired samples await user visual confirmation |
 
 ## Exact next action
 
-Read [S10](S10-songs-quality.md), then prepare C-mode samples for both external songs, collect visual feedback, render full versions and finish clean-install/release checks.
+Review the two S10 `preview-v2/review-reel.mp4` files. If the user accepts those exact hashed
+samples, record the decision, render both full songs, run endpoint/media/tail QA and close S10.
 
-On the original host the parent workspace has `projects/README.md`, `projects/soft-harm/case.json` and `projects/zhi-mai-yi-ren-fen/case.json`. These are local source inventories, not runtime schemas. Case-specific lyric display mode, visual material/style and exact sample ranges await production decisions. Parent audio/lyrics/raw metadata and case notes are outside this Git history.
+On the original host the parent workspace has `projects/README.md`, `projects/soft-harm/case.json` and
+`projects/zhi-mai-yi-ren-fen/case.json`. These are local source inventories, not runtime schemas.
+Parent audio, lyrics, generated material, raw metadata, reviews and case notes stay outside this Git
+history.
