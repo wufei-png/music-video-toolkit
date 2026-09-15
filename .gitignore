@@ -1,0 +1,17 @@
+# Local production inputs and generated data belong outside this repository.
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+node_modules/
+.DS_Store
+.env
+.env.*
+!.env.example
+/workspace/
+/runs/
+/models/
+/renderer/dist/
