@@ -16,6 +16,8 @@ def test_capabilities_are_honest(capsys):
     assert report["can_render"] is False
     assert "render" not in report["available"]
     assert "render" in report["planned"]
+    assert "decode" in report["available"]
+    assert "decode" not in report["planned"]
 
 
 def test_doctor_reports_missing_tools(monkeypatch, capsys):

@@ -1,6 +1,7 @@
 """Project path resolution and source artifact preflight."""
 
 import hashlib
+import wave
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -52,11 +53,42 @@ def _require_file(path: Path, label: str) -> None:
 
 
 def _require_hash(path: Path, expected: str, label: str) -> None:
-    actual = sha256_file(path)
+    try:
+        actual = sha256_file(path)
+    except OSError as exc:
+        raise ProjectPreflightError(
+            "project_file_unreadable", {"field": label, "path": str(path), "message": str(exc)}
+        ) from exc
     if actual != expected:
         raise ProjectPreflightError(
             "project_hash_mismatch",
             {"field": label, "path": str(path), "expected": expected, "actual": actual},
+        )
+
+
+def _require_canonical_audio(path: Path, record: SourceRecord) -> None:
+    try:
+        with wave.open(str(path), "rb") as wav:
+            actual = {
+                "sample_rate": wav.getframerate(),
+                "channels": wav.getnchannels(),
+                "sample_width": wav.getsampwidth(),
+                "duration_samples": wav.getnframes(),
+            }
+    except (OSError, EOFError, wave.Error) as exc:
+        raise ProjectPreflightError(
+            "invalid_canonical_audio", {"path": str(path), "message": str(exc)}
+        ) from exc
+    expected = {
+        "sample_rate": record.canonical.sample_rate,
+        "channels": record.canonical.channels,
+        "sample_width": 3,
+        "duration_samples": record.canonical.duration_samples,
+    }
+    if actual != expected:
+        raise ProjectPreflightError(
+            "canonical_audio_mismatch",
+            {"path": str(path), "expected": expected, "actual": actual},
         )
 
 
@@ -87,6 +119,7 @@ def preflight_source(project: Path, *, require_original: bool = False) -> Source
         )
     _require_file(canonical_path, "canonical.path")
     _require_hash(canonical_path, record.canonical.sha256, "canonical.sha256")
+    _require_canonical_audio(canonical_path, record)
 
     original_path = resolve_record_path(record_path, record.original.path)
     if require_original:

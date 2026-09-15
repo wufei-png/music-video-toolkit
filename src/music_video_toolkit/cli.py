@@ -10,11 +10,12 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from . import __version__
+from .audio import DecodeError, decode_audio
 from .contracts import CONTRACTS
 from .documents import read_document
 
-AVAILABLE = ["capabilities", "doctor", "validate", "schema"]
-PLANNED = ["decode", "analyze", "plan resolve", "assets check", "lyrics", "render", "preview"]
+AVAILABLE = ["capabilities", "doctor", "validate", "schema", "decode"]
+PLANNED = ["analyze", "plan resolve", "assets check", "lyrics", "render", "preview"]
 
 
 def emit(value: object, *, error: bool = False) -> None:
@@ -25,11 +26,14 @@ def emit(value: object, *, error: bool = False) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="mvt", description="Music video toolkit bootstrap")
+    parser = argparse.ArgumentParser(prog="mvt", description="Deterministic music video toolkit")
     parser.add_argument("--version", action="version", version=__version__)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("capabilities", help="List implemented and planned capabilities")
     commands.add_parser("doctor", help="Report host and required future tool availability")
+    decode = commands.add_parser("decode", help="Decode input audio to the canonical project WAV")
+    decode.add_argument("input", type=Path)
+    decode.add_argument("--project", type=Path, required=True)
     validate = commands.add_parser("validate", help="Validate a single JSON artifact, not media")
     validate.add_argument("--kind", choices=CONTRACTS, required=True)
     validate.add_argument("file", type=Path)
@@ -41,11 +45,17 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "version": __version__,
                 "schema_version": "0.1",
-                "stage": "bootstrap",
+                "stage": "s01",
                 "available": AVAILABLE,
                 "planned": PLANNED,
                 "can_render": False,
-                "validation_scope": "single artifact; not media or cross-file preflight",
+                "validation_scope": "single artifact structure and local semantics",
+                "project_preflight": [
+                    "canonical source path",
+                    "content hashes",
+                    "WAV format",
+                    "actual PCM sample count",
+                ],
             }
         )
     elif args.command == "doctor":
@@ -63,6 +73,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if all(tools.values()) else 1
     elif args.command == "schema":
         emit(CONTRACTS[args.kind].model_json_schema())
+    elif args.command == "decode":
+        try:
+            result = decode_audio(args.input, args.project)
+        except DecodeError as exc:
+            emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
+            return exc.exit_code
+        emit(result.report())
     elif args.command == "validate":
         try:
             CONTRACTS[args.kind].model_validate(read_document(args.file))
