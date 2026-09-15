@@ -15,11 +15,13 @@ from .contracts import (
     AssetManifest,
     FileRef,
     RenderManifest,
+    ResolvedPlan,
     SampleRange,
     Timeline,
     VisualPlan,
 )
 from .documents import read_document
+from .plan import PlanError, validate_resolved_plan
 from .project import ProjectPreflightError, preflight_source, resolve_record_path, sha256_file
 
 FPS_NUM = 30
@@ -112,6 +114,50 @@ def _run(
     return result
 
 
+def _abstract_inputs(project: Path, plan_path: Path, source) -> dict[str, object]:
+    plan = _load(ResolvedPlan, plan_path, "resolved-plan")
+    if plan.mode != "abstract":
+        raise RenderError("unsupported_render_plan", {"mode": plan.mode}, 4)
+    timeline_path = resolve_record_path(plan_path, plan.timeline_path)
+    timeline = _load(Timeline, timeline_path, "timeline")
+    source_plan_path = resolve_record_path(plan_path, plan.source_plan.path)
+    expected = {
+        "timeline_hash": plan.timeline_sha256,
+        "timeline_source": source.record.canonical.sha256,
+        "duration_samples": source.record.canonical.duration_samples,
+    }
+    actual = {
+        "timeline_hash": sha256_file(timeline_path) if timeline_path.is_file() else None,
+        "timeline_source": timeline.source.sha256,
+        "duration_samples": timeline.source.duration_samples,
+    }
+    if actual != expected:
+        raise RenderError("resolved_plan_mismatch", {"expected": expected, "actual": actual}, 4)
+    if resolve_record_path(timeline_path, timeline.source.path) != source.canonical_path:
+        raise RenderError("timeline_source_mismatch", {"path": timeline.source.path}, 4)
+    if not source_plan_path.is_file() or sha256_file(source_plan_path) != plan.source_plan.sha256:
+        raise RenderError("resolved_plan_mismatch", {"source_plan": str(source_plan_path)}, 4)
+    missing = sorted({route.source for route in plan.routes} - set(timeline.signals))
+    if missing:
+        raise RenderError("missing_route_signal", {"signals": missing}, 4)
+    try:
+        validate_resolved_plan(plan, timeline)
+    except PlanError as exc:
+        raise RenderError(exc.code, exc.details, 4) from exc
+    frame_count = (timeline.source.duration_samples * FPS_NUM + SAMPLE_RATE - 1) // SAMPLE_RATE
+    return {
+        "scene_mode": "abstract",
+        "source": source,
+        "plan": plan,
+        "plan_path": plan_path,
+        "source_plan_path": source_plan_path,
+        "timeline": timeline,
+        "timeline_path": timeline_path,
+        "frame_count": frame_count,
+        "pulse_frames": [],
+    }
+
+
 def _renderer_inputs(project: Path, plan_path: Path) -> dict[str, object]:
     try:
         source = preflight_source(project)
@@ -120,6 +166,14 @@ def _renderer_inputs(project: Path, plan_path: Path) -> dict[str, object]:
             "project_preflight_failed", {"cause": exc.code, "details": exc.details}, 4
         ) from exc
     plan_path = plan_path.resolve()
+    try:
+        raw_plan = read_document(plan_path)
+    except (OSError, UnicodeError, ValueError) as exc:
+        raise RenderError(
+            "invalid_render_input", {"artifact": "plan", "details": str(exc)}
+        ) from exc
+    if "spans" in raw_plan:
+        return _abstract_inputs(project, plan_path, source)
     plan = _load(VisualPlan, plan_path, "plan")
     timeline_path = resolve_record_path(plan_path, plan.timeline_path)
     assets_path = resolve_record_path(plan_path, plan.assets_path)
@@ -213,6 +267,7 @@ def _renderer_inputs(project: Path, plan_path: Path) -> dict[str, object]:
     if not pulse_frames:
         raise RenderError("unsupported_render_plan", f"timeline has no {pulse_event!r} events", 4)
     return {
+        "scene_mode": "fixture",
         "source": source,
         "plan": plan,
         "plan_path": plan_path,
@@ -321,18 +376,33 @@ def render_minimal(project: Path, plan_path: Path, output: Path) -> dict[str, ob
         )
         config_path = Path(config_name)
         config = {
+            "sceneMode": inputs["scene_mode"],
             "width": 1920,
             "height": 1080,
             "fpsNum": FPS_NUM,
             "fpsDen": FPS_DEN,
             "frameCount": inputs["frame_count"],
-            "pulseFrames": inputs["pulse_frames"],
-            "imageDataUrl": inputs["image_data_url"],
-            "title": inputs["title"],
             "audioPath": str(inputs["source"].canonical_path),
             "outputPath": str(temporary),
             "ffmpegPath": ffmpeg,
         }
+        if inputs["scene_mode"] == "fixture":
+            config.update(
+                pulseFrames=inputs["pulse_frames"],
+                imageDataUrl=inputs["image_data_url"],
+                title=inputs["title"],
+            )
+        else:
+            config.update(
+                sampleRate=SAMPLE_RATE,
+                seed=inputs["plan"].seed,
+                signals={
+                    name: signal.model_dump(mode="json")
+                    for name, signal in inputs["timeline"].signals.items()
+                },
+                spans=[span.model_dump(mode="json") for span in inputs["plan"].spans],
+                routes=[route.model_dump(mode="json") for route in inputs["plan"].routes],
+            )
         with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
             json.dump(config, stream, ensure_ascii=False)
         host_result = _run(
@@ -358,17 +428,23 @@ def render_minimal(project: Path, plan_path: Path, output: Path) -> dict[str, ob
             if any(word in webgl_renderer.lower() for word in ("swiftshader", "software"))
             else "hardware_or_system"
         )
+        manifest_inputs = {
+            "source_record": sha256_file(inputs["source"].record_path),
+            "timeline": sha256_file(inputs["timeline_path"]),
+            "plan": sha256_file(inputs["plan_path"]),
+        }
+        if inputs["scene_mode"] == "fixture":
+            manifest_inputs.update(
+                assets=sha256_file(inputs["assets_path"]),
+                fixture_image=sha256_file(inputs["image_path"]),
+            )
+        else:
+            manifest_inputs["source_plan"] = sha256_file(inputs["source_plan_path"])
         render_manifest = RenderManifest(
             schema_version="0.1",
             status="completed",
             source_sha256=inputs["source"].record.original.sha256,
-            inputs={
-                "source_record": sha256_file(inputs["source"].record_path),
-                "timeline": sha256_file(inputs["timeline_path"]),
-                "plan": sha256_file(inputs["plan_path"]),
-                "assets": sha256_file(inputs["assets_path"]),
-                "fixture_image": sha256_file(inputs["image_path"]),
-            },
+            inputs=manifest_inputs,
             seed=inputs["plan"].seed,
             environment={
                 "python": platform.python_version(),

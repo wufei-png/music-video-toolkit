@@ -1,6 +1,6 @@
 # S04 — 抽象视觉与段落路由
 
-状态：未开始。依赖：S02, S03。
+状态：完成。依赖：S02, S03。
 
 ## 独立交付
 
@@ -31,3 +31,11 @@
 ## 提交与交接
 
 检查 tracked/untracked/ignored，显式 stage 本片代码、测试与状态文档，检查 staged diff 和 `git diff --check --cached` 后提交。更新 status：实际命令/版本、通过或失败、真实集成证据位置、尚未完成的用户审阅，以及下一片。没有通过的 live gate 不能记录成完成；必要时只记录受阻的工作进度，避免伪造验证结果。
+
+## 2026-09-15 实施记录
+
+- `mvt plan resolve` 生成带源 plan/timeline 哈希的 `resolved-plan.json`；每个 span 精确覆盖全曲，段落优先于整曲默认值，gap 使用默认值，边界采用半开区间。
+- 手工 section 的 ID、label、origin 原样保留；没有 section 时，mix RMS novelty 只生成无语义标签的 `automatic` 候选。静音不会生成伪边界。
+- orb/ribbon/particles 参数和 route target 均使用闭合白名单及范围；linear/threshold/smooth 参数完整校验。信号线性采样、尾值保持、attack/release 和 section transition 都在固定帧路径执行。
+- 合成 stem isolation 中只有 bass 信号变化；bass orb 响应，drums ribbon 与 vocals particles 保持各自最小路由值。未知参数、信号、section、target、重复 override 和禁用必需图层均硬失败。
+- soft-harm 的真实 20 秒 S03 timeline 已渲染为 600 帧抽象样片。代表帧视觉检查确认青色 orb、洋红 ribbon、暖色 particles 的对象身份和前中后层级可辨识；记录保存在外部 `projects/soft-harm/s04/`。

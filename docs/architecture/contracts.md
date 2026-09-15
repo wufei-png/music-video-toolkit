@@ -33,6 +33,8 @@ Contains seed, a fixed 1080p30 output profile, mode `abstract|mood|hybrid`, whol
 
 Routes target `layer_id` + a parameter and consume a named signal/event with an explicit transform. Overrides address existing section/layer IDs. Baseline modes require at least one enabled abstract layer for A, media layer for B, and both for C; text overlays are permitted in all. Disabling the required layer through overrides is checked during plan resolution in S04/S05.
 
+S04 resolves editable abstract plans into `resolved-plan.json`. Its contiguous spans cover `[0, duration_samples)` exactly; named timeline sections use half-open ownership, gaps retain whole-song defaults, and manual label/origin are preserved. When no sections exist, novelty may create unlabeled `automatic` candidate spans only. Orb, ribbon and particles have closed parameter allowlists and numeric bounds. Linear interpolation holds the final sampled signal value; `smooth` records independent attack/release seconds. A missing routed signal is an error rather than zero.
+
 ## Assets
 
 Stable ID, local relative path, type `image|video|font`, SHA-256 and provenance (`user|harness|synthetic`). Optional license/source note. Paths resolve against the manifest directory, not cwd. Cross-directory references such as `../../mp3/...` are allowed for local production; portable export remaps them explicitly. Remote downloads and generation never happen implicitly in rendering. Videos have an explicit offset/loop/hold/trim policy in S05; their own audio is muted by default. Pin fonts for repeatable Chinese/English typography; do not rely on an unspecified system fallback.

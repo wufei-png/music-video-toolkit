@@ -1,5 +1,13 @@
 # Implementation status
 
+## S04 abstract visuals and section routing complete — 2026-09-15
+
+`mvt plan resolve` now validates the bounded orb/ribbon/particles layer registry and linear/threshold/smooth transforms, rejects missing signals and unknown parameters, and produces a hash-bound `resolved-plan.json`. Contiguous half-open spans cover the full canonical duration. Named timeline sections override whole-song defaults, gaps fall back to those defaults, and manual labels/origins survive resolution. With no sections, RMS novelty creates only unlabeled automatic candidates; silence remains one span.
+
+The fixed-frame browser renderer now samples timeline signals linearly, holds the final value, applies explicit attack/release smoothing and interpolates section parameters during declared transitions. Bass, drums and vocals can drive separately identifiable orb, ribbon and particle objects. Every resolved span retains the mode's required enabled layers.
+
+A synthetic three-second stem-isolation project rendered 90 verified frames in the automated test. A real soft-harm S03 timeline rendered an external 20-second / 600-frame abstract sample; inspection of 3 s, 8 s and 15 s frames found the three objects and their foreground/middle/background hierarchy independently recognizable. SwiftShader remains the measured backend.
+
 ## S03 stems/features complete — 2026-09-15
 
 `mvt analyze --project DIR --stems four|none` now produces a renderer-neutral `timeline.json`. `none` emits mix RMS, beat estimates and 12 chroma signals only. `four` runs the locked audio-separator 0.44.2 / `htdemucs.yaml` environment, requires actual vocals/drums/bass/other files, normalizes them to canonical 48kHz stereo 24-bit PCM and adds stem RMS, drums onset and bass low-energy signals. Beat events do not claim downbeat or bar phase.
@@ -39,12 +47,12 @@ Current analyzer: isolated locked librosa/audio-separator environment, explicit 
 ## Verified
 
 - `uv sync --locked --group dev`: succeeded with Python 3.12.13.
-- `uv run --locked pytest -q`: **62 passed** (including 12 S01 tests, 2 real S02 browser tests, 6 S03 tests and the rational clock vectors).
+- `uv run --locked pytest -q`: **71 passed** (including 9 S04 tests with a real 90-frame browser render).
 - `uv run --locked pytest tests/stages/test_s01.py -q`: **12 passed** with real FFmpeg/ffprobe 8.1. A generated 11,025-frame mono 44.1kHz WAV was encoded to MP3, decoded from a different cwd through Chinese/space-bearing paths, and verified as 48kHz stereo 24-bit PCM with its actual decoded frame count. Cache reuse, different-input conflict, missing tools, corrupt input, partial output and cleanup paths passed.
 - `uv run --locked ruff check .` and `ruff format --check .`: passed.
-- `uv run --locked python scripts/export_schemas.py --check`: eight schemas match models; tests also validate JSON Schema structure and examples.
+- `uv run --locked python scripts/export_schemas.py --check`: nine schemas match models; tests also validate JSON Schema structure and examples.
 - `pnpm --dir renderer install --frozen-lockfile`: passed.
-- `pnpm --dir renderer check`: TypeScript build plus **13 tests passed**; also explicitly verified with Node 24.15.0 on PATH.
+- `pnpm --dir renderer check`: TypeScript build plus **16 tests passed**; also explicitly verified with Node 24.15.0 on PATH.
 - `pnpm --dir renderer install --frozen-lockfile` and `pnpm --dir renderer exec playwright install chromium`: Playwright 1.63.0 / Chromium revision 1243 installed; browser version 153.0.8010.12.
 - `uv run --locked pytest tests/stages/test_s02.py -q`: **2 passed** with actual Chromium and FFmpeg; no browser skip.
 - `uv sync --project environments/separation --locked`: Python 3.12 environment resolved with audio-separator 0.44.2, librosa 0.10.2.post1, torch 2.14.0 and ONNX Runtime 1.30.0. `audio-separator --env_info` selected MPS/CoreML.
@@ -63,8 +71,8 @@ Model installation/inference, browser/WebGL rendering and video export have now 
 | S01 canonical audio | Complete — `8f1e4f6`, `77426ca` |
 | S02 minimal renderer | Complete — `380b9cf` |
 | S03 stems/features | Complete — `7c01627` plus accepted external review |
-| S04 abstract/sections | Not started — **next** |
-| S05 media/hybrid | Not started |
+| S04 abstract/sections | Complete — commit containing this handoff |
+| S05 media/hybrid | Not started — **next** |
 | S06 imported lyrics | Not started |
 | S07 automatic alignment | Not started |
 | S08 samples/reproduction | Not started |
@@ -73,6 +81,6 @@ Model installation/inference, browser/WebGL rendering and video export have now 
 
 ## Exact next action
 
-Read [S04](S04-abstract-sections.md), inspect the current plan/timeline renderer adapters, then implement the production abstract layer allowlist, deterministic signal routing and automatic/manual section precedence before rendering its synthetic acceptance clip.
+Read [S05](S05-media-hybrid.md), then add strict local image/video/font preflight, deterministic media frame selection and reusable A+B composition without weakening the S04 resolver or fixed sample clock.
 
 On the original host the parent workspace has `projects/README.md`, `projects/soft-harm/case.json` and `projects/zhi-mai-yi-ren-fen/case.json`. These are local source inventories, not runtime schemas. Case-specific lyric display mode, visual material/style and exact sample ranges await production decisions. Parent audio/lyrics/raw metadata and case notes are outside this Git history.

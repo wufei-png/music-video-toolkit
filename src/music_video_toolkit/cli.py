@@ -15,10 +15,20 @@ from .analysis import AnalysisError, analyze_project
 from .audio import DecodeError, decode_audio
 from .contracts import CONTRACTS
 from .documents import read_document
+from .plan import PlanError, resolve_plan
 from .render import RenderError, render_minimal, renderer_doctor
 
-AVAILABLE = ["capabilities", "doctor", "validate", "schema", "decode", "analyze", "render"]
-PLANNED = ["plan resolve", "assets check", "lyrics", "preview"]
+AVAILABLE = [
+    "capabilities",
+    "doctor",
+    "validate",
+    "schema",
+    "decode",
+    "analyze",
+    "plan resolve",
+    "render",
+]
+PLANNED = ["assets check", "lyrics", "preview"]
 
 
 def emit(value: object, *, error: bool = False) -> None:
@@ -42,6 +52,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     analyze.add_argument("--project", type=Path, required=True)
     analyze.add_argument("--stems", choices=("four", "none"), required=True)
+    plan = commands.add_parser("plan", help="Resolve bounded visual plans")
+    plan_commands = plan.add_subparsers(dest="plan_command", required=True)
+    resolve = plan_commands.add_parser("resolve", help="Resolve sections and layer parameters")
+    resolve.add_argument("--project", type=Path, required=True)
+    resolve.add_argument("--plan", type=Path, required=True)
+    resolve.add_argument("--output", type=Path)
     render = commands.add_parser("render", help="Render the supported fixed-frame plan")
     render.add_argument("--project", type=Path, required=True)
     render.add_argument("--plan", type=Path, required=True)
@@ -57,7 +73,7 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "version": __version__,
                 "schema_version": "0.1",
-                "stage": "s03",
+                "stage": "s04",
                 "available": AVAILABLE,
                 "planned": PLANNED,
                 "can_render": True,
@@ -129,6 +145,21 @@ def main(argv: list[str] | None = None) -> int:
             emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
             return exc.exit_code
         emit(result.report())
+    elif args.command == "plan" and args.plan_command == "resolve":
+        try:
+            resolved, output = resolve_plan(args.project, args.plan, args.output)
+        except PlanError as exc:
+            emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
+            return exc.exit_code
+        emit(
+            {
+                "ok": True,
+                "output": str(output),
+                "mode": resolved.mode,
+                "spans": len(resolved.spans),
+                "routes": len(resolved.routes),
+            }
+        )
     elif args.command == "render":
         try:
             result = render_minimal(args.project, args.plan, args.output)

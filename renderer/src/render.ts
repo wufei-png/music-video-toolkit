@@ -6,14 +6,20 @@ import {fileURLToPath} from "node:url";
 import {chromium} from "playwright";
 
 interface RenderConfig {
+  readonly sceneMode: "fixture" | "abstract";
   readonly width: number;
   readonly height: number;
   readonly fpsNum: number;
   readonly fpsDen: number;
   readonly frameCount: number;
-  readonly pulseFrames: readonly number[];
-  readonly imageDataUrl: string;
-  readonly title: string;
+  readonly pulseFrames?: readonly number[];
+  readonly imageDataUrl?: string;
+  readonly title?: string;
+  readonly sampleRate?: number;
+  readonly seed?: number;
+  readonly signals?: Readonly<Record<string, unknown>>;
+  readonly spans?: readonly unknown[];
+  readonly routes?: readonly unknown[];
   readonly audioPath: string;
   readonly outputPath: string;
   readonly ffmpegPath: string;
@@ -52,15 +58,14 @@ async function main(): Promise<void> {
       async (sceneConfig) => {
         await (globalThis as any).MvtScene.initialize(sceneConfig);
       },
-      {
-        width: config.width,
-        height: config.height,
-        imageDataUrl: config.imageDataUrl,
-        title: config.title,
-      },
+      config,
     );
     const readiness = await page.evaluate(() => (globalThis as any).MvtScene.readiness());
-    if (!readiness.imageReady || readiness.glyphInkPixels <= 0) {
+    const ready =
+      config.sceneMode === "fixture"
+        ? readiness.imageReady && readiness.glyphInkPixels > 0
+        : readiness.abstractReady;
+    if (!ready) {
       throw new Error(`scene readiness failed: ${JSON.stringify(readiness)}`);
     }
     const webgl = await page.evaluate(() => (globalThis as any).MvtScene.webglInfo());
@@ -116,12 +121,9 @@ async function main(): Promise<void> {
     if (encoderInput === null) throw new Error("ffmpeg stdin is unavailable");
     encoder.stderr?.on("data", (chunk: Buffer) => stderr.push(chunk));
     for (let frame = 0; frame < config.frameCount; frame += 1) {
-      await page.evaluate(
-        ({currentFrame, pulseFrames}) => {
-          (globalThis as any).MvtScene.renderFrame(currentFrame, pulseFrames);
-        },
-        {currentFrame: frame, pulseFrames: config.pulseFrames},
-      );
+      await page.evaluate((currentFrame) => {
+        (globalThis as any).MvtScene.renderFrame(currentFrame);
+      }, frame);
       const png = await page.locator("#mvt-canvas").screenshot({type: "png"});
       if (!encoderInput.write(png)) await once(encoderInput, "drain");
     }

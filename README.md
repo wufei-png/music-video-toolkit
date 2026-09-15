@@ -2,7 +2,7 @@
 
 面向 AI agent 的音乐视频制作工具包。Skill 做创作协作，文件协议保存决策，代码执行可复现制作。
 
-**当前状态：S03 实现与真实运行已完成，等待两首本地样本的人工听检。工具可统一解码音频、提取 mix 特征、可选生成四轨，并用受限的 S02 fixture 图层生成确定性 1080p30 H.264/AAC MP4。生产视觉图层尚未实现。** 本仓库的 MIT 许可覆盖代码与 Skill，不改变外部素材、模型和依赖的许可证。
+**当前状态：S04 已完成。工具可统一解码音频、提取 mix/四轨特征、解析整曲默认值与段落覆盖，并以 orb/ribbon/particles 生成音乐驱动的 1080p30 抽象视频。外部媒体和歌词路径尚未实现。** 本仓库的 MIT 许可覆盖代码与 Skill，不改变外部素材、模型和依赖的许可证。
 
 ## 两个入口
 
@@ -30,6 +30,7 @@ uv run --locked mvt doctor
 uv run --locked mvt decode "/path/to/input.mp3" --project "/path/to/project"
 uv run --locked mvt analyze --project "/path/to/project" --stems none
 uv run --locked mvt analyze --project "/path/to/project" --stems four
+uv run --locked mvt plan resolve --project "/path/to/project" --plan "/path/to/plan.json"
 uv run --locked mvt validate --kind source "/path/to/project/source/source.json"
 uv run --locked mvt validate --kind stems "/path/to/project/stems/stems.json"
 uv run --locked mvt validate --kind timeline examples/timeline.json
@@ -48,7 +49,7 @@ pnpm --dir renderer exec playwright install chromium
 
 `doctor` 报告工具、锁定分析环境和浏览器是否可发现；模型未下载不等于 mix-only 分析不可用。`validate` 是单文件结构与部分语义校验；项目 preflight 由需要实际文件的命令执行。示例均为合成协议示例，不是实际成片；详见 [示例说明](examples/README.md)。
 
-S02 的 `render` 命令只接受 `s02.pulse`、`s02.image`、`s02.text` 三种验收图层，用于证明固定帧浏览器捕获、中文文字、本地 PNG、音画同步和 MP4 编码闭环。现有通用示例计划尚不能渲染；S04/S05 才加入生产抽象层和素材层。
+`plan resolve` 对 orb、ribbon、particles 及 linear、threshold、smooth 做参数白名单和范围校验，把整曲默认值、手工或自动候选段落、gap 回退和段落过渡解析成覆盖全曲的 `resolved-plan.json`。route 缺少信号、未知参数/目标、未知段落或任一 span 禁用模式必需图层都会硬失败。`render` 可执行该抽象 resolved plan；S02 的 `s02.pulse`、`s02.image`、`s02.text` 验收计划仍保持兼容。S05 才加入通用媒体层。
 
 原始研究报告、两首歌及其制作资产留在父目录，公共工具仓库不依赖它们。新用户可以安装工具、检查协议、解码并分析自己的音频；生产视觉能力由后续切片逐步交付。
 

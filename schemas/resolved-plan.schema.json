@@ -1,0 +1,380 @@
+{
+  "$defs": {
+    "FileRef": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "title": "FileRef",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Layer": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Kind",
+          "type": "string"
+        },
+        "category": {
+          "enum": [
+            "abstract",
+            "media",
+            "text"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "opacity": {
+          "default": 1.0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Opacity",
+          "type": "number"
+        },
+        "asset_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^[a-zA-Z0-9_.-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Asset Id"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "category"
+      ],
+      "title": "Layer",
+      "type": "object"
+    },
+    "LyricsChoice": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "default": "off",
+          "enum": [
+            "off",
+            "imported",
+            "auto"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Path"
+        }
+      },
+      "title": "LyricsChoice",
+      "type": "object"
+    },
+    "OutputProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "default": 1920,
+          "maximum": 1920,
+          "minimum": 1920,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "default": 1080,
+          "maximum": 1080,
+          "minimum": 1080,
+          "title": "Height",
+          "type": "integer"
+        },
+        "fps_num": {
+          "default": 30,
+          "maximum": 30,
+          "minimum": 30,
+          "title": "Fps Num",
+          "type": "integer"
+        },
+        "fps_den": {
+          "default": 1,
+          "maximum": 1,
+          "minimum": 1,
+          "title": "Fps Den",
+          "type": "integer"
+        }
+      },
+      "title": "OutputProfile",
+      "type": "object"
+    },
+    "ResolvedSpan": {
+      "additionalProperties": false,
+      "properties": {
+        "start_sample": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Start Sample",
+          "type": "integer"
+        },
+        "end_sample": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "End Sample",
+          "type": "integer"
+        },
+        "section_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^[a-zA-Z0-9_.-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Section Id"
+        },
+        "section_label": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Section Label"
+        },
+        "section_origin": {
+          "anyOf": [
+            {
+              "enum": [
+                "automatic",
+                "manual"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Section Origin"
+        },
+        "transition_samples": {
+          "default": 0,
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Transition Samples",
+          "type": "integer"
+        },
+        "layers": {
+          "items": {
+            "$ref": "#/$defs/Layer"
+          },
+          "minItems": 1,
+          "title": "Layers",
+          "type": "array"
+        }
+      },
+      "required": [
+        "start_sample",
+        "end_sample",
+        "layers"
+      ],
+      "title": "ResolvedSpan",
+      "type": "object"
+    },
+    "Route": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Source",
+          "type": "string"
+        },
+        "target_layer": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Target Layer",
+          "type": "string"
+        },
+        "target_parameter": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Target Parameter",
+          "type": "string"
+        },
+        "transform": {
+          "$ref": "#/$defs/Transform"
+        }
+      },
+      "required": [
+        "source",
+        "target_layer",
+        "target_parameter",
+        "transform"
+      ],
+      "title": "Route",
+      "type": "object"
+    },
+    "Transform": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "linear",
+            "threshold",
+            "smooth"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "Transform",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "0.1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_plan": {
+      "$ref": "#/$defs/FileRef"
+    },
+    "timeline_path": {
+      "minLength": 1,
+      "title": "Timeline Path",
+      "type": "string"
+    },
+    "timeline_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Timeline Sha256",
+      "type": "string"
+    },
+    "assets_path": {
+      "minLength": 1,
+      "title": "Assets Path",
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "abstract",
+        "mood",
+        "hybrid"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "seed": {
+      "maximum": 9007199254740991,
+      "minimum": 0,
+      "title": "Seed",
+      "type": "integer"
+    },
+    "output": {
+      "$ref": "#/$defs/OutputProfile"
+    },
+    "duration_samples": {
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991,
+      "title": "Duration Samples",
+      "type": "integer"
+    },
+    "routes": {
+      "items": {
+        "$ref": "#/$defs/Route"
+      },
+      "title": "Routes",
+      "type": "array"
+    },
+    "spans": {
+      "items": {
+        "$ref": "#/$defs/ResolvedSpan"
+      },
+      "minItems": 1,
+      "title": "Spans",
+      "type": "array"
+    },
+    "lyrics": {
+      "$ref": "#/$defs/LyricsChoice"
+    }
+  },
+  "required": [
+    "schema_version",
+    "source_plan",
+    "timeline_path",
+    "timeline_sha256",
+    "assets_path",
+    "mode",
+    "seed",
+    "duration_samples",
+    "spans"
+  ],
+  "title": "ResolvedPlan",
+  "type": "object"
+}

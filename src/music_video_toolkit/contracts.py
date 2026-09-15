@@ -290,6 +290,55 @@ class VisualPlan(Artifact):
         return self
 
 
+class ResolvedSpan(SampleRange):
+    section_id: Name | None = None
+    section_label: Text | None = None
+    section_origin: Literal["automatic", "manual"] | None = None
+    transition_samples: NonNegative = 0
+    layers: Annotated[list[Layer], Field(min_length=1)]
+
+    @model_validator(mode="after")
+    def unique_layers(self) -> Self:
+        unique([layer.id for layer in self.layers], "resolved layer id")
+        if (self.section_id is None) != (self.section_origin is None):
+            raise ValueError("resolved section id and origin must appear together")
+        if self.transition_samples > self.end_sample - self.start_sample:
+            raise ValueError("transition cannot exceed its resolved span")
+        return self
+
+
+class ResolvedPlan(Artifact):
+    source_plan: FileRef
+    timeline_path: Text
+    timeline_sha256: Sha256
+    assets_path: Text
+    mode: Literal["abstract", "mood", "hybrid"]
+    seed: NonNegative
+    output: OutputProfile = Field(default_factory=OutputProfile)
+    duration_samples: Positive
+    routes: list[Route] = Field(default_factory=list)
+    spans: Annotated[list[ResolvedSpan], Field(min_length=1)]
+    lyrics: LyricsChoice = Field(default_factory=LyricsChoice)
+
+    @model_validator(mode="after")
+    def complete_timeline(self) -> Self:
+        ranges = [
+            SampleRange(start_sample=span.start_sample, end_sample=span.end_sample)
+            for span in self.spans
+        ]
+        ordered_ranges(ranges)
+        if self.spans[0].start_sample != 0 or self.spans[-1].end_sample != self.duration_samples:
+            raise ValueError("resolved spans must cover the complete timeline")
+        if any(a.end_sample != b.start_sample for a, b in pairwise(self.spans)):
+            raise ValueError("resolved spans must be contiguous")
+        layer_ids = {layer.id for layer in self.spans[0].layers}
+        if any({layer.id for layer in span.layers} != layer_ids for span in self.spans):
+            raise ValueError("resolved spans must retain the same layer identities")
+        if any(route.target_layer not in layer_ids for route in self.routes):
+            raise ValueError("resolved route targets unknown layer")
+        return self
+
+
 class Asset(Contract):
     id: Name
     path: Text
@@ -352,6 +401,7 @@ CONTRACTS: dict[str, type[Artifact]] = {
     "analysis": AnalysisRun,
     "timeline": Timeline,
     "plan": VisualPlan,
+    "resolved-plan": ResolvedPlan,
     "assets": AssetManifest,
     "lyrics": Lyrics,
     "render": RenderManifest,
