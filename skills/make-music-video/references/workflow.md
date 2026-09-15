@@ -12,6 +12,26 @@ Keep a production brief, source inventory, canonical audio/analysis, asset manif
 6. In sample-approval mode, present the clips and collect specific feedback. Record approvals against plan/material hashes. In autonomous mode, record self-review honestly; do not label it user approval.
 7. Render the full song from resolved artifacts. Check duration, resolution/fps, A/V endpoints, lyrics, clipping, transitions and resource failures. Report limitations distinctly from success.
 
+## Current command sequence
+
+Run from the toolkit's locked environment, or use an installed `mvt` executable:
+
+```text
+mvt capabilities
+mvt doctor
+mvt decode INPUT --project PROJECT
+mvt analyze --project PROJECT --stems four|none
+mvt assets check --project PROJECT
+mvt lyrics import FILE --project PROJECT --language TAG
+# or: mvt lyrics align --text FILE --project PROJECT --language zh|en
+# and after review: mvt lyrics apply-edits --project PROJECT --edits FILE
+mvt plan resolve --project PROJECT --plan PROJECT/visual-plan.json
+mvt preview --project PROJECT --plan PROJECT/resolved-plan.json --ranges PROJECT/preview.json --output PREVIEW_DIR --review-reel
+mvt render --project PROJECT --plan PROJECT/resolved-plan.json --output OUTPUT.mp4
+```
+
+Lyrics commands are conditional. `render` is conditional on accepted sample feedback unless the recorded mode is autonomous. After analysis, alignment and material creation are complete, reproducible preview/full commands use only the saved project, plan, ranges and local assets; they do not run models or contact generation services.
+
 ## Feedback record
 
 For each finding record: song ID; sample/global time; observed issue; expected experience; category (`taste`, `material`, `timing`, `tool`); proposed change; affected artifact/layer; verification after rerender. A song needing warmer colors is a plan edit. All songs needing bounded opacity routing is a toolkit capability gap. Do not turn every taste request into new engine code.

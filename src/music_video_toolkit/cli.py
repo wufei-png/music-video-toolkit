@@ -116,7 +116,7 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "version": __version__,
                 "schema_version": "0.1",
-                "stage": "s08",
+                "stage": "s09",
                 "available": AVAILABLE,
                 "planned": PLANNED,
                 "can_render": True,

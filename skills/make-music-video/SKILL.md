@@ -9,9 +9,9 @@ You are directing a song production using deterministic toolkit commands. Keep s
 
 ## Establish actual capability
 
-Read the checkout's `docs/implementation/status.md` and run `mvt capabilities` if installed. The bootstrap supports schema/diagnostic commands only. Never claim that a planned verb has run. If the requested production needs missing features, explain the specific missing slice; preserve useful creative/material work and hand off development separately.
+Read the checkout's `docs/implementation/status.md` and run `mvt capabilities` if installed. Trust that current report rather than inferring availability from the bootstrap or implementation plan. Never claim that a planned verb has run. If the requested production needs missing features, explain the specific missing slice; preserve useful creative/material work and hand off development separately.
 
-For supported workflows read `docs/architecture/contracts.md` and `mvt --help`. The core has no generation-provider orchestration. Discover image/video tools available in the current harness and use them within the user's scope, or import supplied files. Generated files must exist locally before entering the asset manifest. Missing tools or inputs remain explicit; never fabricate an asset path or success.
+For supported workflows read `docs/architecture/contracts.md` and `mvt --help`. Run `mvt doctor` before a costly analysis or render. The core has no generation-provider orchestration. Discover image/video tools available in the current harness and use them within the user's scope, or import supplied files. Generated files must exist locally before entering the asset manifest. Missing tools or inputs remain explicit; never fabricate an asset path or success. For a rights-safe command rehearsal in a toolkit checkout, use [the public production demo](../../examples/production-demo/README.md).
 
 ## Creative decisions and artifacts
 
@@ -25,7 +25,9 @@ Lyrics can be off, imported, or automatically aligned to the supplied text. Pres
 
 Read [production workflow](references/workflow.md) for the artifact checklist and feedback method.
 
-Default is **sample approval**: confirm direction, prepare media/plan, render several excerpts totaling about 30–60 seconds covering a sparse passage, climax and transition, then wait for feedback before full-song export. Do not choose times based on lyric headings alone. Record the exact plan/assets/ranges shown and user response. If the user explicitly chooses **autonomous**, complete a first cut within the agreed constraints and report decisions for later revision.
+Determine and record the review mode before rendering. Default is **sample approval**: confirm direction, prepare media/plan, render several excerpts totaling about 30–60 seconds covering a sparse passage, climax and transition, then wait for feedback before full-song export. Do not choose times based on lyric headings alone. Record the exact plan/assets/ranges shown and user response. Do not include a full-render command in a sample-approval run until explicit feedback accepts that plan/material version. If the user explicitly chooses **autonomous**, complete a first cut within the agreed constraints and report decisions for later revision without labeling self-review as user approval.
+
+Preview ranges use global 48 kHz sample positions and must align to the 30 fps frame grid: each endpoint is a multiple of 1600. Use a new output directory for changed plans or ranges; the command preserves an existing stale/different directory instead of overwriting it. Reusing the same directory is a cache request and succeeds only when its manifest and every output hash still match.
 
 Evaluate separate musical responses, visual hierarchy, lyric legibility, transitions and whole-song pacing. Fix taste decisions in the plan; record reusable capability gaps as development feedback. Preserve the approved versions and re-render only affected material where supported. Changed sample content needs corresponding review in sample-approval mode.
 

@@ -2,7 +2,7 @@
 
 面向 AI agent 的音乐视频制作工具包。Skill 做创作协作，文件协议保存决策，代码执行可复现制作。
 
-**当前状态：S08 已完成。工具可统一解码音频、提取 mix/四轨特征、自动对齐或导入逐句歌词、保存人工修正，并用抽象/本地媒体图层生成带字幕的 1080p30 视频和可复现的多区间样片。** 本仓库的 MIT 许可覆盖代码与 Skill，不改变外部素材、模型和依赖的许可证。
+**当前状态：S09 已完成。工具可统一解码音频、提取 mix/四轨特征、自动对齐或导入逐句歌词、保存人工修正，并用抽象/本地媒体图层生成带字幕的 1080p30 视频和可复现的多区间样片；公开合成制作演练覆盖 sample-approval 与 autonomous 两种流程。** 本仓库的 MIT 许可覆盖代码与 Skill，不改变外部素材、模型和依赖的许可证。
 
 ## 两个入口
 
@@ -17,6 +17,8 @@
 - 用真实歌曲的样片反馈完善通用能力，歌曲专属决定留在制作工作区。
 
 参见 [设计](docs/architecture/design.md)、[协议语义](docs/architecture/contracts.md)、[技术依据](docs/architecture/evidence.md) 和 [当前状态](docs/implementation/status.md)。
+
+首次安装后可运行不含第三方媒体的 [public production demo](examples/production-demo/README.md)，从 brief、合成输入、analysis、素材预检和 plan resolve 一直走到样片；显式 autonomous 模式还会生成首版全片和独立重渲染脚本。
 
 ## 当前可运行能力
 
