@@ -1,0 +1,272 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "tool": {
+          "minLength": 1,
+          "title": "Tool",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "tool",
+        "version"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "SeparationModel": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "config_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Config Sha256",
+          "type": "string"
+        },
+        "weights_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Weights Sha256",
+          "type": "string"
+        },
+        "source": {
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "license_status": {
+          "enum": [
+            "unconfirmed",
+            "confirmed"
+          ],
+          "title": "License Status",
+          "type": "string"
+        },
+        "redistributable": {
+          "title": "Redistributable",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "config_sha256",
+        "weights_sha256",
+        "source",
+        "license_status",
+        "redistributable"
+      ],
+      "title": "SeparationModel",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "sample_rate": {
+          "maximum": 48000,
+          "minimum": 48000,
+          "title": "Sample Rate",
+          "type": "integer"
+        },
+        "duration_samples": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Duration Samples",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "sample_rate",
+        "duration_samples"
+      ],
+      "title": "Source",
+      "type": "object"
+    },
+    "StemAlignment": {
+      "additionalProperties": false,
+      "properties": {
+        "input_sample_rate": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Input Sample Rate",
+          "type": "integer"
+        },
+        "input_duration_samples": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Input Duration Samples",
+          "type": "integer"
+        },
+        "natural_output_samples": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Natural Output Samples",
+          "type": "integer"
+        },
+        "target_duration_samples": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Target Duration Samples",
+          "type": "integer"
+        },
+        "adjustment": {
+          "enum": [
+            "none",
+            "pad",
+            "trim"
+          ],
+          "title": "Adjustment",
+          "type": "string"
+        },
+        "adjustment_samples": {
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "title": "Adjustment Samples",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "input_sample_rate",
+        "input_duration_samples",
+        "natural_output_samples",
+        "target_duration_samples",
+        "adjustment",
+        "adjustment_samples"
+      ],
+      "title": "StemAlignment",
+      "type": "object"
+    },
+    "StemAudio": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "sample_rate": {
+          "const": 48000,
+          "title": "Sample Rate",
+          "type": "integer"
+        },
+        "channels": {
+          "const": 2,
+          "title": "Channels",
+          "type": "integer"
+        },
+        "sample_format": {
+          "const": "s24le",
+          "title": "Sample Format",
+          "type": "string"
+        },
+        "codec": {
+          "const": "pcm_s24le",
+          "title": "Codec",
+          "type": "string"
+        },
+        "duration_samples": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Duration Samples",
+          "type": "integer"
+        },
+        "alignment": {
+          "$ref": "#/$defs/StemAlignment"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "sample_rate",
+        "channels",
+        "sample_format",
+        "codec",
+        "duration_samples",
+        "alignment"
+      ],
+      "title": "StemAudio",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "0.1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source": {
+      "$ref": "#/$defs/Source"
+    },
+    "cache_key": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Cache Key",
+      "type": "string"
+    },
+    "separator": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "model": {
+      "$ref": "#/$defs/SeparationModel"
+    },
+    "stems": {
+      "additionalProperties": {
+        "$ref": "#/$defs/StemAudio"
+      },
+      "propertyNames": {
+        "enum": [
+          "vocals",
+          "drums",
+          "bass",
+          "other"
+        ]
+      },
+      "title": "Stems",
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "source",
+    "cache_key",
+    "separator",
+    "model",
+    "stems"
+  ],
+  "title": "StemManifest",
+  "type": "object"
+}

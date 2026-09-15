@@ -21,6 +21,12 @@ Python models under `src/music_video_toolkit/contracts.py` are the source of tru
 
 Contains canonical source SHA-256/path/rate/sample count, analysis provenance, named signals, discrete events and optional sections. Events include their source and confidence where available. Semantic section labels are optional and never inferred from beat count alone. Ordered sections can have gaps at this stage; S04 resolves gaps from whole-song defaults. Stems must be aligned to canonical time and must not be silently padded/truncated without recording the operation.
 
+S03 emits one value every 1024 canonical samples and zero-pads only the final analysis window. Each signal is normalized by its own observed maximum; an all-silent signal is an explicit zero vector. `mix.rms` and the 12 `mix.chroma.*` signals exist in both modes. Four-stem mode adds each stem RMS, `bass.low_energy`, drums `onset` events and a stem manifest. Mix `beat` events are estimates only and never imply a downbeat, bar phase or semantic section.
+
+## Stem and analysis records
+
+`stems/stems.json` identifies the exact four separator outputs, model config/weight hashes, model source and redistribution status. Each 48kHz stereo 24-bit stem records the model output clock, natural resampled sample count, canonical target count and explicit `none|pad|trim` adjustment. `analysis/run.json` records the source/config/model-derived cache key, locked environment identity, elapsed times and output hashes. `--stems none` emits no stem manifest reference and no synthetic stem signals. Cache reuse verifies the referenced files and hashes rather than trusting a prior exit code.
+
 ## Visual plan
 
 Contains seed, a fixed 1080p30 output profile, mode `abstract|mood|hybrid`, whole-song layers, routes, section overrides and lyrics mode/reference. Layers have stable IDs, registered `kind`, category `abstract|media|text`, enabled flag, opacity, typed-at-adapter-boundary parameters and optional asset ID. Generic JSON parameters are a bootstrap envelope: backend allowlists and bounds are mandatory before execution in S04/S05.

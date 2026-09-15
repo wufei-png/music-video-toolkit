@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 MAX_INT = 2**53 - 1  # Exact in JSON consumers using JavaScript numbers.
 NonNegative = Annotated[int, Field(ge=0, le=MAX_INT)]
 Positive = Annotated[int, Field(gt=0, le=MAX_INT)]
+SafeInteger = Annotated[int, Field(ge=-MAX_INT, le=MAX_INT)]
 Unit = Annotated[float, Field(ge=0, le=1)]
 Name = Annotated[str, Field(min_length=1, pattern=r"^[a-zA-Z0-9_.-]+$")]
 Text = Annotated[str, Field(min_length=1)]
@@ -73,6 +74,79 @@ class SourceRecord(Artifact):
     original: FileRef
     canonical: CanonicalAudio
     decoder: Provenance
+
+
+class StemAlignment(Contract):
+    input_sample_rate: Positive
+    input_duration_samples: Positive
+    natural_output_samples: Positive
+    target_duration_samples: Positive
+    adjustment: Literal["none", "pad", "trim"]
+    adjustment_samples: SafeInteger
+
+    @model_validator(mode="after")
+    def coherent_adjustment(self) -> Self:
+        delta = self.target_duration_samples - self.natural_output_samples
+        expected = "none" if delta == 0 else "pad" if delta > 0 else "trim"
+        if self.adjustment != expected or self.adjustment_samples != delta:
+            raise ValueError("stem alignment adjustment does not match sample counts")
+        return self
+
+
+class StemAudio(CanonicalAudio):
+    alignment: StemAlignment
+
+
+class SeparationModel(Contract):
+    name: Text
+    config_sha256: Sha256
+    weights_sha256: Sha256
+    source: Text
+    license_status: Literal["unconfirmed", "confirmed"]
+    redistributable: bool
+
+    @model_validator(mode="after")
+    def redistribution_evidence(self) -> Self:
+        if self.license_status == "unconfirmed" and self.redistributable:
+            raise ValueError("a model with unconfirmed license cannot be marked redistributable")
+        return self
+
+
+class StemManifest(Artifact):
+    source: Source
+    cache_key: Sha256
+    separator: Provenance
+    model: SeparationModel
+    stems: dict[Literal["vocals", "drums", "bass", "other"], StemAudio]
+
+    @model_validator(mode="after")
+    def exactly_four_stems(self) -> Self:
+        required = {"vocals", "drums", "bass", "other"}
+        if set(self.stems) != required:
+            raise ValueError("four-stem manifest requires vocals, drums, bass and other")
+        duration = self.source.duration_samples
+        if any(stem.duration_samples != duration for stem in self.stems.values()):
+            raise ValueError("stems must match canonical duration exactly")
+        return self
+
+
+class AnalysisRun(Artifact):
+    source_sha256: Sha256
+    mode: Literal["four", "none"]
+    cache_key: Sha256
+    environment: Annotated[dict[Name, Text], Field(min_length=1)]
+    timings_seconds: dict[Name, Annotated[float, Field(ge=0)]]
+    outputs: Annotated[dict[Name, FileRef], Field(min_length=1)]
+
+    @model_validator(mode="after")
+    def mode_outputs(self) -> Self:
+        expected = {"timeline", "stems"} if self.mode == "four" else {"timeline"}
+        if set(self.outputs) != expected:
+            raise ValueError(f"{self.mode} analysis outputs must be {sorted(expected)}")
+        required_timings = {"separation", "features", "total"}
+        if set(self.timings_seconds) != required_timings:
+            raise ValueError("analysis timings require separation, features and total")
+        return self
 
 
 class Signal(Contract):
@@ -274,6 +348,8 @@ class RenderManifest(Artifact):
 
 CONTRACTS: dict[str, type[Artifact]] = {
     "source": SourceRecord,
+    "stems": StemManifest,
+    "analysis": AnalysisRun,
     "timeline": Timeline,
     "plan": VisualPlan,
     "assets": AssetManifest,

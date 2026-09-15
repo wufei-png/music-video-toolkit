@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 import platform
 import shutil
 import sys
@@ -10,13 +11,14 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from . import __version__
+from .analysis import AnalysisError, analyze_project
 from .audio import DecodeError, decode_audio
 from .contracts import CONTRACTS
 from .documents import read_document
 from .render import RenderError, render_minimal, renderer_doctor
 
-AVAILABLE = ["capabilities", "doctor", "validate", "schema", "decode", "render"]
-PLANNED = ["analyze", "plan resolve", "assets check", "lyrics", "preview"]
+AVAILABLE = ["capabilities", "doctor", "validate", "schema", "decode", "analyze", "render"]
+PLANNED = ["plan resolve", "assets check", "lyrics", "preview"]
 
 
 def emit(value: object, *, error: bool = False) -> None:
@@ -35,6 +37,11 @@ def main(argv: list[str] | None = None) -> int:
     decode = commands.add_parser("decode", help="Decode input audio to the canonical project WAV")
     decode.add_argument("input", type=Path)
     decode.add_argument("--project", type=Path, required=True)
+    analyze = commands.add_parser(
+        "analyze", help="Extract mix features and optional real four stems"
+    )
+    analyze.add_argument("--project", type=Path, required=True)
+    analyze.add_argument("--stems", choices=("four", "none"), required=True)
     render = commands.add_parser("render", help="Render the supported fixed-frame plan")
     render.add_argument("--project", type=Path, required=True)
     render.add_argument("--plan", type=Path, required=True)
@@ -50,11 +57,14 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "version": __version__,
                 "schema_version": "0.1",
-                "stage": "s02",
+                "stage": "s03",
                 "available": AVAILABLE,
                 "planned": PLANNED,
                 "can_render": True,
                 "render_scope": "S02 fixture layers: s02.pulse, s02.image, s02.text",
+                "analysis_scope": (
+                    "48 kHz mix features; optional htdemucs vocals/drums/bass/other"
+                ),
                 "validation_scope": "single artifact structure and local semantics",
                 "project_preflight": [
                     "canonical source path",
@@ -65,8 +75,31 @@ def main(argv: list[str] | None = None) -> int:
             }
         )
     elif args.command == "doctor":
-        tools = {name: shutil.which(name) for name in ("ffmpeg", "ffprobe", "node", "pnpm")}
+        tools = {name: shutil.which(name) for name in ("ffmpeg", "ffprobe", "node", "pnpm", "uv")}
         renderer = renderer_doctor()
+        runtime = Path(
+            os.environ.get(
+                "MVT_SEPARATION_PROJECT",
+                str(Path(__file__).resolve().parents[2] / "environments/separation"),
+            )
+        ).expanduser()
+        analysis_runtime = {
+            "path": str(runtime),
+            "ready": (runtime / "pyproject.toml").is_file()
+            and (runtime / "uv.lock").is_file()
+            and (runtime / "analyze_audio.py").is_file(),
+            "model_downloaded": False,
+        }
+        model_dir = Path(
+            os.environ.get(
+                "MVT_MODEL_DIR",
+                str(Path.home() / "Library/Caches/music-video-toolkit/audio-separator"),
+            )
+        ).expanduser()
+        analysis_runtime["model_downloaded"] = (model_dir / "htdemucs.yaml").is_file() and (
+            model_dir / "955717e8-8726e21a.th"
+        ).is_file()
+        ready = all(tools.values()) and renderer["ready"] and analysis_runtime["ready"]
         emit(
             {
                 "platform": platform.system(),
@@ -74,19 +107,25 @@ def main(argv: list[str] | None = None) -> int:
                 "python": platform.python_version(),
                 "tools": tools,
                 "renderer": renderer,
-                "pipeline_ready": all(tools.values()) and renderer["ready"],
-                "reason": (
-                    "S02 fixed-frame renderer only; analysis and production layers are pending"
-                ),
+                "analysis_runtime": analysis_runtime,
+                "pipeline_ready": ready,
+                "reason": "S03 analysis and S02 fixture rendering; production layers are pending",
             }
         )
-        return 0 if all(tools.values()) and renderer["ready"] else 1
+        return 0 if ready else 1
     elif args.command == "schema":
         emit(CONTRACTS[args.kind].model_json_schema())
     elif args.command == "decode":
         try:
             result = decode_audio(args.input, args.project)
         except DecodeError as exc:
+            emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
+            return exc.exit_code
+        emit(result.report())
+    elif args.command == "analyze":
+        try:
+            result = analyze_project(args.project, args.stems)
+        except AnalysisError as exc:
             emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
             return exc.exit_code
         emit(result.report())

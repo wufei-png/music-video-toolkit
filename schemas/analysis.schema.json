@@ -1,0 +1,102 @@
+{
+  "$defs": {
+    "FileRef": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "title": "FileRef",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "0.1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Source Sha256",
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "four",
+        "none"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "cache_key": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Cache Key",
+      "type": "string"
+    },
+    "environment": {
+      "minProperties": 1,
+      "patternProperties": {
+        "^[a-zA-Z0-9_.-]+$": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "propertyNames": {
+        "minLength": 1
+      },
+      "title": "Environment",
+      "type": "object"
+    },
+    "timings_seconds": {
+      "patternProperties": {
+        "^[a-zA-Z0-9_.-]+$": {
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "propertyNames": {
+        "minLength": 1
+      },
+      "title": "Timings Seconds",
+      "type": "object"
+    },
+    "outputs": {
+      "minProperties": 1,
+      "patternProperties": {
+        "^[a-zA-Z0-9_.-]+$": {
+          "$ref": "#/$defs/FileRef"
+        }
+      },
+      "propertyNames": {
+        "minLength": 1
+      },
+      "title": "Outputs",
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "source_sha256",
+    "mode",
+    "cache_key",
+    "environment",
+    "timings_seconds",
+    "outputs"
+  ],
+  "title": "AnalysisRun",
+  "type": "object"
+}
