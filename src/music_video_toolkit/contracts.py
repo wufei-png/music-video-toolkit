@@ -56,6 +56,25 @@ class Provenance(Contract):
     parameters: dict[str, JsonValue] = Field(default_factory=dict)
 
 
+class FileRef(Contract):
+    path: Text
+    sha256: Sha256
+
+
+class CanonicalAudio(FileRef):
+    sample_rate: Literal[48000]
+    channels: Literal[2]
+    sample_format: Literal["s24le"]
+    codec: Literal["pcm_s24le"]
+    duration_samples: Positive
+
+
+class SourceRecord(Artifact):
+    original: FileRef
+    canonical: CanonicalAudio
+    decoder: Provenance
+
+
 class Signal(Contract):
     start_sample: NonNegative = 0
     hop_samples: Positive
@@ -233,11 +252,6 @@ class Lyrics(Artifact):
         return self
 
 
-class FileRef(Contract):
-    path: Text
-    sha256: Sha256
-
-
 class RenderManifest(Artifact):
     status: Literal["completed", "failed"]
     source_sha256: Sha256
@@ -259,6 +273,7 @@ class RenderManifest(Artifact):
 
 
 CONTRACTS: dict[str, type[Artifact]] = {
+    "source": SourceRecord,
     "timeline": Timeline,
     "plan": VisualPlan,
     "assets": AssetManifest,

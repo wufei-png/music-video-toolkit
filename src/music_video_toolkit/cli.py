@@ -2,7 +2,6 @@
 
 import argparse
 import json
-import math
 import platform
 import shutil
 import sys
@@ -12,6 +11,7 @@ from pydantic import ValidationError
 
 from . import __version__
 from .contracts import CONTRACTS
+from .documents import read_document
 
 AVAILABLE = ["capabilities", "doctor", "validate", "schema"]
 PLANNED = ["decode", "analyze", "plan resolve", "assets check", "lyrics", "render", "preview"]
@@ -22,34 +22,6 @@ def emit(value: object, *, error: bool = False) -> None:
         json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False),
         file=sys.stderr if error else sys.stdout,
     )
-
-
-def unique_object(pairs: list[tuple[str, object]]) -> dict:
-    result = {}
-    for key, value in pairs:
-        if key in result:
-            raise ValueError(f"duplicate JSON key: {key}")
-        result[key] = value
-    return result
-
-
-def check_finite(value: object) -> None:
-    if isinstance(value, float) and not math.isfinite(value):
-        raise ValueError("JSON numbers must be finite")
-    if isinstance(value, dict):
-        for child in value.values():
-            check_finite(child)
-    elif isinstance(value, list):
-        for child in value:
-            check_finite(child)
-
-
-def read_document(path: Path) -> dict:
-    value = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=unique_object)
-    check_finite(value)
-    if not isinstance(value, dict):
-        raise ValueError("artifact root must be an object")
-    return value
 
 
 def main(argv: list[str] | None = None) -> int:

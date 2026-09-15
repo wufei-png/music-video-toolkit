@@ -2,7 +2,11 @@
 
 JSON is the initial interchange format. It has one parse path and can be schema-validated. YAML convenience input can be added later without changing the canonical JSON artifacts. Every root has `schema_version: "0.1"`. Unknown fields are rejected; model-generated plans cannot carry executable code.
 
-Python models under `src/music_video_toolkit/contracts.py` are the source of truth once installed. JSON Schema files under `schemas/` are generated from them. Schema validation checks structure; Python validators additionally check ordering, range and identity. Media existence, hashes, durations, cross-file references and backend support are separate preflight responsibilities, completed in S01/S05/S08. A structurally valid file is not proof it can render.
+Python models under `src/music_video_toolkit/contracts.py` are the source of truth once installed. JSON Schema files under `schemas/` are generated from them. Schema validation checks structure; Python validators additionally check ordering, range and identity. Project preflight resolves paths relative to the record that contains them and checks actual files, hashes and cross-file identities as each slice introduces those relationships. Backend support remains a separate check. A structurally valid file is not proof it can render.
+
+## Source record
+
+`source/source.json` records the original input path/hash, canonical path/hash/audio properties and FFmpeg provenance. Its canonical reference resolves to `source/canonical.wav`; relative paths resolve against the source record directory, independent of the process working directory. The canonical format is 48kHz stereo `pcm_s24le`. Its `duration_samples` comes from decoded PCM frames, never from rounded container duration. The original may later be unavailable, but the canonical file and hash are required for project preflight.
 
 ## Time and determinism
 

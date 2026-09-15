@@ -1,0 +1,131 @@
+{
+  "$defs": {
+    "CanonicalAudio": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "sample_rate": {
+          "const": 48000,
+          "title": "Sample Rate",
+          "type": "integer"
+        },
+        "channels": {
+          "const": 2,
+          "title": "Channels",
+          "type": "integer"
+        },
+        "sample_format": {
+          "const": "s24le",
+          "title": "Sample Format",
+          "type": "string"
+        },
+        "codec": {
+          "const": "pcm_s24le",
+          "title": "Codec",
+          "type": "string"
+        },
+        "duration_samples": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Duration Samples",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "sample_rate",
+        "channels",
+        "sample_format",
+        "codec",
+        "duration_samples"
+      ],
+      "title": "CanonicalAudio",
+      "type": "object"
+    },
+    "FileRef": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "title": "FileRef",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "tool": {
+          "minLength": 1,
+          "title": "Tool",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "tool",
+        "version"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "0.1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "original": {
+      "$ref": "#/$defs/FileRef"
+    },
+    "canonical": {
+      "$ref": "#/$defs/CanonicalAudio"
+    },
+    "decoder": {
+      "$ref": "#/$defs/Provenance"
+    }
+  },
+  "required": [
+    "schema_version",
+    "original",
+    "canonical",
+    "decoder"
+  ],
+  "title": "SourceRecord",
+  "type": "object"
+}
