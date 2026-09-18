@@ -1,0 +1,367 @@
+{
+  "$defs": {
+    "ComparisonArtifacts": {
+      "additionalProperties": false,
+      "properties": {
+        "review_reel": {
+          "$ref": "#/$defs/FileRef"
+        },
+        "contact_sheet": {
+          "$ref": "#/$defs/FileRef"
+        }
+      },
+      "required": [
+        "review_reel",
+        "contact_sheet"
+      ],
+      "title": "ComparisonArtifacts",
+      "type": "object"
+    },
+    "ComparisonClip": {
+      "additionalProperties": false,
+      "properties": {
+        "range_index": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Range Index",
+          "type": "integer"
+        },
+        "range": {
+          "$ref": "#/$defs/SampleRange"
+        },
+        "file": {
+          "$ref": "#/$defs/FileRef"
+        },
+        "probe": {
+          "$ref": "#/$defs/ComparisonMediaProbe"
+        }
+      },
+      "required": [
+        "range_index",
+        "range",
+        "file",
+        "probe"
+      ],
+      "title": "ComparisonClip",
+      "type": "object"
+    },
+    "ComparisonMediaProbe": {
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Height",
+          "type": "integer"
+        },
+        "fps_num": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Fps Num",
+          "type": "integer"
+        },
+        "fps_den": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Fps Den",
+          "type": "integer"
+        },
+        "frame_count": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Frame Count",
+          "type": "integer"
+        },
+        "has_audio": {
+          "title": "Has Audio",
+          "type": "boolean"
+        },
+        "audio_sample_rate": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Audio Sample Rate"
+        },
+        "audio_channels": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Audio Channels"
+        }
+      },
+      "required": [
+        "width",
+        "height",
+        "fps_num",
+        "fps_den",
+        "frame_count",
+        "has_audio"
+      ],
+      "title": "ComparisonMediaProbe",
+      "type": "object"
+    },
+    "ComparisonProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Height",
+          "type": "integer"
+        },
+        "fps_num": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Fps Num",
+          "type": "integer"
+        },
+        "fps_den": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Fps Den",
+          "type": "integer"
+        },
+        "has_audio": {
+          "title": "Has Audio",
+          "type": "boolean"
+        },
+        "range_count": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Range Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "width",
+        "height",
+        "fps_num",
+        "fps_den",
+        "has_audio",
+        "range_count"
+      ],
+      "title": "ComparisonProfile",
+      "type": "object"
+    },
+    "ComparisonVariant": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "preview_manifest": {
+          "$ref": "#/$defs/FileRef"
+        },
+        "preview_cache_key": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Preview Cache Key",
+          "type": "string"
+        },
+        "inputs": {
+          "minProperties": 1,
+          "patternProperties": {
+            "^[a-zA-Z0-9_.-]+$": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            }
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Inputs",
+          "type": "object"
+        },
+        "environment": {
+          "minProperties": 1,
+          "patternProperties": {
+            "^[a-zA-Z0-9_.-]+$": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Environment",
+          "type": "object"
+        },
+        "seed": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "clips": {
+          "items": {
+            "$ref": "#/$defs/ComparisonClip"
+          },
+          "minItems": 1,
+          "title": "Clips",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "preview_manifest",
+        "preview_cache_key",
+        "inputs",
+        "environment",
+        "seed",
+        "clips"
+      ],
+      "title": "ComparisonVariant",
+      "type": "object"
+    },
+    "FileRef": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "title": "FileRef",
+      "type": "object"
+    },
+    "SampleRange": {
+      "additionalProperties": false,
+      "properties": {
+        "start_sample": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Start Sample",
+          "type": "integer"
+        },
+        "end_sample": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "End Sample",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start_sample",
+        "end_sample"
+      ],
+      "title": "SampleRange",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "0.1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "cache_key": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Cache Key",
+      "type": "string"
+    },
+    "request": {
+      "$ref": "#/$defs/FileRef"
+    },
+    "source_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Source Sha256",
+      "type": "string"
+    },
+    "ranges": {
+      "items": {
+        "$ref": "#/$defs/SampleRange"
+      },
+      "minItems": 1,
+      "title": "Ranges",
+      "type": "array"
+    },
+    "profile": {
+      "$ref": "#/$defs/ComparisonProfile"
+    },
+    "variants": {
+      "items": {
+        "$ref": "#/$defs/ComparisonVariant"
+      },
+      "minItems": 2,
+      "title": "Variants",
+      "type": "array"
+    },
+    "tools": {
+      "minProperties": 1,
+      "patternProperties": {
+        "^[a-zA-Z0-9_.-]+$": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "propertyNames": {
+        "minLength": 1
+      },
+      "title": "Tools",
+      "type": "object"
+    },
+    "artifacts": {
+      "$ref": "#/$defs/ComparisonArtifacts"
+    }
+  },
+  "required": [
+    "schema_version",
+    "cache_key",
+    "request",
+    "source_sha256",
+    "ranges",
+    "profile",
+    "variants",
+    "tools",
+    "artifacts"
+  ],
+  "title": "ComparisonManifest",
+  "type": "object"
+}

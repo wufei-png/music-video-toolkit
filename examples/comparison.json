@@ -1,0 +1,166 @@
+{
+  "schema_version": "0.1",
+  "cache_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "request": {
+    "path": "comparison-request.json",
+    "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "source_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "ranges": [
+    {
+      "start_sample": 0,
+      "end_sample": 480000
+    },
+    {
+      "start_sample": 1440000,
+      "end_sample": 2400000
+    }
+  ],
+  "profile": {
+    "width": 1920,
+    "height": 1080,
+    "fps_num": 30,
+    "fps_den": 1,
+    "has_audio": true,
+    "range_count": 2
+  },
+  "variants": [
+    {
+      "id": "abstract-a",
+      "label": "Abstract control",
+      "preview_manifest": {
+        "path": "../abstract-a/preview.render.json",
+        "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "preview_cache_key": "2222222222222222222222222222222222222222222222222222222222222222",
+      "inputs": {
+        "timeline": "3333333333333333333333333333333333333333333333333333333333333333",
+        "plan": "4444444444444444444444444444444444444444444444444444444444444444"
+      },
+      "environment": {
+        "renderer": "illustrative-only"
+      },
+      "seed": 7,
+      "clips": [
+        {
+          "range_index": 1,
+          "range": {
+            "start_sample": 0,
+            "end_sample": 480000
+          },
+          "file": {
+            "path": "../abstract-a/01-sparse-intro.mp4",
+            "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+          },
+          "probe": {
+            "width": 1920,
+            "height": 1080,
+            "fps_num": 30,
+            "fps_den": 1,
+            "frame_count": 300,
+            "has_audio": true,
+            "audio_sample_rate": 48000,
+            "audio_channels": 2
+          }
+        },
+        {
+          "range_index": 2,
+          "range": {
+            "start_sample": 1440000,
+            "end_sample": 2400000
+          },
+          "file": {
+            "path": "../abstract-a/02-climax.mp4",
+            "sha256": "6666666666666666666666666666666666666666666666666666666666666666"
+          },
+          "probe": {
+            "width": 1920,
+            "height": 1080,
+            "fps_num": 30,
+            "fps_den": 1,
+            "frame_count": 600,
+            "has_audio": true,
+            "audio_sample_rate": 48000,
+            "audio_channels": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "hybrid-c",
+      "label": "Hybrid candidate",
+      "preview_manifest": {
+        "path": "../hybrid-c/preview.render.json",
+        "sha256": "7777777777777777777777777777777777777777777777777777777777777777"
+      },
+      "preview_cache_key": "8888888888888888888888888888888888888888888888888888888888888888",
+      "inputs": {
+        "timeline": "3333333333333333333333333333333333333333333333333333333333333333",
+        "plan": "9999999999999999999999999999999999999999999999999999999999999999"
+      },
+      "environment": {
+        "renderer": "illustrative-only"
+      },
+      "seed": 11,
+      "clips": [
+        {
+          "range_index": 1,
+          "range": {
+            "start_sample": 0,
+            "end_sample": 480000
+          },
+          "file": {
+            "path": "../hybrid-c/01-sparse-intro.mp4",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          "probe": {
+            "width": 1920,
+            "height": 1080,
+            "fps_num": 30,
+            "fps_den": 1,
+            "frame_count": 300,
+            "has_audio": true,
+            "audio_sample_rate": 48000,
+            "audio_channels": 2
+          }
+        },
+        {
+          "range_index": 2,
+          "range": {
+            "start_sample": 1440000,
+            "end_sample": 2400000
+          },
+          "file": {
+            "path": "../hybrid-c/02-climax.mp4",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "probe": {
+            "width": 1920,
+            "height": 1080,
+            "fps_num": 30,
+            "fps_den": 1,
+            "frame_count": 600,
+            "has_audio": true,
+            "audio_sample_rate": 48000,
+            "audio_channels": 2
+          }
+        }
+      ]
+    }
+  ],
+  "tools": {
+    "mvt": "0.1.0",
+    "ffmpeg": "illustrative-only",
+    "ffprobe": "illustrative-only"
+  },
+  "artifacts": {
+    "review_reel": {
+      "path": "review-reel.mp4",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    "contact_sheet": {
+      "path": "contact-sheet.png",
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    }
+  }
+}

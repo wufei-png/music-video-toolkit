@@ -1,0 +1,15 @@
+{
+  "schema_version": "0.1",
+  "variants": [
+    {
+      "id": "abstract-a",
+      "label": "Abstract control",
+      "preview_manifest_path": "comparisons/abstract-a/preview.render.json"
+    },
+    {
+      "id": "hybrid-c",
+      "label": "Hybrid candidate",
+      "preview_manifest_path": "comparisons/hybrid-c/preview.render.json"
+    }
+  ]
+}

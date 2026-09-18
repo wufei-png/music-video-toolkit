@@ -560,6 +560,118 @@ class RenderManifest(Artifact):
         return self
 
 
+class ComparisonVariantRequest(Contract):
+    id: Name
+    label: Text
+    preview_manifest_path: Text
+
+
+class ComparisonRequest(Artifact):
+    variants: Annotated[list[ComparisonVariantRequest], Field(min_length=2)]
+
+    @model_validator(mode="after")
+    def unique_variants(self) -> Self:
+        unique([variant.id for variant in self.variants], "comparison variant id")
+        unique(
+            [variant.preview_manifest_path for variant in self.variants],
+            "comparison preview manifest path",
+        )
+        return self
+
+
+class ComparisonMediaProbe(Contract):
+    width: Positive
+    height: Positive
+    fps_num: Positive
+    fps_den: Positive
+    frame_count: Positive
+    has_audio: bool
+    audio_sample_rate: Positive | None = None
+    audio_channels: Positive | None = None
+
+    @model_validator(mode="after")
+    def coherent_audio(self) -> Self:
+        audio_metadata = self.audio_sample_rate is not None and self.audio_channels is not None
+        if self.has_audio != audio_metadata:
+            raise ValueError("audio metadata must be present exactly when has_audio is true")
+        return self
+
+
+class ComparisonClip(Contract):
+    range_index: Positive
+    range: SampleRange
+    file: FileRef
+    probe: ComparisonMediaProbe
+
+
+class ComparisonVariant(Contract):
+    id: Name
+    label: Text
+    preview_manifest: FileRef
+    preview_cache_key: Sha256
+    inputs: Annotated[dict[Name, Sha256], Field(min_length=1)]
+    environment: Annotated[dict[Name, Text], Field(min_length=1)]
+    seed: NonNegative
+    clips: Annotated[list[ComparisonClip], Field(min_length=1)]
+
+
+class ComparisonProfile(Contract):
+    width: Positive
+    height: Positive
+    fps_num: Positive
+    fps_den: Positive
+    has_audio: bool
+    range_count: Positive
+
+
+class ComparisonArtifacts(Contract):
+    review_reel: FileRef
+    contact_sheet: FileRef
+
+
+class ComparisonManifest(Artifact):
+    cache_key: Sha256
+    request: FileRef
+    source_sha256: Sha256
+    ranges: Annotated[list[SampleRange], Field(min_length=1)]
+    profile: ComparisonProfile
+    variants: Annotated[list[ComparisonVariant], Field(min_length=2)]
+    tools: Annotated[dict[Name, Text], Field(min_length=1)]
+    artifacts: ComparisonArtifacts
+
+    @model_validator(mode="after")
+    def coherent_comparison(self) -> Self:
+        ordered_ranges(self.ranges)
+        if self.profile.range_count != len(self.ranges):
+            raise ValueError("comparison profile range_count must match ranges")
+        unique([variant.id for variant in self.variants], "comparison variant id")
+        expected_indexes = list(range(1, len(self.ranges) + 1))
+        for variant in self.variants:
+            if [clip.range_index for clip in variant.clips] != expected_indexes:
+                raise ValueError("comparison clips must cover each range once in order")
+            if [clip.range for clip in variant.clips] != self.ranges:
+                raise ValueError("comparison clip ranges must match the shared ranges")
+            for clip in variant.clips:
+                probe = clip.probe
+                actual_profile = (
+                    probe.width,
+                    probe.height,
+                    probe.fps_num,
+                    probe.fps_den,
+                    probe.has_audio,
+                )
+                expected_profile = (
+                    self.profile.width,
+                    self.profile.height,
+                    self.profile.fps_num,
+                    self.profile.fps_den,
+                    self.profile.has_audio,
+                )
+                if actual_profile != expected_profile:
+                    raise ValueError("comparison clip probe does not match the shared profile")
+        return self
+
+
 CONTRACTS: dict[str, type[Artifact]] = {
     "source": SourceRecord,
     "stems": StemManifest,
@@ -573,4 +685,6 @@ CONTRACTS: dict[str, type[Artifact]] = {
     "alignment": AlignmentReport,
     "preview": PreviewRequest,
     "render": RenderManifest,
+    "comparison-request": ComparisonRequest,
+    "comparison": ComparisonManifest,
 }

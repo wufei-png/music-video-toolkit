@@ -23,6 +23,8 @@ def document(name):
         ("lyrics", "lyrics.json"),
         ("preview", "preview.json"),
         ("render", "render.json"),
+        ("comparison-request", "comparison-request.json"),
+        ("comparison", "comparison.json"),
         ("plan", "plan-abstract.json"),
         ("plan", "plan-mood.json"),
         ("plan", "plan-hybrid.json"),
@@ -110,3 +112,33 @@ def test_render_requires_evidence_or_error():
         CONTRACTS["render"].model_validate(data)
     data["error"] = "encoder failed"
     assert CONTRACTS["render"].model_validate(data).status == "failed"
+
+
+def test_comparison_request_requires_ordered_unique_variants():
+    data = document("comparison-request.json")
+    data["variants"][1]["id"] = data["variants"][0]["id"]
+    with pytest.raises(ValidationError):
+        CONTRACTS["comparison-request"].model_validate(data)
+
+    data = document("comparison-request.json")
+    data["variants"][1]["preview_manifest_path"] = data["variants"][0]["preview_manifest_path"]
+    with pytest.raises(ValidationError):
+        CONTRACTS["comparison-request"].model_validate(data)
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda d: d["profile"].update(range_count=3),
+        lambda d: d["variants"][1].update(id="abstract-a"),
+        lambda d: d["variants"][0]["clips"][0].update(range_index=2),
+        lambda d: d["variants"][0]["clips"][0]["range"].update(end_sample=240000),
+        lambda d: d["variants"][0]["clips"][0]["probe"].update(width=1080),
+        lambda d: d["variants"][0]["clips"][0]["probe"].update(has_audio=False),
+    ],
+)
+def test_comparison_rejects_incoherent_shared_evidence(mutate):
+    data = document("comparison.json")
+    mutate(data)
+    with pytest.raises(ValidationError):
+        CONTRACTS["comparison"].model_validate(data)

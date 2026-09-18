@@ -1,0 +1,54 @@
+{
+  "$defs": {
+    "ComparisonVariantRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "preview_manifest_path": {
+          "minLength": 1,
+          "title": "Preview Manifest Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "preview_manifest_path"
+      ],
+      "title": "ComparisonVariantRequest",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "0.1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "variants": {
+      "items": {
+        "$ref": "#/$defs/ComparisonVariantRequest"
+      },
+      "minItems": 2,
+      "title": "Variants",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "variants"
+  ],
+  "title": "ComparisonRequest",
+  "type": "object"
+}
