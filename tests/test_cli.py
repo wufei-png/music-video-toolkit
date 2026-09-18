@@ -13,6 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_capabilities_are_honest(capsys):
     assert main(["capabilities"]) == 0
     report = json.loads(capsys.readouterr().out)
+    assert report["stage"] == "s09"
+    assert report["production_stage"] == "s10"
     assert report["can_render"] is True
     assert "render" in report["available"]
     assert "render" not in report["planned"]

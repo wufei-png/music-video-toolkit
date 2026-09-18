@@ -2,7 +2,7 @@
 
 面向 AI agent 的音乐视频制作工具包。Skill 做创作协作，文件协议保存决策，代码执行可复现制作。
 
-**当前状态：S09 已完成，S10 的两首歌成片验收正在等待修复版样片确认。工具可统一解码音频、提取 mix/四轨特征、自动对齐或导入逐句歌词、保存人工修正，并用抽象/本地媒体图层生成带字幕的 1080p30 视频和可复现的多区间样片；公开合成制作演练覆盖 sample-approval 与 autonomous 两种流程。** 本仓库的 MIT 许可覆盖代码与 Skill，不改变外部素材、模型和依赖的许可证。
+**当前状态：S01–S10 已完成，S10 的两首歌全曲验收和客观媒体 QA 已通过。工具可统一解码音频、提取 mix/四轨特征、自动对齐或导入逐句歌词、保存人工修正，并用抽象/本地媒体图层生成带字幕的 1080p30 视频和可复现的多区间样片；公开合成制作演练覆盖 sample-approval 与 autonomous 两种流程。** 本仓库的 MIT 许可覆盖代码与 Skill，不改变外部素材、模型和依赖的许可证；公开发布仍需单独授权。
 
 ## 两个入口
 
@@ -18,7 +18,9 @@
 
 参见 [设计](docs/architecture/design.md)、[协议语义](docs/architecture/contracts.md)、[技术依据](docs/architecture/evidence.md)、[当前状态](docs/implementation/status.md) 和 [发布检查清单](docs/release-checklist.md)。
 
-首次安装后可运行不含第三方媒体的 [public production demo](examples/production-demo/README.md)，从 brief、合成输入、analysis、素材预检和 plan resolve 一直走到样片；显式 autonomous 模式还会生成首版全片和独立重渲染脚本。
+首次安装后可运行不含第三方媒体的 [public production demo](examples/production-demo/README.md)，从 brief、合成输入、analysis、素材预检和 plan resolve 一直走到样片；显式 autonomous 模式还会生成首版全片和独立重渲染脚本。S09/S10 已验证完整生产流程，真实歌曲及其制作资产仍保存在仓库外。
+
+`mvt capabilities` 中的 `stage` 表示 CLI 能力阶段（当前为 `s09`）；`production_stage` 表示包含真实歌曲验收的生产阶段（当前为 `s10`）。
 
 ## 当前可运行能力
 
@@ -62,7 +64,7 @@ pnpm --dir renderer exec playwright install chromium
 
 `preview` 接受有序、互不重叠且对齐 30 fps 帧边界的全局 sample ranges，为每段输出独立 MP4，并可无损拼接 review reel。独立样片继续按全曲帧号取视觉、歌词和媒体时间，音频从相同全局采样点开始。aggregate manifest 绑定源记录、timeline、plan、素材、字体、渲染器源码/锁文件、seed、ranges 和所有输出哈希；完全相同且完整的结果才命中缓存，任何 stale、缺失或损坏结果都会被拒绝且不会覆盖。
 
-原始研究报告、两首歌及其制作资产留在父目录，公共工具仓库不依赖它们。新用户可以安装工具、检查协议、解码、分析、导入或自动对齐歌词、渲染自己的本地计划并制作多区间样片；完整生产工作流由后续切片逐步交付。
+原始研究报告、两首歌及其制作资产留在父目录，公共工具仓库不依赖它们。新用户可以安装工具、检查协议、解码、分析、导入或自动对齐歌词、渲染自己的本地计划并制作多区间样片；完整生产工作流已由 S09/S10 验证，具体歌曲仍应在外部制作工作区完成。
 
 渲染器目前提供时间映射实现和 Three.js 图层接口；构建与测试：
 

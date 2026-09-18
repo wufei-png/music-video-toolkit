@@ -1,10 +1,10 @@
 # Implementation slices
 
-这是后续开发计划；bootstrap 不等于 S01 完成。每个切片可成为一个独立提交，依赖只指向此前阶段。
+这是按依赖组织的实现切片索引和交付范围；bootstrap 不等于 S01 完成，当前是否已交付以 [status](status.md) 为准。每个切片可成为一个独立提交，依赖只指向此前阶段。
 
 通用检查：`uv sync --locked --group dev`、`uv run --locked pytest`、`uv run --locked ruff check .`、`git diff --check`。有 renderer 改动时执行 `pnpm --dir renderer check`。这些命令在 bootstrap 完成后可运行。
 
-**各切片中的 `tests/stages/test_sNN.py` 和新增 CLI 是实施时必须新增的验收入口，目前尚不存在。** 安装的模型环境应单独锁定；CPU 模拟或 mock 不算真实模型验证。阶段测试生成可公开的 synthetic fixtures；本地歌曲验收证据保存在仓库外。
+**各切片中的 `tests/stages/test_sNN.py` 和新增 CLI 是对应切片的验收入口，当前已随 S01–S10 实现。** 安装的模型环境应单独锁定；CPU 模拟或 mock 不算真实模型验证。阶段测试生成可公开的 synthetic fixtures；本地歌曲验收证据保存在仓库外。
 
 | ID | Result | Dependencies |
 | --- | --- | --- |
