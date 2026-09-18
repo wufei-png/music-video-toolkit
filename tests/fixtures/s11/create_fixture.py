@@ -83,6 +83,8 @@ def create_fixture(output: Path) -> Path:
         "timeline": "2" * 64,
         "lyrics": "3" * 64,
         "renderer_host": "4" * 64,
+        "preview_request": "5" * 64,
+        "preview_adapter": "6" * 64,
     }
     requests = []
     for variant_index, (variant_id, (label, colors)) in enumerate(VARIANTS.items(), 1):
@@ -103,6 +105,8 @@ def create_fixture(output: Path) -> Path:
                 "timeline": shared["timeline"],
                 "lyrics": shared["lyrics"],
                 "renderer_host": shared["renderer_host"],
+                "preview_request": shared["preview_request"],
+                "preview_adapter": shared["preview_adapter"],
                 "plan": f"{variant_index + 6:x}" * 64,
                 "assets": f"{variant_index + 9:x}" * 64,
             },

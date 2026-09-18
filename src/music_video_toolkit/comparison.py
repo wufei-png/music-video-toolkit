@@ -37,6 +37,7 @@ SAMPLE_RATE = 48000
 CONTACT_WIDTH = 480
 CONTACT_FRAME_HEIGHT = 270
 CONTACT_LABEL_HEIGHT = 30
+PREVIEW_INPUT_KEYS = {"preview_request", "preview_adapter"}
 
 
 class ComparisonError(Exception):
@@ -175,6 +176,21 @@ def _decoded_audio_sha256(ffmpeg: str, path: Path) -> str:
     return value.removeprefix(prefix).lower()
 
 
+def _stream_compatibility_sha256(video: dict[str, object], audio: dict[str, object] | None) -> str:
+    ignored = {"index", "codec_type", "nb_read_frames"}
+    value = {
+        "video": {key: value for key, value in video.items() if key not in ignored},
+        "audio": (
+            {key: value for key, value in audio.items() if key not in ignored}
+            if audio is not None
+            else None
+        ),
+    }
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+
+
 def _probe_clip(ffprobe: str, ffmpeg: str, path: Path) -> ComparisonMediaProbe:
     result = _run(
         [
@@ -182,8 +198,16 @@ def _probe_clip(ffprobe: str, ffmpeg: str, path: Path) -> ComparisonMediaProbe:
             "-v",
             "error",
             "-count_frames",
+            "-show_data_hash",
+            "sha256",
             "-show_entries",
-            ("stream=codec_type,width,height,r_frame_rate,nb_read_frames,sample_rate,channels"),
+            (
+                "stream=index,codec_type,codec_name,profile,codec_tag_string,width,height,"
+                "coded_width,coded_height,pix_fmt,level,color_range,color_space,color_transfer,"
+                "color_primaries,chroma_location,field_order,refs,is_avc,nal_length_size,"
+                "r_frame_rate,avg_frame_rate,time_base,nb_read_frames,sample_fmt,sample_rate,"
+                "channels,channel_layout,initial_padding,extradata_hash"
+            ),
             "-of",
             "json",
             str(path),
@@ -198,14 +222,21 @@ def _probe_clip(ffprobe: str, ffmpeg: str, path: Path) -> ComparisonMediaProbe:
             raise ValueError("expected exactly one video stream and at most one audio stream")
         video = videos[0]
         fps = Fraction(video["r_frame_rate"])
+        average_fps = Fraction(video["avg_frame_rate"])
         audio = audios[0] if audios else None
         return ComparisonMediaProbe(
+            video_codec=video["codec_name"],
+            video_pixel_format=video["pix_fmt"],
             width=int(video["width"]),
             height=int(video["height"]),
             fps_num=fps.numerator,
             fps_den=fps.denominator,
+            avg_fps_num=average_fps.numerator,
+            avg_fps_den=average_fps.denominator,
             frame_count=int(video["nb_read_frames"]),
+            stream_compatibility_sha256=_stream_compatibility_sha256(video, audio),
             has_audio=audio is not None,
+            audio_codec=audio["codec_name"] if audio is not None else None,
             audio_sha256=_decoded_audio_sha256(ffmpeg, path) if audio is not None else None,
             audio_sample_rate=int(audio["sample_rate"]) if audio is not None else None,
             audio_channels=int(audio["channels"]) if audio is not None else None,
@@ -246,13 +277,21 @@ def _prepare_comparison(
     request_hash = sha256_file(request_path)
     request_ref = FileRef(path=_relative(request_path, manifest_path), sha256=request_hash)
     prepared: list[PreparedVariant] = []
+    resolved_preview_paths: set[Path] = set()
     reference_manifest: RenderManifest | None = None
-    reference_profile: tuple[int, int, int, int, bool] | None = None
+    reference_profile: tuple[str, str, int, int, int, int, str, bool] | None = None
     reference_frame_counts: list[int] | None = None
     reference_audio_hashes: list[str | None] | None = None
 
     for variant in request.variants:
         preview_path = resolve_record_path(request_path, variant.preview_manifest_path)
+        if preview_path in resolved_preview_paths:
+            raise ComparisonError(
+                "comparison_preview_duplicate",
+                {"variant": variant.id, "path": str(preview_path)},
+                4,
+            )
+        resolved_preview_paths.add(preview_path)
         preview = _load_preview(preview_path)
         if preview.status != "completed":
             raise ComparisonError(
@@ -264,6 +303,16 @@ def _prepare_comparison(
             raise ComparisonError(
                 "comparison_canonical_source_missing",
                 {"variant": variant.id, "path": str(preview_path)},
+                4,
+            )
+        if not PREVIEW_INPUT_KEYS.issubset(preview.inputs):
+            raise ComparisonError(
+                "comparison_preview_manifest_required",
+                {
+                    "variant": variant.id,
+                    "path": str(preview_path),
+                    "missing_inputs": sorted(PREVIEW_INPUT_KEYS - preview.inputs.keys()),
+                },
                 4,
             )
         range_count = len(preview.ranges)
@@ -329,18 +378,24 @@ def _prepare_comparison(
             clip_paths.append(clip_path)
 
         profile = (
+            clips[0].probe.video_codec,
+            clips[0].probe.video_pixel_format,
             clips[0].probe.width,
             clips[0].probe.height,
             clips[0].probe.fps_num,
             clips[0].probe.fps_den,
+            clips[0].probe.stream_compatibility_sha256,
             clips[0].probe.has_audio,
         )
         if any(
             (
+                clip.probe.video_codec,
+                clip.probe.video_pixel_format,
                 clip.probe.width,
                 clip.probe.height,
                 clip.probe.fps_num,
                 clip.probe.fps_den,
+                clip.probe.stream_compatibility_sha256,
                 clip.probe.has_audio,
             )
             != profile
@@ -397,11 +452,14 @@ def _prepare_comparison(
         original_source_sha256=reference_manifest.source_sha256,
         ranges=tuple(reference_manifest.ranges),
         profile=ComparisonProfile(
-            width=reference_profile[0],
-            height=reference_profile[1],
-            fps_num=reference_profile[2],
-            fps_den=reference_profile[3],
-            has_audio=reference_profile[4],
+            video_codec=reference_profile[0],
+            video_pixel_format=reference_profile[1],
+            width=reference_profile[2],
+            height=reference_profile[3],
+            fps_num=reference_profile[4],
+            fps_den=reference_profile[5],
+            stream_compatibility_sha256=reference_profile[6],
+            has_audio=reference_profile[7],
             range_count=len(reference_manifest.ranges),
         ),
         variants=tuple(prepared),
@@ -494,6 +552,48 @@ def _build_review_reel(ffmpeg: str, job_dir: Path, prepared: PreparedComparison)
         for clip in local_clips:
             clip.unlink(missing_ok=True)
     return output
+
+
+def _validate_review_reel(
+    ffprobe: str, ffmpeg: str, path: Path, prepared: PreparedComparison
+) -> None:
+    probe = _probe_clip(ffprobe, ffmpeg, path)
+    profile = prepared.profile
+    actual_profile = (
+        probe.video_codec,
+        probe.video_pixel_format,
+        probe.width,
+        probe.height,
+        probe.fps_num,
+        probe.fps_den,
+        probe.stream_compatibility_sha256,
+        probe.has_audio,
+    )
+    expected_profile = (
+        profile.video_codec,
+        profile.video_pixel_format,
+        profile.width,
+        profile.height,
+        profile.fps_num,
+        profile.fps_den,
+        profile.stream_compatibility_sha256,
+        profile.has_audio,
+    )
+    expected_frames = sum(
+        clip.probe.frame_count for variant in prepared.variants for clip in variant.record.clips
+    )
+    if actual_profile != expected_profile or probe.frame_count != expected_frames:
+        raise ComparisonError(
+            "comparison_review_reel_invalid",
+            {
+                "path": str(path),
+                "expected_profile": expected_profile,
+                "actual_profile": actual_profile,
+                "expected_frames": expected_frames,
+                "actual_frames": probe.frame_count,
+            },
+            5,
+        )
 
 
 FONT_5X7 = {
@@ -722,6 +822,7 @@ def compare_previews(request_path: Path, output_dir: Path) -> ComparisonResult:
     job_dir = Path(tempfile.mkdtemp(dir=output_dir.parent, prefix=f".{output_dir.name}-"))
     try:
         reel = _build_review_reel(ffmpeg, job_dir, prepared)
+        _validate_review_reel(ffprobe, ffmpeg, reel, prepared)
         contact_sheet = _build_contact_sheet(ffmpeg, job_dir, prepared)
         job_manifest_path = job_dir / "comparison.json"
         manifest = ComparisonManifest(

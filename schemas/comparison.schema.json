@@ -48,6 +48,16 @@
     "ComparisonMediaProbe": {
       "additionalProperties": false,
       "properties": {
+        "video_codec": {
+          "const": "h264",
+          "title": "Video Codec",
+          "type": "string"
+        },
+        "video_pixel_format": {
+          "const": "yuv420p",
+          "title": "Video Pixel Format",
+          "type": "string"
+        },
         "width": {
           "exclusiveMinimum": 0,
           "maximum": 9007199254740991,
@@ -70,6 +80,18 @@
           "exclusiveMinimum": 0,
           "maximum": 9007199254740991,
           "title": "Fps Den",
+          "type": "integer"
+        },
+        "avg_fps_num": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Avg Fps Num",
+          "type": "integer"
+        },
+        "avg_fps_den": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Avg Fps Den",
           "type": "integer"
         },
         "frame_count": {
@@ -78,59 +100,53 @@
           "title": "Frame Count",
           "type": "integer"
         },
+        "stream_compatibility_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Stream Compatibility Sha256",
+          "type": "string"
+        },
         "has_audio": {
+          "const": true,
           "title": "Has Audio",
           "type": "boolean"
         },
+        "audio_codec": {
+          "const": "aac",
+          "title": "Audio Codec",
+          "type": "string"
+        },
         "audio_sha256": {
-          "anyOf": [
-            {
-              "pattern": "^[a-f0-9]{64}$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Audio Sha256"
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Audio Sha256",
+          "type": "string"
         },
         "audio_sample_rate": {
-          "anyOf": [
-            {
-              "exclusiveMinimum": 0,
-              "maximum": 9007199254740991,
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Audio Sample Rate"
+          "const": 48000,
+          "title": "Audio Sample Rate",
+          "type": "integer"
         },
         "audio_channels": {
-          "anyOf": [
-            {
-              "exclusiveMinimum": 0,
-              "maximum": 9007199254740991,
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Audio Channels"
+          "const": 2,
+          "title": "Audio Channels",
+          "type": "integer"
         }
       },
       "required": [
+        "video_codec",
+        "video_pixel_format",
         "width",
         "height",
         "fps_num",
         "fps_den",
+        "avg_fps_num",
+        "avg_fps_den",
         "frame_count",
-        "has_audio"
+        "stream_compatibility_sha256",
+        "has_audio",
+        "audio_codec",
+        "audio_sha256",
+        "audio_sample_rate",
+        "audio_channels"
       ],
       "title": "ComparisonMediaProbe",
       "type": "object"
@@ -138,6 +154,16 @@
     "ComparisonProfile": {
       "additionalProperties": false,
       "properties": {
+        "video_codec": {
+          "const": "h264",
+          "title": "Video Codec",
+          "type": "string"
+        },
+        "video_pixel_format": {
+          "const": "yuv420p",
+          "title": "Video Pixel Format",
+          "type": "string"
+        },
         "width": {
           "exclusiveMinimum": 0,
           "maximum": 9007199254740991,
@@ -162,7 +188,13 @@
           "title": "Fps Den",
           "type": "integer"
         },
+        "stream_compatibility_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Stream Compatibility Sha256",
+          "type": "string"
+        },
         "has_audio": {
+          "const": true,
           "title": "Has Audio",
           "type": "boolean"
         },
@@ -174,10 +206,13 @@
         }
       },
       "required": [
+        "video_codec",
+        "video_pixel_format",
         "width",
         "height",
         "fps_num",
         "fps_den",
+        "stream_compatibility_sha256",
         "has_audio",
         "range_count"
       ],

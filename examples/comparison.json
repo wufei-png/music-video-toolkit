@@ -17,10 +17,13 @@
     }
   ],
   "profile": {
+    "video_codec": "h264",
+    "video_pixel_format": "yuv420p",
     "width": 1920,
     "height": 1080,
     "fps_num": 30,
     "fps_den": 1,
+    "stream_compatibility_sha256": "abababababababababababababababababababababababababababababababab",
     "has_audio": true,
     "range_count": 2
   },
@@ -53,12 +56,18 @@
             "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
           },
           "probe": {
+            "video_codec": "h264",
+            "video_pixel_format": "yuv420p",
             "width": 1920,
             "height": 1080,
             "fps_num": 30,
             "fps_den": 1,
+            "avg_fps_num": 30,
+            "avg_fps_den": 1,
             "frame_count": 300,
+            "stream_compatibility_sha256": "abababababababababababababababababababababababababababababababab",
             "has_audio": true,
+            "audio_codec": "aac",
             "audio_sha256": "1212121212121212121212121212121212121212121212121212121212121212",
             "audio_sample_rate": 48000,
             "audio_channels": 2
@@ -75,12 +84,18 @@
             "sha256": "6666666666666666666666666666666666666666666666666666666666666666"
           },
           "probe": {
+            "video_codec": "h264",
+            "video_pixel_format": "yuv420p",
             "width": 1920,
             "height": 1080,
             "fps_num": 30,
             "fps_den": 1,
+            "avg_fps_num": 30,
+            "avg_fps_den": 1,
             "frame_count": 600,
+            "stream_compatibility_sha256": "abababababababababababababababababababababababababababababababab",
             "has_audio": true,
+            "audio_codec": "aac",
             "audio_sha256": "1313131313131313131313131313131313131313131313131313131313131313",
             "audio_sample_rate": 48000,
             "audio_channels": 2
@@ -116,12 +131,18 @@
             "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
           },
           "probe": {
+            "video_codec": "h264",
+            "video_pixel_format": "yuv420p",
             "width": 1920,
             "height": 1080,
             "fps_num": 30,
             "fps_den": 1,
+            "avg_fps_num": 30,
+            "avg_fps_den": 1,
             "frame_count": 300,
+            "stream_compatibility_sha256": "abababababababababababababababababababababababababababababababab",
             "has_audio": true,
+            "audio_codec": "aac",
             "audio_sha256": "1212121212121212121212121212121212121212121212121212121212121212",
             "audio_sample_rate": 48000,
             "audio_channels": 2
@@ -138,12 +159,18 @@
             "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
           },
           "probe": {
+            "video_codec": "h264",
+            "video_pixel_format": "yuv420p",
             "width": 1920,
             "height": 1080,
             "fps_num": 30,
             "fps_den": 1,
+            "avg_fps_num": 30,
+            "avg_fps_den": 1,
             "frame_count": 600,
+            "stream_compatibility_sha256": "abababababababababababababababababababababababababababababababab",
             "has_audio": true,
+            "audio_codec": "aac",
             "audio_sha256": "1313131313131313131313131313131313131313131313131313131313131313",
             "audio_sample_rate": 48000,
             "audio_channels": 2

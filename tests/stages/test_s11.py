@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -21,6 +22,9 @@ HASHES = {
     "plan-b": "b" * 64,
     "audio-1": "3" * 64,
     "audio-2": "4" * 64,
+    "stream": "7" * 64,
+    "preview-request": "8" * 64,
+    "preview-adapter": "9" * 64,
 }
 RANGES = [
     {"start_sample": 0, "end_sample": 48000},
@@ -56,6 +60,8 @@ def write_preview(
         "inputs": {
             "timeline": HASHES["timeline"],
             "plan": HASHES[f"plan-{variant}"],
+            "preview_request": HASHES["preview-request"],
+            "preview_adapter": HASHES["preview-adapter"],
         },
         "seed": 1 if variant == "a" else 2,
         "environment": {"renderer": f"synthetic-{variant}"},
@@ -97,12 +103,18 @@ def fake_media(monkeypatch):
         del ffprobe, ffmpeg
         range_index = 0 if path.name.startswith("01-") else 1
         return ComparisonMediaProbe(
+            video_codec="h264",
+            video_pixel_format="yuv420p",
             width=1920,
             height=1080,
             fps_num=30,
             fps_den=1,
-            frame_count=30,
+            avg_fps_num=30,
+            avg_fps_den=1,
+            frame_count=120 if path.name == "review-reel.mp4" else 30,
+            stream_compatibility_sha256=HASHES["stream"],
             has_audio=True,
+            audio_codec="aac",
             audio_sha256=HASHES[f"audio-{range_index + 1}"],
             audio_sample_rate=48000,
             audio_channels=2,
@@ -134,6 +146,53 @@ def _ordered_paths_for_test(prepared):
         for range_index in range(len(prepared.ranges))
         for variant in prepared.variants
     ]
+
+
+@pytest.mark.parametrize(
+    ("video_codec", "average_rate"),
+    [("mpeg4", "30/1"), ("h264", "24/1")],
+)
+def test_comparison_probe_rejects_unsupported_or_variable_rate_media(
+    tmp_path, monkeypatch, video_codec, average_rate
+):
+    streams = {
+        "streams": [
+            {
+                "index": 0,
+                "codec_type": "video",
+                "codec_name": video_codec,
+                "pix_fmt": "yuv420p",
+                "width": 320,
+                "height": 180,
+                "r_frame_rate": "30/1",
+                "avg_frame_rate": average_rate,
+                "time_base": "1/15360",
+                "nb_read_frames": "30",
+            },
+            {
+                "index": 1,
+                "codec_type": "audio",
+                "codec_name": "aac",
+                "sample_fmt": "fltp",
+                "sample_rate": "48000",
+                "channels": 2,
+                "channel_layout": "stereo",
+                "time_base": "1/48000",
+            },
+        ]
+    }
+
+    def run(command, **kwargs):
+        del kwargs
+        if command[0] == "ffprobe":
+            return SimpleNamespace(stdout=json.dumps(streams))
+        return SimpleNamespace(stdout=f"SHA256={'8' * 64}\n")
+
+    monkeypatch.setattr("music_video_toolkit.comparison._run", run)
+    comparison = __import__("music_video_toolkit.comparison", fromlist=["_probe_clip"])
+    with pytest.raises(ComparisonError) as caught:
+        comparison._probe_clip("ffprobe", "ffmpeg", tmp_path / "clip.mp4")
+    assert caught.value.code == "comparison_media_probe_failed"
 
 
 def test_compare_command_installs_reuses_and_reorders_range_major(tmp_path, fake_media, capsys):
@@ -215,6 +274,36 @@ def test_compare_rejects_source_range_profile_audio_and_hash_mismatches(
     with pytest.raises(ComparisonError) as caught:
         compare_previews(request, tmp_path / "hash-output")
     assert caught.value.code == "comparison_input_hash_mismatch"
+
+
+def test_compare_rejects_completed_full_render_manifests(tmp_path, fake_media):
+    preview_a = write_preview(tmp_path, "a")
+    preview_b = write_preview(tmp_path, "b")
+    full_render = json.loads(preview_b.read_text())
+    full_render["inputs"].pop("preview_request")
+    full_render["inputs"].pop("preview_adapter")
+    full_render["ranges"] = full_render["ranges"][:1]
+    full_render["outputs"] = full_render["outputs"][:1]
+    preview_b.write_text(json.dumps(full_render), encoding="utf-8")
+    request = tmp_path / "request.json"
+    write_request(request, [("a", preview_a), ("b", preview_b)])
+
+    with pytest.raises(ComparisonError) as caught:
+        compare_previews(request, tmp_path / "comparison")
+
+    assert caught.value.code == "comparison_preview_manifest_required"
+
+
+def test_compare_rejects_preview_path_aliases(tmp_path, fake_media):
+    preview = write_preview(tmp_path, "a")
+    alias = preview.parent / ".." / preview.parent.name / preview.name
+    request = tmp_path / "request.json"
+    write_request(request, [("a", preview), ("alias", alias)])
+
+    with pytest.raises(ComparisonError) as caught:
+        compare_previews(request, tmp_path / "comparison")
+
+    assert caught.value.code == "comparison_preview_duplicate"
 
 
 def test_compare_rejects_stale_or_damaged_output(tmp_path, fake_media):
@@ -302,7 +391,9 @@ def test_real_abc_review_artifacts_are_ordered_labeled_and_pipeline_isolated(tmp
     assert compare_previews(request, output).cached is True
     manifest = result.manifest
     assert [variant.id for variant in manifest.variants] == ["a", "b", "c"]
-    assert manifest.profile.model_dump() == {
+    assert manifest.profile.model_dump(exclude={"stream_compatibility_sha256"}) == {
+        "video_codec": "h264",
+        "video_pixel_format": "yuv420p",
         "width": 320,
         "height": 180,
         "fps_num": 30,
@@ -310,6 +401,7 @@ def test_real_abc_review_artifacts_are_ordered_labeled_and_pipeline_isolated(tmp
         "has_audio": True,
         "range_count": 2,
     }
+    assert len(manifest.profile.stream_compatibility_sha256) == 64
     assert len({variant.inputs["plan"] for variant in manifest.variants}) == 3
     assert len({variant.inputs["assets"] for variant in manifest.variants}) == 3
     assert len({variant.inputs["timeline"] for variant in manifest.variants}) == 1

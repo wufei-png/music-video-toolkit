@@ -581,25 +581,26 @@ class ComparisonRequest(Artifact):
 
 
 class ComparisonMediaProbe(Contract):
+    video_codec: Literal["h264"]
+    video_pixel_format: Literal["yuv420p"]
     width: Positive
     height: Positive
     fps_num: Positive
     fps_den: Positive
+    avg_fps_num: Positive
+    avg_fps_den: Positive
     frame_count: Positive
-    has_audio: bool
-    audio_sha256: Sha256 | None = None
-    audio_sample_rate: Positive | None = None
-    audio_channels: Positive | None = None
+    stream_compatibility_sha256: Sha256
+    has_audio: Literal[True]
+    audio_codec: Literal["aac"]
+    audio_sha256: Sha256
+    audio_sample_rate: Literal[48000]
+    audio_channels: Literal[2]
 
     @model_validator(mode="after")
-    def coherent_audio(self) -> Self:
-        audio_metadata = (
-            self.audio_sha256 is not None
-            and self.audio_sample_rate is not None
-            and self.audio_channels is not None
-        )
-        if self.has_audio != audio_metadata:
-            raise ValueError("audio metadata must be present exactly when has_audio is true")
+    def constant_frame_rate(self) -> Self:
+        if (self.fps_num, self.fps_den) != (self.avg_fps_num, self.avg_fps_den):
+            raise ValueError("comparison video must use a constant frame rate")
         return self
 
 
@@ -622,11 +623,14 @@ class ComparisonVariant(Contract):
 
 
 class ComparisonProfile(Contract):
+    video_codec: Literal["h264"]
+    video_pixel_format: Literal["yuv420p"]
     width: Positive
     height: Positive
     fps_num: Positive
     fps_den: Positive
-    has_audio: bool
+    stream_compatibility_sha256: Sha256
+    has_audio: Literal[True]
     range_count: Positive
 
 
@@ -660,18 +664,30 @@ class ComparisonManifest(Artifact):
                 raise ValueError("comparison clip ranges must match the shared ranges")
             for clip in variant.clips:
                 probe = clip.probe
+                frame_numerator = (clip.range.end_sample - clip.range.start_sample) * probe.fps_num
+                frame_denominator = 48000 * probe.fps_den
+                if frame_numerator % frame_denominator:
+                    raise ValueError("comparison range must align to the probed frame rate")
+                if probe.frame_count != frame_numerator // frame_denominator:
+                    raise ValueError("comparison clip frame count must match its range duration")
                 actual_profile = (
+                    probe.video_codec,
+                    probe.video_pixel_format,
                     probe.width,
                     probe.height,
                     probe.fps_num,
                     probe.fps_den,
+                    probe.stream_compatibility_sha256,
                     probe.has_audio,
                 )
                 expected_profile = (
+                    self.profile.video_codec,
+                    self.profile.video_pixel_format,
                     self.profile.width,
                     self.profile.height,
                     self.profile.fps_num,
                     self.profile.fps_den,
+                    self.profile.stream_compatibility_sha256,
                     self.profile.has_audio,
                 )
                 if actual_profile != expected_profile:

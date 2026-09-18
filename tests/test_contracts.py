@@ -142,3 +142,13 @@ def test_comparison_rejects_incoherent_shared_evidence(mutate):
     mutate(data)
     with pytest.raises(ValidationError):
         CONTRACTS["comparison"].model_validate(data)
+
+
+def test_comparison_rejects_shared_but_duration_incoherent_frame_counts():
+    data = document("comparison.json")
+    for variant in data["variants"]:
+        for clip in variant["clips"]:
+            clip["probe"]["frame_count"] = 1
+
+    with pytest.raises(ValidationError, match="frame count must match"):
+        CONTRACTS["comparison"].model_validate(data)
