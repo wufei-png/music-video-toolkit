@@ -1,32 +1,43 @@
 # Implementation status
 
-## S10 songs and release readiness in progress — 2026-09-16
+## S10 songs and release readiness complete — 2026-09-18
 
-Two external C-mode production projects now use the reviewed S07 lyric artifacts, manual neutral
-sections and two generated local backgrounds each. Their 36-second reviews cover sparse,
-transition and climax ranges. The first soft-harm preview exposed two generic issues: excerpt
-renders initialized smooth routes at the excerpt boundary instead of replaying the prior global
-state, and the abstract orb/ribbon/particles had conspicuous hard edges. The renderer now pre-rolls
-route state from frame zero and uses soft glow, wave and particle textures. A real render regression
-compares a late smooth-route preview with the corresponding full-render frames and also produces A
-and B clips from the same timeline.
+Two external C-mode production projects use the reviewed S07 lyric artifacts, manual neutral
+sections and generated local backgrounds. Review iterations first corrected global route pre-roll
+and hard-edged abstract layers, then replaced the flat caption treatment with a deterministic 3D
+bulge shader, pearlescent lighting and restrained transparent entry/exit trails. The implementation
+adapts the MIT-licensed [Codrops bulge-text technique](https://github.com/romanjeanelie/bulge-text-effect-codrops)
+to the fixed sample clock. The user approved
+the thin artistic typography direction on 2026-09-17. English uses local Snell Roundhand; Chinese
+uses a local SIL OFL LXGW WenKai Light copy. macOS font preflight now falls back to `mdimport` when a
+valid local font is outside the Spotlight index.
 
-The repaired `preview-v2` reels and their manifests, probes, black scans, audio statistics, contact
-sheets and pending feedback records remain outside Git under `../projects/soft-harm/s10/` and
-`../projects/zhi-mai-yi-ren-fen/s10/`. Both reels are H.264 1920x1080 at 30 fps with exactly 1080
-frames and AAC 48 kHz stereo audio. The configured scan found no black interval; measured peaks are
--1.06 dBFS and -2.47 dBFS. Agent contact-sheet inspection found both material changes, captions and
-safe areas present; this is not user visual approval. The old soft-harm output is retained as
-`preview-v1-invalid-pre-roll` and excluded from review.
+Both 36-second approval reels are H.264 1920x1080 at 30 fps with exactly 1080 frames and AAC 48 kHz
+stereo audio. The configured scan found no black interval; measured peaks are -1.06 dBFS and -2.47
+dBFS. Their manifests, probes, black scans, audio statistics, contact sheets and approval records
+remain outside Git under `../projects/soft-harm/s10/` and
+`../projects/zhi-mai-yi-ren-fen/s10/`. Superseded flat, heavy and invalid-pre-roll versions remain
+evidence only.
+
+The Chinese final is 6611/6611 frames with a 6.500 ms endpoint delta, no detected black interval and
+a -2.36 dBFS peak. Its MP4 SHA-256 is
+`581051a3a344719b451b2113fca135c79ab392d00b722a9af366c0f06c0ea3ec`; its manifest SHA-256 is
+`b79a27b402d6cc36a1748fc9b9e4e59e547d653ff4de845df2a61e40089c4f47`. The English final is
+6833/6833 frames with a 5.688 ms endpoint delta, no detected black interval and a -0.64 dBFS peak.
+Its MP4 SHA-256 is `7b52ec92959017e4f935bfdec2ae9335ba5bae47f9306442b53cd4eedf147e51`;
+its manifest SHA-256 is `4615f044aa29a322295f5b299cefa53d06c92819e2155228d2f38b35ffd30bff`.
+Both are H.264 1920x1080 at 30 fps with AAC 48 kHz stereo audio. Contact-sheet inspection covered
+opening gaps, sparse and transition passages, bright climaxes, repeated lyric lines and tails; text
+remained legible and inside the safe area. The first parallel English attempt failed with an FFmpeg
+pipe `EPIPE` before installing output. After reinstalling pinned Playwright Chromium revision 1243
+and confirming renderer readiness, its retry completed with Node 24.15.0 and SwiftShader.
 
 An isolated source copy with environments, build output and caches excluded completed locked Python
 and Node installation, Playwright Chromium discovery, distribution build and the autonomous public
 demo. With analysis, alignment and model paths deliberately unavailable, its saved-artifact full
 rerender was byte-identical. Evidence is outside Git at
-`../projects/synthetic-s10-clean-install/`. The S10 release checklist is now explicit about protocol,
-package, production-media, rights and publication gates. `tests/stages/test_s10.py` passed in 32.54
-seconds; the complete suite passed 99 tests in 234.05 seconds. Full-song rendering and endpoint/tail
-QA remain deliberately pending until the user confirms these exact sample versions.
+`../projects/synthetic-s10-clean-install/`. Production inputs, lyrics, fonts and rendered media have
+not entered Git. Push, remote publication and distribution remain separate user-authorized actions.
 
 ## S09 production workflow complete — 2026-09-16
 
@@ -110,22 +121,22 @@ Commits: `8f1e4f6` (source contract/preflight), `77426ca` (decode/CLI/integratio
 
 Current commands: `mvt --help`, `--version`, `capabilities`, `doctor`, `decode`, `analyze`, `assets check`, `lyrics import`, `lyrics align`, `lyrics apply-edits`, `plan resolve`, `preview`, `render`, `validate`, `schema`. Single-artifact validation includes structure and local semantic invariants. Decode, analyze, asset/lyric checking, plan resolution, preview and render perform the project preflight they need. `can_render` is true for the S02 fixture plus S04–S09 A/B/C, saved-lyric, multi-range preview and public production-demo scope.
 
-Current analyzer: isolated locked librosa/audio-separator environment, explicit feature window/padding/normalization policy, real four-file verification and exact canonical sample alignment. Current renderer: integer clock, Playwright/Three.js WebGL host, bounded abstract/media layers, deterministic FFmpeg video-frame extraction, embedded checked fonts, line-level caption layout, PNG frame pipe and FFmpeg MP4 encoder. Repository JSON examples still contain synthetic hashes and absent media; they are protocol examples rather than render results.
+Current analyzer: isolated locked librosa/audio-separator environment, explicit feature window/padding/normalization policy, real four-file verification and exact canonical sample alignment. Current renderer: integer clock, Playwright/Three.js WebGL host, bounded abstract/media layers, deterministic FFmpeg video-frame extraction, embedded checked fonts, sample-clock lyric motion with a subdivided 3D bulge surface, PNG frame pipe and FFmpeg MP4 encoder. Repository JSON examples still contain synthetic hashes and absent media; they are protocol examples rather than render results.
 
 ## Verified
 
 - `uv sync --locked --group dev`: succeeded with Python 3.12.13.
-- `uv run --locked pytest -q`: **98 passed in 211.85s** (including actual browser/FFmpeg production rehearsals through S09).
+- `uv run --locked pytest -q`: **100 passed in 242.07s** (including actual browser/FFmpeg production rehearsals through S10).
 - `uv run --locked pytest tests/stages/test_s01.py -q`: **12 passed** with real FFmpeg/ffprobe 8.1. A generated 11,025-frame mono 44.1kHz WAV was encoded to MP3, decoded from a different cwd through Chinese/space-bearing paths, and verified as 48kHz stereo 24-bit PCM with its actual decoded frame count. Cache reuse, different-input conflict, missing tools, corrupt input, partial output and cleanup paths passed.
 - `uv run --locked ruff check .` and `ruff format --check .`: passed.
 - `uv run --locked python scripts/export_schemas.py --check`: twelve schemas match models; tests also validate JSON Schema structure and examples.
 - `pnpm --dir renderer install --frozen-lockfile`: passed.
-- `pnpm --dir renderer check`: TypeScript build plus **20 tests passed**; also explicitly verified with Node 24.15.0 on PATH.
+- `pnpm --dir renderer check`: TypeScript build plus **21 tests passed**; also explicitly verified with Node 24.15.0 on PATH.
 - `pnpm --dir renderer install --frozen-lockfile` and `pnpm --dir renderer exec playwright install chromium`: Playwright 1.63.0 / Chromium revision 1243 installed; browser version 153.0.8010.12.
 - `uv run --locked pytest tests/stages/test_s02.py -q`: **2 passed** with actual Chromium and FFmpeg; no browser skip.
 - `uv sync --project environments/separation --locked`: Python 3.12 environment resolved with audio-separator 0.44.2, librosa 0.10.2.post1, torch 2.14.0 and ONNX Runtime 1.30.0. `audio-separator --env_info` selected MPS/CoreML.
 - `uv run --locked pytest tests/stages/test_s03.py -q`: **6 passed**. Synthetic four-track tests cover canonical timing, final-window padding, silence, required signals/events, explicit pad/trim records, cache reuse and false-success rejection.
-- `uv run --locked pytest tests/stages/test_s05.py -q`: **8 passed**. Asset identity/type/cache failures, bounded media policies, exact numbered video frames, section crossfade, A/B/C encoding and media-audio exclusion passed.
+- `uv run --locked pytest tests/stages/test_s05.py -q`: **9 passed**. Asset identity/type/cache failures, bounded media policies, exact numbered video frames, section crossfade, A/B/C encoding, media-audio exclusion and valid unindexed macOS font fallback passed.
 - `uv run --locked pytest tests/stages/test_s06.py -q`: **6 passed**. LRC/SRT semantics, CLI output, edit preservation, off mode, cross-file identity and a real 75-frame bilingual caption render passed.
 - `uv run --locked pytest tests/stages/test_s07.py -q`: **5 passed**. Known-text mapping, repeated lyrics, unmatched lines, fixed reference metrics, complete edit application, cache/conflict handling, missing runtime and CLI output passed.
 - `uv run --locked pytest tests/stages/test_s08.py -q`: **5 passed in 29.26s**. Actual full/excerpt rendering, global frame equivalence, start-audio alignment, independent reproduction, cache reuse and stale/missing-output rejection passed.
@@ -135,7 +146,7 @@ Current analyzer: isolated locked librosa/audio-separator environment, explicit 
 - skill-creator `quick_validate.py`: passed using PyYAML in the project environment. Markdown local links checked.
 - Two external song audio hashes match their supplied metadata; actual ffprobe container durations are in the external case records.
 
-Model installation/inference, browser/WebGL rendering, external media composition, imported/automatic/edited lyrics, video export, saved-artifact preview reproduction and both production review modes have now been exercised on the stated bounded S02–S09 paths. Human stem listening QA and two-song lyric timing review were accepted. Independent Skill behavioral forward-testing, two-song visual approval and public release remain open. Automated and objective checks do not establish subjective visual or song quality.
+Model installation/inference, browser/WebGL rendering, external media composition, imported/automatic/edited lyrics, video export, saved-artifact preview reproduction and both production review modes have now been exercised on the stated bounded S02–S10 paths. Human stem listening QA, two-song lyric timing review and the final typography direction were accepted. Full-song objective media QA passed. Public release remains open and requires separate authorization.
 
 ## Future slices
 
@@ -150,12 +161,12 @@ Model installation/inference, browser/WebGL rendering, external media compositio
 | S07 automatic alignment | Complete — commit containing this handoff |
 | S08 samples/reproduction | Complete — commit containing this handoff |
 | S09 production workflow | Complete — commit containing this handoff |
-| S10 songs/release readiness | In progress — repaired samples await user visual confirmation |
+| S10 songs/release readiness | Complete — final full-song renders and objective QA recorded |
 
 ## Exact next action
 
-Review the two S10 `preview-v2/review-reel.mp4` files. If the user accepts those exact hashed
-samples, record the decision, render both full songs, run endpoint/media/tail QA and close S10.
+No implementation slice remains. The next optional action is user viewing or separately authorized
+publication of the two local final MP4 files; neither is required to validate the repository.
 
 On the original host the parent workspace has `projects/README.md`, `projects/soft-harm/case.json` and
 `projects/zhi-mai-yi-ren-fen/case.json`. These are local source inventories, not runtime schemas.

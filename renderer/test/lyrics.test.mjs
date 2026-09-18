@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {activeCueAtSample, firstFrameAtSample, lyricOpacity} from "../dist/index.js";
+import {
+  activeCueAtSample,
+  firstFrameAtSample,
+  lyricMotionAtSample,
+  lyricOpacity,
+} from "../dist/index.js";
 
 const cues = [
   {start_sample: 1, end_sample: 1600, text: "第一行\nFirst line"},
@@ -20,4 +25,26 @@ test("cue onset quantizes forward and fade remains visible at its first sample",
   assert.ok(lyricOpacity(cues[0], 1, 480) > 0);
   assert.equal(lyricOpacity(cues[0], 1600, 480), 0);
   assert.equal(lyricOpacity(cues[1], 7000, 480), 1);
+});
+
+test("lyric bulge and trail motion is a pure function of global sample time", () => {
+  const cue = cues[1];
+  const onset = lyricMotionAtSample(cue, cue.start_sample);
+  const middle = lyricMotionAtSample(cue, (cue.start_sample + cue.end_sample) / 2);
+  const nearEnd = lyricMotionAtSample(cue, cue.end_sample - 1);
+
+  assert.equal(onset.trail, 1);
+  assert.ok(onset.scale < 1);
+  assert.ok(middle.bulgeStrength > onset.bulgeStrength);
+  assert.ok(middle.bulgeCenterX > onset.bulgeCenterX);
+  assert.equal(middle.trail, 0);
+  assert.ok(nearEnd.trail > 0.99);
+  assert.deepEqual(lyricMotionAtSample(cue, cue.start_sample - 1), {
+    progress: 0,
+    bulgeCenterX: 0.24,
+    bulgeStrength: 0,
+    trail: 0,
+    lift: 0,
+    scale: 1,
+  });
 });

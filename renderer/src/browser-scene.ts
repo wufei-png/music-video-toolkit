@@ -1,5 +1,10 @@
 import * as THREE from "three";
-import {activeCueAtSample, lyricOpacity, type LyricCue} from "./lyrics.js";
+import {
+  activeCueAtSample,
+  lyricMotionAtSample,
+  lyricOpacity,
+  type LyricCue,
+} from "./lyrics.js";
 import {
   sampleSignal,
   smoothValue,
@@ -92,6 +97,16 @@ interface MediaObject {
   previousUrl?: string;
 }
 
+interface LyricMesh {
+  readonly mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>;
+  readonly material: THREE.ShaderMaterial;
+}
+
+interface LyricObject {
+  readonly main: LyricMesh;
+  readonly trails: readonly LyricMesh[];
+}
+
 let renderer: THREE.WebGLRenderer;
 let scene: THREE.Scene;
 let camera: THREE.Camera;
@@ -101,8 +116,9 @@ let imageReady = false;
 let glyphInkPixels = 0;
 let abstractReady = false;
 let lyricsReady = false;
-let caption: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial> | undefined;
+let caption: LyricObject | undefined;
 let captionCue = -1;
+let captionMap: THREE.CanvasTexture | undefined;
 const abstractObjects = new Map<string, AbstractObject>();
 const mediaObjects = new Map<string, MediaObject>();
 const smoothedRoutes = new Map<number, number>();
@@ -157,34 +173,29 @@ function wrapCharacters(
 
 function captionTexture(text: string): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
-  canvas.width = 1600;
-  canvas.height = 420;
+  canvas.width = 2048;
+  canvas.height = 512;
   const context = canvas.getContext("2d", {willReadFrequently: true});
   if (context === null) throw new Error("2D canvas is unavailable");
-  let fontSize = 76;
+  let fontSize = 114;
   let lines: string[] = [];
-  while (fontSize >= 24) {
-    context.font = `700 ${fontSize}px "MVT Subtitle"`;
-    lines = text.split("\n").flatMap((line) => wrapCharacters(context, line, 1460));
-    if (lines.length <= 5) break;
-    fontSize -= 4;
+  while (fontSize >= 38) {
+    context.font = `${fontSize}px "MVT Subtitle"`;
+    lines = text.split("\n").flatMap((line) => wrapCharacters(context, line, 1860));
+    if (lines.length <= 3) break;
+    fontSize -= 6;
   }
   context.clearRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = "rgba(0, 0, 0, 0.58)";
-  context.beginPath();
-  context.roundRect(24, 24, canvas.width - 48, canvas.height - 48, 34);
-  context.fill();
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.font = `700 ${fontSize}px "MVT Subtitle"`;
+  context.font = `${fontSize}px "MVT Subtitle"`;
   context.lineJoin = "round";
-  context.lineWidth = Math.max(3, fontSize * 0.09);
-  const lineHeight = fontSize * 1.2;
+  context.shadowColor = "rgba(205, 235, 255, 0.42)";
+  context.shadowBlur = Math.max(8, fontSize * 0.1);
+  const lineHeight = fontSize * 1.18;
   const firstY = canvas.height / 2 - ((lines.length - 1) * lineHeight) / 2;
   lines.forEach((line, index) => {
     const y = firstY + index * lineHeight;
-    context.strokeStyle = "rgba(0, 0, 0, 0.9)";
-    context.strokeText(line, canvas.width / 2, y);
     context.fillStyle = "white";
     context.fillText(line, canvas.width / 2, y);
   });
@@ -199,6 +210,96 @@ function captionTexture(text: string): THREE.CanvasTexture {
   return texture;
 }
 
+// Fixed-frame adaptation of the MIT-licensed Codrops bulge-text technique:
+// https://github.com/romanjeanelie/bulge-text-effect-codrops
+const lyricVertexShader = `
+uniform float uBulgeStrength;
+uniform vec2 uBulgeCenter;
+uniform float uBulgeRadius;
+varying vec2 vUv;
+varying vec3 vViewNormal;
+varying vec3 vViewPosition;
+
+float bulgeHeight(vec2 point) {
+  vec2 delta = (point - uBulgeCenter) * vec2(1.0, 0.78);
+  float normalizedDistance = length(delta) / uBulgeRadius;
+  float dome = max(0.0, 1.0 - normalizedDistance * normalizedDistance);
+  return dome * dome * uBulgeStrength;
+}
+
+void main() {
+  float height = bulgeHeight(uv);
+  float epsilon = 1.0 / 256.0;
+  float slopeX = bulgeHeight(uv + vec2(epsilon, 0.0)) - bulgeHeight(uv - vec2(epsilon, 0.0));
+  float slopeY = bulgeHeight(uv + vec2(0.0, epsilon)) - bulgeHeight(uv - vec2(0.0, epsilon));
+  vec3 curvedNormal = normalize(vec3(
+    -slopeX / (2.0 * epsilon * 1.82),
+    -slopeY / (2.0 * epsilon * 0.52),
+    1.0
+  ));
+  vec3 displaced = position + vec3(0.0, 0.0, height);
+  vec4 viewPosition = modelViewMatrix * vec4(displaced, 1.0);
+  vUv = uv;
+  vViewNormal = normalize(normalMatrix * curvedNormal);
+  vViewPosition = viewPosition.xyz;
+  gl_Position = projectionMatrix * viewPosition;
+}
+`;
+
+const lyricFragmentShader = `
+uniform sampler2D uTexture;
+uniform float uOpacity;
+uniform vec3 uTint;
+uniform float uTrailMix;
+varying vec2 vUv;
+varying vec3 vViewNormal;
+varying vec3 vViewPosition;
+
+void main() {
+  vec4 glyph = texture2D(uTexture, vUv);
+  if (glyph.a < 0.01) discard;
+  vec3 normal = normalize(vViewNormal);
+  vec3 viewDirection = normalize(-vViewPosition);
+  vec3 lightDirection = normalize(vec3(-0.45, 0.72, 1.0));
+  vec3 halfDirection = normalize(lightDirection + viewDirection);
+  float diffuse = max(dot(normal, lightDirection), 0.0);
+  float specular = pow(max(dot(normal, halfDirection), 0.0), 34.0);
+  float fresnel = pow(1.0 - max(dot(normal, viewDirection), 0.0), 2.4);
+  float pearlMix = smoothstep(0.05, 0.95, vUv.x + vUv.y * 0.22);
+  vec3 coolPearl = vec3(0.56, 0.82, 1.0);
+  vec3 warmPearl = vec3(1.0, 0.84, 0.72);
+  vec3 pearl = mix(coolPearl, warmPearl, pearlMix);
+  vec3 surface = pearl * (0.38 + diffuse * 0.72);
+  surface += vec3(1.0, 0.96, 0.88) * specular * 1.25;
+  surface += vec3(0.18, 0.56, 1.0) * fresnel * 0.52;
+  surface = mix(surface, uTint, uTrailMix);
+  gl_FragColor = vec4(surface, glyph.a * uOpacity);
+}
+`;
+
+function createLyricMesh(tint: number, trailMix: number): LyricMesh {
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      uTexture: {value: null},
+      uOpacity: {value: 0},
+      uBulgeStrength: {value: 0.15},
+      uBulgeCenter: {value: new THREE.Vector2(0.24, 0.5)},
+      uBulgeRadius: {value: 0.43},
+      uTint: {value: new THREE.Color(tint)},
+      uTrailMix: {value: trailMix},
+    },
+    vertexShader: lyricVertexShader,
+    fragmentShader: lyricFragmentShader,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  if (trailMix > 0) material.blending = THREE.AdditiveBlending;
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1.82, 0.52, 192, 48), material);
+  mesh.visible = false;
+  return {mesh, material};
+}
+
 async function initializeLyrics(lyrics: LyricsConfig | undefined): Promise<void> {
   if (lyrics === undefined) {
     lyricsReady = true;
@@ -208,13 +309,13 @@ async function initializeLyrics(lyrics: LyricsConfig | undefined): Promise<void>
   await font.load();
   document.fonts.add(font);
   await document.fonts.ready;
-  caption = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.76, 0.44),
-    new THREE.MeshBasicMaterial({transparent: true, opacity: 0, depthWrite: false}),
-  );
-  caption.position.set(0, -0.65, 0.42);
-  caption.visible = false;
-  scene.add(caption);
+  const main = createLyricMesh(0xffffff, 0);
+  const trails = [createLyricMesh(0x73cfff, 0.82), createLyricMesh(0xffa9d5, 0.88)];
+  caption = {main, trails};
+  for (const target of [...trails, main]) {
+    target.mesh.position.set(0, -0.56, 0.42);
+    scene.add(target.mesh);
+  }
   lyricsReady = true;
 }
 
@@ -222,20 +323,56 @@ function configureLyrics(sample: number, lyrics: LyricsConfig | undefined): void
   if (lyrics === undefined || caption === undefined) return;
   const cueIndex = activeCueAtSample(lyrics.cues, sample);
   if (cueIndex < 0) {
-    caption.visible = false;
+    caption.main.mesh.visible = false;
+    caption.trails.forEach((target) => (target.mesh.visible = false));
     captionCue = -1;
     return;
   }
   const cue = lyrics.cues[cueIndex];
   if (cue === undefined) throw new Error("lyric cue index is invalid");
-  caption.visible = true;
+  caption.main.mesh.visible = true;
   if (cueIndex !== captionCue) {
-    caption.material.map?.dispose();
-    caption.material.map = captionTexture(cue.text);
-    caption.material.needsUpdate = true;
+    captionMap?.dispose();
+    captionMap = captionTexture(cue.text);
+    for (const target of [caption.main, ...caption.trails]) {
+      target.material.uniforms.uTexture!.value = captionMap;
+    }
     captionCue = cueIndex;
   }
-  caption.material.opacity = lyricOpacity(cue, sample, lyrics.fadeSamples);
+  const opacity = lyricOpacity(cue, sample, lyrics.fadeSamples);
+  const motion = lyricMotionAtSample(cue, sample);
+  const centerY = 0.5 + Math.sin(motion.progress * Math.PI * 2) * 0.035;
+  caption.main.material.uniforms.uOpacity!.value = opacity;
+  caption.main.material.uniforms.uBulgeStrength!.value = motion.bulgeStrength;
+  caption.main.material.uniforms.uBulgeCenter!.value.set(motion.bulgeCenterX, centerY);
+  caption.main.mesh.position.set(0, -0.56 + motion.lift, 0.42);
+  caption.main.mesh.scale.setScalar(motion.scale);
+  caption.main.mesh.rotation.set(
+    -0.055 + Math.sin(motion.progress * Math.PI) * 0.026,
+    (motion.bulgeCenterX - 0.5) * 0.12,
+    0,
+  );
+
+  const exitDirection = motion.progress < 0.5 ? -1 : 1;
+  const mainRotation = caption.main.mesh.rotation;
+  caption.trails.forEach((target, index) => {
+    const distance = index + 1;
+    const trailOpacity = opacity * motion.trail * (0.16 / distance);
+    target.mesh.visible = trailOpacity > 0.003;
+    target.material.uniforms.uOpacity!.value = trailOpacity;
+    target.material.uniforms.uBulgeStrength!.value = motion.bulgeStrength * (1 - 0.12 * distance);
+    target.material.uniforms.uBulgeCenter!.value.set(
+      motion.bulgeCenterX - exitDirection * 0.025 * distance,
+      centerY,
+    );
+    target.mesh.position.set(
+      -exitDirection * 0.018 * distance,
+      -0.56 + motion.lift - 0.012 * distance,
+      0.4 - 0.015 * distance,
+    );
+    target.mesh.scale.setScalar(motion.scale * (1 - 0.008 * distance));
+    target.mesh.rotation.copy(mainRotation);
+  });
 }
 
 function random(seed: number): () => number {

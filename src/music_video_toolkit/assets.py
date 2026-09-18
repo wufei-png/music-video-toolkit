@@ -135,15 +135,51 @@ def _probe_font(path: Path, asset_id: str, digest: str) -> AssetProbe:
     mdls = shutil.which("mdls")
     if mdls is None:
         raise AssetError("missing_dependency", {"tool": "mdls"}, 3)
-    result = _run([mdls, "-raw", "-name", "kMDItemFonts", str(path)], "font_probe_failed")
+    result = subprocess.run(
+        [mdls, "-raw", "-name", "kMDItemFonts", str(path)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
     output = result.stdout.strip()
-    if output in {"", "(null)"}:
-        raise AssetError("asset_type_mismatch", {"id": asset_id, "expected": "font"})
-    families = [
-        line.strip().strip('",')
-        for line in output.strip("()\n ").splitlines()
-        if line.strip().strip('",')
-    ]
+    families = (
+        [
+            line.strip().strip('",')
+            for line in output.strip("()\n ").splitlines()
+            if line.strip().strip('",')
+        ]
+        if result.returncode == 0 and output not in {"", "(null)"}
+        else []
+    )
+    if not families:
+        mdimport = shutil.which("mdimport")
+        plutil = shutil.which("plutil")
+        if mdimport is None or plutil is None:
+            raise AssetError("missing_dependency", {"tool": "mdimport/plutil"}, 3)
+        descriptor, metadata_name = tempfile.mkstemp(prefix="mvt-font-metadata-", suffix=".plist")
+        os.close(descriptor)
+        metadata = Path(metadata_name)
+        try:
+            imported = subprocess.run(
+                [mdimport, "-t", "-o", str(metadata), str(path)],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            extracted = subprocess.run(
+                [plutil, "-extract", "kMDItemFonts", "json", "-o", "-", str(metadata)],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            if imported.returncode == 0 and extracted.returncode == 0:
+                decoded = json.loads(extracted.stdout)
+                if isinstance(decoded, list):
+                    families = [str(item) for item in decoded if str(item).strip()]
+        except (OSError, json.JSONDecodeError):
+            families = []
+        finally:
+            metadata.unlink(missing_ok=True)
     if not families:
         raise AssetError("font_probe_failed", {"id": asset_id, "path": str(path)})
     return AssetProbe(

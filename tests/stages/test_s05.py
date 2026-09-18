@@ -1,5 +1,6 @@
 import hashlib
 import json
+import platform
 import shutil
 import struct
 import subprocess
@@ -272,6 +273,39 @@ def test_asset_preflight_checks_image_video_font_and_cache_identity(tmp_path):
     assert changed_output == output
     assert changed_cached is False
     assert changed.cache_key != first_key
+
+
+@pytest.mark.skipif(
+    platform.system() != "Darwin"
+    or not all(shutil.which(name) for name in ("mdls", "mdimport", "plutil")),
+    reason="macOS font metadata tools required",
+)
+def test_font_preflight_accepts_valid_font_outside_spotlight_index(tmp_path):
+    source = Path("/System/Library/Fonts/SFNSMono.ttf")
+    font = tmp_path / "local-font.ttf"
+    shutil.copyfile(source, font)
+    manifest = tmp_path / "assets.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": "0.1",
+                "assets": [
+                    {
+                        "id": "local-font",
+                        "path": font.name,
+                        "type": "font",
+                        "sha256": sha256(font),
+                        "origin": "synthetic",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    checked, _, _ = check_assets(tmp_path, manifest)
+
+    assert checked.assets[0].font_families
 
 
 @pytest.mark.parametrize(

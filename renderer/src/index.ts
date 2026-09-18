@@ -5,5 +5,5 @@ export { sampleSignal, targetValue, smoothValue } from "./routing.js";
 export type { SignalSeries, ResolvedTransform } from "./routing.js";
 export { videoFrameAtSample } from "./media.js";
 export type { VideoClock, VideoPolicy } from "./media.js";
-export { activeCueAtSample, lyricOpacity } from "./lyrics.js";
-export type { LyricCue } from "./lyrics.js";
+export { activeCueAtSample, lyricMotionAtSample, lyricOpacity } from "./lyrics.js";
+export type { LyricCue, LyricMotion } from "./lyrics.js";
