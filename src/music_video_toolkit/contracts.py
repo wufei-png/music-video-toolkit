@@ -276,6 +276,29 @@ class Structure(Artifact):
         return self
 
 
+class StructureSelectionSection(SampleRange):
+    id: Name
+    label: Text | None = None
+    start_boundary_id: Name | None = None
+    end_boundary_id: Name | None = None
+
+
+class StructureSelection(Artifact):
+    reviewed: Literal[True]
+    structure: FileRef
+    timeline: FileRef
+    existing_sections_policy: Literal["require-empty", "replace"]
+    sections: Annotated[list[StructureSelectionSection], Field(min_length=1)]
+
+    @model_validator(mode="after")
+    def coherent_selection(self) -> Self:
+        unique([section.id for section in self.sections], "selected section id")
+        ordered_ranges(self.sections)
+        if any(left.end_sample != right.start_sample for left, right in pairwise(self.sections)):
+            raise ValueError("selected sections must be contiguous")
+        return self
+
+
 class LandscapeOutputProfile(Contract):
     width: Literal[1920] = 1920
     height: Literal[1080] = 1080
@@ -798,6 +821,7 @@ CONTRACTS: dict[str, type[Artifact]] = {
     "analysis": AnalysisRun,
     "timeline": Timeline,
     "structure": Structure,
+    "structure-selection": StructureSelection,
     "plan": VisualPlan,
     "resolved-plan": ResolvedPlan,
     "assets": AssetManifest,

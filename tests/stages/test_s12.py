@@ -8,7 +8,8 @@ import pytest
 
 from music_video_toolkit.cli import main
 from music_video_toolkit.contracts import Structure
-from music_video_toolkit.structure import StructureError, analyze_structure
+from music_video_toolkit.plan import resolve_plan
+from music_video_toolkit.structure import StructureError, analyze_structure, apply_structure
 
 PITCHES = ("c", "c_sharp", "d", "d_sharp", "e", "f", "f_sharp", "g", "g_sharp", "a", "a_sharp", "b")
 
@@ -51,7 +52,13 @@ def source_project(tmp_path: Path, cells: int = 16) -> Path:
     return project
 
 
-def write_timeline(project: Path, *, silence: bool = False, sparse_beats: bool = False) -> Path:
+def write_timeline(
+    project: Path,
+    *,
+    silence: bool = False,
+    sparse_beats: bool = False,
+    existing_sections: bool = False,
+) -> Path:
     cells = 16
     repeated_pitches = [0, 2, 4, 5, 7, 9, 11, 7, 0, 2, 4, 5, 1, 3, 6, 10]
     energy = [0.4, 0.6, 0.5, 0.7, 0.3, 0.8, 0.2, 0.6] * 2
@@ -90,10 +97,58 @@ def write_timeline(project: Path, *, silence: bool = False, sparse_beats: bool =
             {"name": "beat", "source": "mix", "sample": index * 48_000, "confidence": 1.0}
             for index in beat_indexes
         ],
-        "sections": [],
+        "sections": (
+            [
+                {
+                    "id": "reviewed-base",
+                    "label": "Existing review",
+                    "start_sample": 0,
+                    "end_sample": cells * 48_000,
+                    "origin": "manual",
+                }
+            ]
+            if existing_sections
+            else []
+        ),
     }
     path = project / "timeline.json"
     path.write_text(json.dumps(timeline), encoding="utf-8")
+    return path
+
+
+def write_selection(
+    project: Path,
+    structure: Structure,
+    *,
+    policy: str = "require-empty",
+    adjusted: bool = False,
+) -> Path:
+    candidate = structure.boundaries[0]
+    sample = candidate.sample + (1600 if adjusted else 0)
+    selection = {
+        "schema_version": "0.1",
+        "reviewed": True,
+        "structure": {"path": "structure.json", "sha256": sha256(project / "structure.json")},
+        "timeline": {"path": "timeline.json", "sha256": sha256(project / "timeline.json")},
+        "existing_sections_policy": policy,
+        "sections": [
+            {
+                "id": "selected-001",
+                "start_sample": 0,
+                "end_sample": sample,
+                "end_boundary_id": candidate.id,
+            },
+            {
+                "id": "selected-002",
+                "label": "Reviewed label" if adjusted else None,
+                "start_sample": sample,
+                "end_sample": structure.source.duration_samples,
+                "start_boundary_id": candidate.id,
+            },
+        ],
+    }
+    path = project / "structure-selection.json"
+    path.write_text(json.dumps(selection), encoding="utf-8")
     return path
 
 
@@ -160,3 +215,98 @@ def test_structure_analyze_rejects_tampered_cache_inputs(tmp_path, tamper):
         analyze_structure(project)
 
     assert caught.value.code == "structure_output_conflict"
+
+
+@pytest.mark.skipif(not shutil.which("uv"), reason="locked librosa runtime requires uv")
+def test_structure_apply_writes_reusable_enriched_timeline_and_resolves_plan(tmp_path, capsys):
+    project = source_project(tmp_path)
+    base_timeline = write_timeline(project)
+    structure = analyze_structure(project).structure
+    selection = write_selection(project, structure)
+    output = project / "timeline.enriched.json"
+    before = base_timeline.read_bytes()
+
+    assert (
+        main(
+            [
+                "structure",
+                "apply",
+                "--project",
+                str(project),
+                "--selection",
+                str(selection),
+                "--output",
+                str(output),
+            ]
+        )
+        == 0
+    )
+    assert json.loads(capsys.readouterr().out)["cached"] is False
+    assert base_timeline.read_bytes() == before
+    result = apply_structure(project, selection, output)
+    assert result.cached is True
+    assert [section.origin for section in result.timeline.sections] == ["automatic", "automatic"]
+    assert result.timeline.analysis[-1].tool == "music-video-toolkit.structure.apply"
+
+    (project / "assets.json").write_text(
+        json.dumps({"schema_version": "0.1", "assets": []}), encoding="utf-8"
+    )
+    plan = project / "plan.json"
+    plan.write_text(
+        json.dumps(
+            {
+                "schema_version": "0.1",
+                "timeline_path": "timeline.enriched.json",
+                "assets_path": "assets.json",
+                "mode": "abstract",
+                "seed": 12,
+                "layers": [{"id": "orb", "kind": "orb", "category": "abstract"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    resolved, _ = resolve_plan(project, plan, project / "plans/resolved.json")
+    assert [span.section_id for span in resolved.spans] == ["selected-001", "selected-002"]
+
+    changed = json.loads(output.read_text())
+    changed["sections"][0]["id"] = "tampered"
+    output.write_text(json.dumps(changed), encoding="utf-8")
+    with pytest.raises(StructureError) as caught:
+        apply_structure(project, selection, output)
+    assert caught.value.code == "structure_output_conflict"
+
+
+@pytest.mark.skipif(not shutil.which("uv"), reason="locked librosa runtime requires uv")
+def test_structure_apply_marks_adjustments_manual_and_rejects_base_alias(tmp_path):
+    project = source_project(tmp_path)
+    timeline = write_timeline(project)
+    structure = analyze_structure(project).structure
+    selection = write_selection(project, structure, adjusted=True)
+
+    result = apply_structure(project, selection, project / "timeline.adjusted.json")
+    assert [section.origin for section in result.timeline.sections] == ["manual", "manual"]
+    assert all(section.confidence is None for section in result.timeline.sections)
+
+    with pytest.raises(StructureError) as caught:
+        apply_structure(project, selection, timeline)
+    assert caught.value.code == "structure_output_alias"
+
+
+@pytest.mark.skipif(not shutil.which("uv"), reason="locked librosa runtime requires uv")
+def test_structure_apply_requires_explicit_replacement_for_existing_sections(tmp_path):
+    project = source_project(tmp_path)
+    timeline = write_timeline(project, existing_sections=True)
+    before = timeline.read_bytes()
+    structure = analyze_structure(project).structure
+    selection = write_selection(project, structure, policy="require-empty")
+
+    with pytest.raises(StructureError) as caught:
+        apply_structure(project, selection, project / "rejected.json")
+    assert caught.value.code == "structure_existing_sections"
+
+    document = json.loads(selection.read_text())
+    document["existing_sections_policy"] = "replace"
+    selection.write_text(json.dumps(document), encoding="utf-8")
+    result = apply_structure(project, selection, project / "replaced.json")
+    assert result.timeline.sections[0].id == "selected-001"
+    assert timeline.read_bytes() == before

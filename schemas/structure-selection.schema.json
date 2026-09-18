@@ -1,0 +1,141 @@
+{
+  "$defs": {
+    "FileRef": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "title": "FileRef",
+      "type": "object"
+    },
+    "StructureSelectionSection": {
+      "additionalProperties": false,
+      "properties": {
+        "start_sample": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Start Sample",
+          "type": "integer"
+        },
+        "end_sample": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "End Sample",
+          "type": "integer"
+        },
+        "id": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "start_boundary_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^[a-zA-Z0-9_.-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Boundary Id"
+        },
+        "end_boundary_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^[a-zA-Z0-9_.-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Boundary Id"
+        }
+      },
+      "required": [
+        "start_sample",
+        "end_sample",
+        "id"
+      ],
+      "title": "StructureSelectionSection",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "0.1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "reviewed": {
+      "const": true,
+      "title": "Reviewed",
+      "type": "boolean"
+    },
+    "structure": {
+      "$ref": "#/$defs/FileRef"
+    },
+    "timeline": {
+      "$ref": "#/$defs/FileRef"
+    },
+    "existing_sections_policy": {
+      "enum": [
+        "require-empty",
+        "replace"
+      ],
+      "title": "Existing Sections Policy",
+      "type": "string"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/StructureSelectionSection"
+      },
+      "minItems": 1,
+      "title": "Sections",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "reviewed",
+    "structure",
+    "timeline",
+    "existing_sections_policy",
+    "sections"
+  ],
+  "title": "StructureSelection",
+  "type": "object"
+}

@@ -1,0 +1,34 @@
+{
+  "schema_version": "0.1",
+  "reviewed": true,
+  "structure": {
+    "path": "structure.json",
+    "sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "timeline": {
+    "path": "timeline.json",
+    "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "existing_sections_policy": "require-empty",
+  "sections": [
+    {
+      "id": "structure-001",
+      "start_sample": 0,
+      "end_sample": 192000,
+      "end_boundary_id": "boundary-001"
+    },
+    {
+      "id": "structure-002",
+      "start_sample": 192000,
+      "end_sample": 240000,
+      "start_boundary_id": "boundary-001",
+      "end_boundary_id": "boundary-002"
+    },
+    {
+      "id": "structure-003",
+      "start_sample": 240000,
+      "end_sample": 480000,
+      "start_boundary_id": "boundary-002"
+    }
+  ]
+}

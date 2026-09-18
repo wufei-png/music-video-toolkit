@@ -22,7 +22,7 @@ from .lyrics import LyricsError, import_lyrics
 from .plan import PlanError, resolve_plan
 from .preview import PreviewError, render_preview
 from .render import RenderError, render_minimal, renderer_doctor
-from .structure import StructureError, analyze_structure
+from .structure import StructureError, analyze_structure, apply_structure
 
 AVAILABLE = [
     "capabilities",
@@ -72,6 +72,12 @@ def main(argv: list[str] | None = None) -> int:
     structure_analyze.add_argument("--project", type=Path, required=True)
     structure_analyze.add_argument("--timeline", type=Path)
     structure_analyze.add_argument("--output", type=Path)
+    structure_apply = structure_commands.add_parser(
+        "apply", help="Write a separate enriched timeline from a reviewed selection"
+    )
+    structure_apply.add_argument("--project", type=Path, required=True)
+    structure_apply.add_argument("--selection", type=Path, required=True)
+    structure_apply.add_argument("--output", type=Path, required=True)
     plan = commands.add_parser("plan", help="Resolve bounded visual plans")
     plan_commands = plan.add_subparsers(dest="plan_command", required=True)
     resolve = plan_commands.add_parser("resolve", help="Resolve sections and layer parameters")
@@ -244,6 +250,13 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "structure" and args.structure_command == "analyze":
         try:
             result = analyze_structure(args.project, args.timeline, args.output)
+        except StructureError as exc:
+            emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
+            return exc.exit_code
+        emit(result.summary())
+    elif args.command == "structure" and args.structure_command == "apply":
+        try:
+            result = apply_structure(args.project, args.selection, args.output)
         except StructureError as exc:
             emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
             return exc.exit_code

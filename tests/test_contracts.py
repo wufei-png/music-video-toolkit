@@ -20,6 +20,7 @@ def document(name):
     [
         ("timeline", "timeline.json"),
         ("structure", "structure.json"),
+        ("structure-selection", "structure-selection.json"),
         ("assets", "assets.json"),
         ("lyrics", "lyrics.json"),
         ("preview", "preview.json"),
@@ -80,6 +81,21 @@ def test_structure_rejects_incoherent_evidence(mutate):
     mutate(data)
     with pytest.raises(ValidationError):
         CONTRACTS["structure"].model_validate(data)
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda d: d.update(reviewed=False),
+        lambda d: d["sections"][1].update(start_sample=192001),
+        lambda d: d.update(existing_sections_policy="implicit"),
+    ],
+)
+def test_structure_selection_requires_review_and_explicit_policy(mutate):
+    data = document("structure-selection.json")
+    mutate(data)
+    with pytest.raises(ValidationError):
+        CONTRACTS["structure-selection"].model_validate(data)
 
 
 @pytest.mark.parametrize(

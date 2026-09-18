@@ -13,7 +13,15 @@ from pydantic import ValidationError
 
 from . import __version__
 from .analysis import AnalysisError, _dependency, _run, _runtime_project
-from .contracts import FileRef, Provenance, Source, Structure, Timeline
+from .contracts import (
+    FileRef,
+    Provenance,
+    Section,
+    Source,
+    Structure,
+    StructureSelection,
+    Timeline,
+)
 from .documents import read_document
 from .project import ProjectPreflightError, preflight_source, resolve_record_path, sha256_file
 
@@ -63,6 +71,24 @@ class StructureResult:
         }
 
 
+@dataclass(frozen=True)
+class StructureApplyResult:
+    timeline: Timeline
+    output_path: Path
+    cached: bool
+
+    def summary(self) -> dict[str, object]:
+        return {
+            "ok": True,
+            "cached": self.cached,
+            "output": str(self.output_path),
+            "sections": len(self.timeline.sections),
+            "manual_sections": sum(
+                section.origin == "manual" for section in self.timeline.sections
+            ),
+        }
+
+
 def _json_hash(value: object) -> str:
     encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
     return hashlib.sha256(encoded).hexdigest()
@@ -78,6 +104,20 @@ def _load_timeline(path: Path) -> Timeline:
             else str(exc)
         )
         raise StructureError("invalid_structure_input", details, 4) from exc
+
+
+def _load(model, path: Path, label: str):
+    try:
+        return model.model_validate(read_document(path))
+    except (OSError, UnicodeError, ValueError, ValidationError) as exc:
+        details = (
+            exc.errors(include_url=False, include_context=False, include_input=False)
+            if isinstance(exc, ValidationError)
+            else str(exc)
+        )
+        raise StructureError(
+            "invalid_structure_input", {"artifact": label, "details": details}, 4
+        ) from exc
 
 
 def _identity(runtime: Path, timeline_path: Path) -> tuple[str, dict[str, str]]:
@@ -123,7 +163,7 @@ def _validated_cache(
         return None
 
 
-def _write(path: Path, structure: Structure) -> None:
+def _write(path: Path, structure: Structure | Timeline) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}-")
     temporary = Path(name)
@@ -254,3 +294,154 @@ def analyze_structure(
         raise StructureError("invalid_structure_output", details, 5) from exc
     _write(output_path, structure)
     return StructureResult(structure, output_path, False)
+
+
+def _selected_sections(
+    selection: StructureSelection,
+    structure: Structure,
+    duration_samples: int,
+) -> list[Section]:
+    if (
+        selection.sections[0].start_sample != 0
+        or selection.sections[-1].end_sample != duration_samples
+    ):
+        raise StructureError(
+            "structure_selection_incomplete",
+            {"duration_samples": duration_samples},
+            4,
+        )
+    boundaries = {boundary.id: boundary for boundary in structure.boundaries}
+    sections: list[Section] = []
+    for selected in selection.sections:
+        evidence = []
+        manual = selected.label is not None
+        references = (
+            ("start", selected.start_sample, selected.start_boundary_id),
+            ("end", selected.end_sample, selected.end_boundary_id),
+        )
+        for edge, sample, boundary_id in references:
+            endpoint = sample == 0 if edge == "start" else sample == duration_samples
+            if endpoint:
+                if boundary_id is not None:
+                    raise StructureError(
+                        "structure_selection_boundary_mismatch",
+                        {"section": selected.id, "edge": edge, "boundary_id": boundary_id},
+                        4,
+                    )
+                continue
+            if boundary_id is None:
+                manual = True
+                continue
+            boundary = boundaries.get(boundary_id)
+            if boundary is None:
+                raise StructureError(
+                    "structure_selection_unknown_boundary",
+                    {"section": selected.id, "edge": edge, "boundary_id": boundary_id},
+                    4,
+                )
+            if boundary.sample != sample:
+                manual = True
+            else:
+                evidence.append(boundary.confidence)
+        sections.append(
+            Section(
+                id=selected.id,
+                label=selected.label,
+                start_sample=selected.start_sample,
+                end_sample=selected.end_sample,
+                origin="manual" if manual else "automatic",
+                confidence=None if manual or not evidence else min(evidence),
+            )
+        )
+    return sections
+
+
+def apply_structure(
+    project: Path,
+    selection_path: Path,
+    output_path: Path,
+) -> StructureApplyResult:
+    try:
+        source = preflight_source(project)
+    except ProjectPreflightError as exc:
+        raise StructureError(exc.code, exc.details, 4) from exc
+    selection_path = selection_path.expanduser().resolve()
+    output_path = output_path.expanduser().resolve()
+    selection = _load(StructureSelection, selection_path, "structure-selection")
+    structure_path = resolve_record_path(selection_path, selection.structure.path)
+    timeline_path = resolve_record_path(selection_path, selection.timeline.path)
+    if output_path in {selection_path, structure_path, timeline_path}:
+        raise StructureError(
+            "structure_output_alias",
+            {"output": str(output_path), "message": "enriched timeline must be a separate file"},
+            4,
+        )
+    structure = _load(Structure, structure_path, "structure")
+    timeline = _load(Timeline, timeline_path, "timeline")
+    actual_hashes = {
+        "structure": sha256_file(structure_path) if structure_path.is_file() else None,
+        "timeline": sha256_file(timeline_path) if timeline_path.is_file() else None,
+    }
+    expected_hashes = {
+        "structure": selection.structure.sha256,
+        "timeline": selection.timeline.sha256,
+    }
+    if actual_hashes != expected_hashes:
+        raise StructureError(
+            "structure_selection_hash_mismatch",
+            {"expected": expected_hashes, "actual": actual_hashes},
+            4,
+        )
+    if (
+        resolve_record_path(structure_path, structure.timeline.path) != timeline_path
+        or structure.timeline.sha256 != selection.timeline.sha256
+    ):
+        raise StructureError("structure_selection_timeline_mismatch", {}, 4)
+    if (
+        timeline.source.sha256 != source.record.canonical.sha256
+        or structure.source.sha256 != source.record.canonical.sha256
+        or resolve_record_path(timeline_path, timeline.source.path) != source.canonical_path
+        or resolve_record_path(structure_path, structure.source.path) != source.canonical_path
+    ):
+        raise StructureError("structure_timeline_source_mismatch", {}, 4)
+    if timeline.sections and selection.existing_sections_policy != "replace":
+        raise StructureError(
+            "structure_existing_sections",
+            {
+                "policy": selection.existing_sections_policy,
+                "sections": [section.id for section in timeline.sections],
+            },
+            4,
+        )
+    sections = _selected_sections(selection, structure, timeline.source.duration_samples)
+    selection_hash = sha256_file(selection_path)
+    enriched = timeline.model_copy(
+        update={
+            "analysis": [
+                *timeline.analysis,
+                Provenance(
+                    tool="music-video-toolkit.structure.apply",
+                    version=__version__,
+                    parameters={
+                        "base_timeline_sha256": selection.timeline.sha256,
+                        "structure_sha256": selection.structure.sha256,
+                        "selection_sha256": selection_hash,
+                        "existing_sections_policy": selection.existing_sections_policy,
+                    },
+                ),
+            ],
+            "sections": sections,
+        }
+    )
+    enriched = Timeline.model_validate(enriched.model_dump(mode="json"))
+    if output_path.exists():
+        existing = _load(Timeline, output_path, "enriched-timeline")
+        if existing == enriched:
+            return StructureApplyResult(existing, output_path, True)
+        raise StructureError(
+            "structure_output_conflict",
+            {"path": str(output_path), "message": "existing enriched timeline differs"},
+            4,
+        )
+    _write(output_path, enriched)
+    return StructureApplyResult(enriched, output_path, False)
