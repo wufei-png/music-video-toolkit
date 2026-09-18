@@ -61,9 +61,19 @@ S08 adds a `preview` request containing uniquely named, ordered and non-overlapp
 
 Every completed render manifest now requires a cache key. Preview cache identity covers the source record, timeline/analysis provenance, editable and resolved plans, asset manifests and material files including fonts, renderer source and dependency lock, seed, fps, range request and review-reel choice. A cache hit revalidates every declared output hash. Existing stale, incomplete or differently keyed output directories fail without overwrite; failed temporary jobs are removed before any completed aggregate manifest is installed.
 
-## Planned command contract
+S11 render/preview manifests additionally record `canonical_audio_sha256`. The field remains optional so older S08–S10 evidence still validates, but comparison requires it and rejects legacy manifests without canonical identity.
 
-Bootstrap commands are `--help`, `--version`, `capabilities`, `doctor`, `validate` and `schema`. S01 implements `decode`; S02–S05 extend `render`; S03 implements `analyze`; S04 implements `plan resolve`; S05 implements `assets check`; S06 implements `lyrics import`; S07 implements `lyrics align` and `lyrics apply-edits`; S08 implements `preview`:
+## Comparison
+
+A comparison request contains at least two ordered variants with stable IDs, human labels and paths to completed preview manifests. Reordering variants changes comparison identity and output order. Comparison never renders or invokes analysis, alignment or plan resolution.
+
+Every variant must share the canonical-audio hash, original-source hash, ordered global sample ranges, range count and actual probed width/height/fps/audio presence. Every clip must have the exact frame count implied by its range and probed rational fps. For each range, decoded stereo 48 kHz `s24le` PCM hashes must match across variants. Preview manifests, all referenced clips and optional per-preview review reels are hash-checked before output installation. Plan, assets, seed, input graph, renderer and environment hashes are recorded per variant and may intentionally differ.
+
+`comparison.json` binds the request, input manifest/clip hashes and probes, tool versions, ordered variants and generated artifact hashes. The review reel is an FFmpeg stream copy in range-major then variant-major order. The labeled contact sheet uses the same relative midpoint frame for every variant within a range. Subjective feedback and winner selection remain separate external records. The output directory is installed atomically; identical intact work may be reused only after all input and output hashes are revalidated, while stale, partial or damaged directories fail without overwrite.
+
+## Command contract
+
+Bootstrap commands are `--help`, `--version`, `capabilities`, `doctor`, `validate` and `schema`. S01 implements `decode`; S02–S05 extend `render`; S03 implements `analyze`; S04 implements `plan resolve`; S05 implements `assets check`; S06 implements `lyrics import`; S07 implements `lyrics align` and `lyrics apply-edits`; S08 implements `preview`; S11 implements `compare`:
 
 ```text
 mvt decode INPUT --project DIR
@@ -75,6 +85,7 @@ mvt lyrics align --project DIR --text FILE --language zh|en
 mvt lyrics apply-edits --project DIR --edits FILE
 mvt render --project DIR --plan FILE --output FILE
 mvt preview --project DIR --plan FILE --ranges FILE --output DIR
+mvt compare --request FILE --output DIR
 ```
 
 All tools expose machine-readable results, nonzero failures, stable error codes and actionable missing-dependency messages as their slices implement them. Commands and layer kinds become supported only after their slice tests pass. Rendering and preview use saved artifacts; feature analysis, generation, model download and user decisions remain distinct operations.

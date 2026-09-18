@@ -27,10 +27,14 @@ mvt lyrics import FILE --project PROJECT --language TAG
 # and after review: mvt lyrics apply-edits --project PROJECT --edits FILE
 mvt plan resolve --project PROJECT --plan PROJECT/visual-plan.json
 mvt preview --project PROJECT --plan PROJECT/resolved-plan.json --ranges PROJECT/preview.json --output PREVIEW_DIR --review-reel
+# after separately completing two or more variants with identical ranges:
+mvt compare --request COMPARISON_REQUEST.json --output COMPARISON_DIR
 mvt render --project PROJECT --plan PROJECT/resolved-plan.json --output OUTPUT.mp4
 ```
 
 Lyrics commands are conditional. `render` is conditional on accepted sample feedback unless the recorded mode is autonomous. After analysis, alignment and material creation are complete, reproducible preview/full commands use only the saved project, plan, ranges and local assets; they do not run models or contact generation services.
+
+Comparison is also conditional. Its request points only to already-completed preview manifests and preserves variant order. Verify that variants intentionally share canonical audio and ranges before running it. Save `comparison.json`, the range-major reel and labeled contact sheet alongside a separate feedback record; objective comparison success is not user approval.
 
 ## Feedback record
 

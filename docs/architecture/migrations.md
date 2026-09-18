@@ -21,3 +21,9 @@ The new `alignment` report schema records known-text line matches, exact runtime
 Render manifests now require `cache_key`. Old completed manifests remain evidence for their original run but cannot be reused as S08 cache entries. Rerun `mvt render` or `mvt preview` from the saved plan and material inputs to create a current manifest; do not add a guessed key by hand.
 
 The new `preview` request records ordered, non-overlapping global sample ranges. Executable endpoints must be multiples of 1600 samples for 30 fps output. Existing full-song plans, lyrics and manual sections need no structural migration.
+
+## 2026-09-19 — S11 comparison source identity
+
+New render and preview manifests record `canonical_audio_sha256`. The field is optional at schema level so completed S08–S10 records remain valid historical evidence, but `mvt compare` requires it because the older `source_sha256` field identifies the original input rather than the canonical WAV. Rerun `mvt preview` from saved artifacts to produce a directly comparable manifest; do not guess or copy a canonical hash from an unrelated project.
+
+S11 adds `comparison-request` and `comparison` artifacts. Comparison consumes completed previews only. There is no migration from a single preview: create a request that points to at least two intact variant manifests using identical ranges, then run `mvt compare --request FILE --output DIR`. Subjective review notes remain separate and are not migrated into `comparison.json`.

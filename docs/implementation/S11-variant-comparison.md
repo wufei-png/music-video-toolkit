@@ -1,5 +1,7 @@
 # S11 — 同音频方案比较基线
 
+Status: complete on 2026-09-19. Implementation and external evidence are recorded in [status](status.md); this file retains the authorized slice contract.
+
 ## Outcome
 
 Deliver a typed, reproducible comparison workflow for completed MVT previews before adding new

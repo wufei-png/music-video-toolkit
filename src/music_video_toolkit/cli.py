@@ -121,14 +121,18 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "version": __version__,
                 "schema_version": "0.1",
-                "stage": "s09",
-                "production_stage": "s10",
+                "stage": "s11",
+                "production_stage": "s11",
                 "available": AVAILABLE,
                 "planned": PLANNED,
                 "can_render": True,
                 "render_scope": (
                     "fixed 1080p30 abstract, mood and hybrid plans with imported lyrics "
                     "or saved aligned/edited cues; explicit global-time multi-range previews"
+                ),
+                "comparison_scope": (
+                    "completed same-audio previews with shared ranges/profile/audio validation, "
+                    "range-major review reel and labeled contact sheet"
                 ),
                 "analysis_scope": (
                     "48 kHz mix features; optional htdemucs vocals/drums/bass/other"

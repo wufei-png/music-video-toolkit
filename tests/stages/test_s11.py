@@ -34,6 +34,7 @@ def write_preview(
     *,
     canonical: str = HASHES["canonical"],
     ranges: list[dict[str, int]] | None = None,
+    review_reel: bool = False,
 ) -> Path:
     directory = root / variant
     directory.mkdir()
@@ -42,6 +43,10 @@ def write_preview(
         clip = directory / f"0{index + 1}-range-{index + 1}.mp4"
         clip.write_bytes(f"{variant}-clip-{index + 1}".encode())
         outputs.append({"path": clip.name, "sha256": sha256_file(clip)})
+    if review_reel:
+        reel = directory / "review-reel.mp4"
+        reel.write_bytes(f"{variant}-review-reel".encode())
+        outputs.append({"path": reel.name, "sha256": sha256_file(reel)})
     manifest = {
         "schema_version": "0.1",
         "cache_key": ("5" if variant == "a" else "6") * 64,
@@ -231,6 +236,19 @@ def test_compare_rejects_stale_or_damaged_output(tmp_path, fake_media):
     with pytest.raises(ComparisonError) as caught:
         compare_previews(request, partial)
     assert caught.value.code == "comparison_output_conflict"
+
+
+def test_compare_rejects_tampered_input_review_reel(tmp_path, fake_media):
+    preview_a = write_preview(tmp_path, "a", review_reel=True)
+    preview_b = write_preview(tmp_path, "b", review_reel=True)
+    request = tmp_path / "request.json"
+    write_request(request, [("a", preview_a), ("b", preview_b)])
+    (preview_b.parent / "review-reel.mp4").write_bytes(b"tampered")
+
+    with pytest.raises(ComparisonError) as caught:
+        compare_previews(request, tmp_path / "comparison")
+
+    assert caught.value.code == "comparison_input_hash_mismatch"
 
 
 def decode_rgb(path: Path, *, scale: str | None = None) -> bytes:

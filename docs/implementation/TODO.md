@@ -1,21 +1,22 @@
 # Post-S10 backlog — 2026-09-19
 
 This is the local, evidence-ordered backlog after S01–S10. On 2026-09-19 the user selected P0, P1
-and P2 in order; their confirmed implementation contracts are S11, S12 and S13. Selection does not
-make any item an implemented capability. Work on only the first dependency-ready unfinished slice.
+and P2 in order; their confirmed implementation contracts are S11, S12 and S13. S11 is now
+complete; selection alone still does not make S12 or S13 an implemented capability. Work on only
+the first dependency-ready unfinished slice.
 
 ## Current baseline
 
-- This audit began from clean `main` at `ea614da`; S01–S10 are complete. `mvt capabilities` reports CLI stage `s09`,
-  production stage `s10`, and a fixed 1920x1080/30 fps render scope.
+- This audit began from clean `main` at `ea614da`; S01–S11 are complete. `mvt capabilities` reports CLI and
+  production stage `s11`, with fixed 1920x1080/30 fps rendering plus completed-preview comparison.
 - The two external production finals and their QA evidence exist under
   `../projects/soft-harm/s10/final-v1-bulge/` and
   `../projects/zhi-mai-yi-ren-fen/s10/final-v1-bulge/`. Both have exact expected frame counts,
   H.264 video, AAC 48 kHz stereo audio, and no detected black interval.
-- The repository already supports A abstract, B mood-media, and C hybrid plans. One canonical
-  audio/timeline/lyrics set can be reused by multiple source plans; `plan resolve --output`,
-  `preview --output`, and `render --output` allow distinct resolved plans and outputs. The project
-  does not yet provide a first-class variant-comparison record or comparison command.
+- The repository supports A abstract, B mood-media, and C hybrid plans. `mvt compare` now validates
+  completed variants against one canonical audio, exact global ranges, probed profile/frame/audio
+  evidence and hashes, then installs an auditable manifest, range-major reel and labeled contact
+  sheet without running upstream pipeline commands.
 - Output contracts, renderer configuration, probing, preview frame alignment, schemas, and tests
   are fixed to 1920x1080 at 30 fps. Portrait is not a parameter switch today.
 - Current analysis provides mix/stem RMS, drum onset, bass low energy, beat estimates, and chroma.
@@ -23,23 +24,20 @@ make any item an implemented capability. Work on only the first dependency-ready
   structure.
 - Chromium rendering is ready on this Mac but the measured backend is SwiftShader. The optional
   separation/alignment environments are installed; their model caches are currently absent.
-- `../projects/README.md`, both case READMEs, and both `case.json` status blocks still describe the
-  cases as not started. They are stale local-workspace ledgers and must not be treated as current
-  production truth.
+- `../projects/README.md`, both case READMEs, and both `case.json` status blocks were refreshed from
+  S10 evidence. The external `soft-harm/s11/` record contains the S11 A/B/C acceptance evidence.
 
 ## Priority order
 
-### P0 / S11 — restore a trustworthy baseline before feature work
+### P0 / S11 — complete
 
-1. **Refresh the external production ledgers.** Update the parent project index, both case status
-   records, and their READMEs from the completed S10 evidence. Preserve private inputs and generated
-   media outside Git. This is documentation/state repair, not a toolkit capability.
-2. **Add a controlled same-audio variant comparison workflow.** Define a small comparison record
-   and local template that bind the source hash, shared timeline/lyrics, each plan/assets/resolved
-   plan, identical global preview ranges, renderer/environment identity, objective QA, and human
-   feedback. Prove it first with existing A/B/C support and distinct output directories. Do not add
-   another visual backend until this baseline can distinguish a backend improvement from a changed
-   song, range, asset set, or typography treatment.
+1. **Completed: external production ledgers refreshed.** The parent project index, both case status
+   records and both READMEs now use completed S10 evidence. Private inputs and generated media remain
+   outside Git; this is documentation/state repair, not a toolkit capability.
+2. **Completed: controlled same-audio variant comparison workflow.** The comparison record binds
+   source identity, ranges, probes, audio, hashes, plan/assets/renderer differences and generated
+   review artifacts. Public A/B/C fixtures and the external `soft-harm` proof use distinct preview
+   directories and preserve subjective feedback outside the manifest.
 
 Acceptance: two variants of one song use the same canonical audio and preview ranges; neither
 overwrites the other; manifests identify all differing inputs; a side-by-side/contact-sheet or
@@ -99,6 +97,6 @@ Upstream evidence to refresh when either slice is selected:
 
 ## Confirmed sequence
 
-Implement [S11](S11-variant-comparison.md), then [S12](S12-portrait-structure.md), then
+S11 is complete. Implement [S12](S12-portrait-structure.md), then
 [S13](S13-astrofox-backend.md). Each slice has its own acceptance evidence and commits. GUI,
 complete projectM integration and MCP remain outside these three sessions.

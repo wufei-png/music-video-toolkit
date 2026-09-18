@@ -13,8 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_capabilities_are_honest(capsys):
     assert main(["capabilities"]) == 0
     report = json.loads(capsys.readouterr().out)
-    assert report["stage"] == "s09"
-    assert report["production_stage"] == "s10"
+    assert report["stage"] == "s11"
+    assert report["production_stage"] == "s11"
     assert report["can_render"] is True
     assert "render" in report["available"]
     assert "render" not in report["planned"]
@@ -26,6 +26,8 @@ def test_capabilities_are_honest(capsys):
     assert "lyrics apply-edits" in report["available"]
     assert "preview" in report["available"]
     assert "preview" not in report["planned"]
+    assert "compare" in report["available"]
+    assert "same-audio previews" in report["comparison_scope"]
 
 
 def test_doctor_reports_missing_tools(monkeypatch, capsys):

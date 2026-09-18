@@ -273,18 +273,19 @@ def _prepare_comparison(
                 {"variant": variant.id, "ranges": range_count, "outputs": len(preview.outputs)},
                 4,
             )
+        preview_root = preview_path.parent.resolve()
         if len(preview.outputs) == range_count + 1:
             extra = resolve_record_path(preview_path, preview.outputs[-1].path)
-            if extra.name != "review-reel.mp4":
+            if extra.name != "review-reel.mp4" or not extra.is_relative_to(preview_root):
                 raise ComparisonError(
                     "comparison_preview_outputs_invalid",
                     {"variant": variant.id, "extra_output": preview.outputs[-1].path},
                     4,
                 )
+            _require_file_hash(extra, preview.outputs[-1].sha256, field=f"{variant.id}.review_reel")
 
         clips: list[ComparisonClip] = []
         clip_paths: list[Path] = []
-        preview_root = preview_path.parent.resolve()
         for index, (sample_range, output) in enumerate(
             zip(preview.ranges, preview.outputs[:range_count], strict=True), 1
         ):

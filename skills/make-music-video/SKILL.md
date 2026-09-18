@@ -29,6 +29,8 @@ Determine and record the review mode before rendering. Default is **sample appro
 
 Preview ranges use global 48 kHz sample positions and must align to the 30 fps frame grid: each endpoint is a multiple of 1600. Use a new output directory for changed plans or ranges; the command preserves an existing stale/different directory instead of overwriting it. Reusing the same directory is a cache request and succeeds only when its manifest and every output hash still match.
 
+When the user wants to compare two or more completed variants, create an ordered comparison request whose stable IDs and labels point to their preview manifests, then run `mvt compare --request FILE --output DIR`. The variants must use the same canonical audio and exact ranges. Compare only audits saved previews and creates a range-major reel plus labeled contact sheet; it must not be used as a shortcut that silently renders, resolves, analyzes or aligns a variant. Keep winner selection and subjective feedback in the external production record.
+
 Evaluate separate musical responses, visual hierarchy, lyric legibility, transitions and whole-song pacing. Fix taste decisions in the plan; record reusable capability gaps as development feedback. Preserve the approved versions and re-render only affected material where supported. Changed sample content needs corresponding review in sample-approval mode.
 
 ## Final production handoff

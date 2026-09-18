@@ -1,5 +1,50 @@
 # Implementation status
 
+## S11 same-audio variant comparison complete — 2026-09-19
+
+`mvt compare --request FILE --output DIR` now consumes two or more completed preview manifests and
+never invokes analysis, alignment, plan resolution, preview rendering or rendering. The typed
+request preserves stable variant IDs, labels and order. The completed comparison manifest binds the
+request, canonical and original source identities, exact global ranges, actual media probes,
+decoded per-range audio hashes, each variant's input/environment/seed evidence, tool versions and
+generated artifact hashes. Python models remain authoritative and generated schemas plus synthetic
+examples cover both new artifacts.
+
+Preflight verifies every referenced preview clip and optional per-preview reel hash, requires exact
+frame counts from the probed rational fps, and rejects source, range, profile, audio and hash
+mismatches before output installation. The comparison directory is installed atomically and
+contains `comparison.json`, an FFmpeg stream-copy reel in range-major then variant-major order, and
+a deterministic labeled contact sheet sampled at each clip's midpoint. Intact identical work hits
+the cache only after all input/output hashes and media probes are revalidated; stale, partial,
+tampered or differently keyed directories fail without overwrite. Reordering variants changes the
+comparison identity and reel order.
+
+The public S11 fixture generator creates actual A/B/C H.264/AAC clips with shared source,
+timeline/lyrics/renderer identities and differing plan/assets hashes. Its integration decoded all
+90 reel frames to prove A/B/C then A/B/C ordering, inspected all six label bands and midpoint cells,
+and passed while every upstream pipeline entry point was replaced with a hard failure. Focused S11
+tests report 5 passed. Commits are `5fad921` (contracts/schemas/examples), `827f629` (atomic command
+and strict preflight), `2f7f667` (real review-artifact proof), plus the commit containing this
+handoff and the final optional-reel hash-validation fix.
+
+External acceptance is under `../projects/soft-harm/s11/`. A abstract and B mood-media were resolved
+and rendered from the same S10 canonical audio, production timeline, reviewed edited lyrics,
+checked assets and 10–22 s / 39–51 s / 190–202 s ranges. C reuses the byte-identical approved S10
+`preview-v6-bulge` clips. The comparison cache key is
+`37f7b53b78f7b33234ca51ed2673e89643405043df45c1d320dfa367b8a807f3`; manifest SHA-256 is
+`46c79214322c208807f3c7d4d916e3d6dfcffe6f84a821efd118026ce7bdd785`, reel SHA-256 is
+`6172e2d85030f4002cc4175f5014fdecf021582d5bb9d55f2e2add5b25eba4d8`, and contact-sheet SHA-256
+is `e327165c8cc04da56e4d5b610f09dc75abc7880538298dfd70a0345e75899875`. The reel probes as H.264
+1920x1080/30 fps with 3240 frames and AAC 48 kHz stereo; the contact sheet is 1440x900. Cache replay
+and standalone schema validation passed. Visual inspection confirmed the 3x3 labels and expected
+A/B/C compositions only; no subjective winner or new user approval is claimed.
+
+The parent project index, both production-case READMEs, both canonical sample counts and both
+`case.json` status blocks now reflect actual S10 evidence. These external ledgers and all S11 song
+plans/media remain outside this Git repository. Comparison remains limited to compatible completed
+preview streams; fixed landscape output and SwiftShader production rendering remain current
+constraints, and subjective review stays external.
+
 ## S10 songs and release readiness complete — 2026-09-18
 
 Two external C-mode production projects use the reviewed S07 lyric artifacts, manual neutral
@@ -119,17 +164,17 @@ Commits: `8f1e4f6` (source contract/preflight), `77426ca` (decode/CLI/integratio
 | Python skeleton | Installable CLI, five strict file contracts, schema exporter, synthetic examples, 41 tests | `be08bd7` |
 | Renderer and final handoff | Typed Three.js layer/frame interfaces, exact frame/sample mapping, cross-language vectors, final local-case handoff | Commit containing this status update |
 
-Current commands: `mvt --help`, `--version`, `capabilities`, `doctor`, `decode`, `analyze`, `assets check`, `lyrics import`, `lyrics align`, `lyrics apply-edits`, `plan resolve`, `preview`, `render`, `validate`, `schema`. Single-artifact validation includes structure and local semantic invariants. Decode, analyze, asset/lyric checking, plan resolution, preview and render perform the project preflight they need. `can_render` is true for the S02 fixture plus S04–S09 A/B/C, saved-lyric, multi-range preview and public production-demo scope.
+Current commands: `mvt --help`, `--version`, `capabilities`, `doctor`, `decode`, `analyze`, `assets check`, `lyrics import`, `lyrics align`, `lyrics apply-edits`, `plan resolve`, `preview`, `compare`, `render`, `validate`, `schema`. Single-artifact validation includes structure and local semantic invariants. Decode, analyze, asset/lyric checking, plan resolution, preview, compare and render perform the cross-file/media preflight they need. `can_render` is true for the S02 fixture plus S04–S10 A/B/C, saved-lyric, multi-range preview and public production-demo scope; compare is available for completed same-audio previews.
 
 Current analyzer: isolated locked librosa/audio-separator environment, explicit feature window/padding/normalization policy, real four-file verification and exact canonical sample alignment. Current renderer: integer clock, Playwright/Three.js WebGL host, bounded abstract/media layers, deterministic FFmpeg video-frame extraction, embedded checked fonts, sample-clock lyric motion with a subdivided 3D bulge surface, PNG frame pipe and FFmpeg MP4 encoder. Repository JSON examples still contain synthetic hashes and absent media; they are protocol examples rather than render results.
 
 ## Verified
 
 - `uv sync --locked --group dev`: succeeded with Python 3.12.13.
-- `uv run --locked pytest -q`: **100 passed in 242.07s** (including actual browser/FFmpeg production rehearsals through S10).
+- `uv run --locked pytest -q`: **114 passed in 226.46s** (including actual browser/FFmpeg production rehearsals through S10 and real FFmpeg S11 A/B/C comparison artifacts).
 - `uv run --locked pytest tests/stages/test_s01.py -q`: **12 passed** with real FFmpeg/ffprobe 8.1. A generated 11,025-frame mono 44.1kHz WAV was encoded to MP3, decoded from a different cwd through Chinese/space-bearing paths, and verified as 48kHz stereo 24-bit PCM with its actual decoded frame count. Cache reuse, different-input conflict, missing tools, corrupt input, partial output and cleanup paths passed.
 - `uv run --locked ruff check .` and `ruff format --check .`: passed.
-- `uv run --locked python scripts/export_schemas.py --check`: twelve schemas match models; tests also validate JSON Schema structure and examples.
+- `uv run --locked python scripts/export_schemas.py --check`: fourteen schemas match models; tests also validate JSON Schema structure and examples.
 - `pnpm --dir renderer install --frozen-lockfile`: passed.
 - `pnpm --dir renderer check`: TypeScript build plus **21 tests passed**; also explicitly verified with Node 24.15.0 on PATH.
 - `pnpm --dir renderer install --frozen-lockfile` and `pnpm --dir renderer exec playwright install chromium`: Playwright 1.63.0 / Chromium revision 1243 installed; browser version 153.0.8010.12.
@@ -141,6 +186,7 @@ Current analyzer: isolated locked librosa/audio-separator environment, explicit 
 - `uv run --locked pytest tests/stages/test_s07.py -q`: **5 passed**. Known-text mapping, repeated lyrics, unmatched lines, fixed reference metrics, complete edit application, cache/conflict handling, missing runtime and CLI output passed.
 - `uv run --locked pytest tests/stages/test_s08.py -q`: **5 passed in 29.26s**. Actual full/excerpt rendering, global frame equivalence, start-audio alignment, independent reproduction, cache reuse and stale/missing-output rejection passed.
 - `uv run --locked pytest tests/stages/test_s09.py -q`: **2 passed in 84.37s**. Capability/doctor preflight, sample feedback gating, autonomous first cut, complete artifact bundles, mode-specific scripts, no-model rerenders and byte-identical full reproduction passed.
+- `uv run --locked pytest tests/stages/test_s11.py -q`: **5 passed**. Contract/preflight/cache/tamper/conflict paths, optional preview-reel hash validation, actual FFmpeg A/B/C order, labeled midpoint contact sheet and upstream-pipeline isolation passed.
 - Two external 20-second excerpts completed the formal `mvt analyze --stems four` path, artifact/schema validation and a second cached run. Reports and generated media remain outside Git in each case's `s03/` directory.
 - `uv build`: wheel and source archive built; isolated wheel-installed `mvt capabilities` worked. Archive inspection found no original songs, local production workspace or generated media.
 - skill-creator `quick_validate.py`: passed using PyYAML in the project environment. Markdown local links checked.
@@ -162,19 +208,18 @@ Model installation/inference, browser/WebGL rendering, external media compositio
 | S08 samples/reproduction | Complete — commit containing this handoff |
 | S09 production workflow | Complete — commit containing this handoff |
 | S10 songs/release readiness | Complete — final full-song renders and objective QA recorded |
-| S11 same-audio variant comparison | Designed and authorized — not implemented |
+| S11 same-audio variant comparison | Complete — `5fad921`, `827f629`, `2f7f667` plus handoff |
 | S12 portrait and repeated structure | Designed and authorized — depends on S11, not implemented |
 | S13 Astrofox automated backend | Designed and authorized — depends on S12, not implemented |
 
 ## Exact next action
 
-S11–S13 are selected and authorized in dependency order but remain unimplemented and must not be
-advertised as available. The exact next development action is S11
-([same-audio variant comparison](S11-variant-comparison.md)); S12 and S13 must wait for their
-predecessor's committed acceptance evidence. User viewing or separately authorized publication of
-the two local final MP4 files remains optional and is not required to validate the repository.
+S11 is complete. The exact next development action is S12
+([portrait output and repeated structure](S12-portrait-structure.md)); S13 must wait for S12's
+committed acceptance evidence. User viewing or separately authorized publication of local final or
+comparison media remains optional and is not required to validate the repository.
 
-On the original host the parent workspace has `projects/README.md`, `projects/soft-harm/case.json` and
-`projects/zhi-mai-yi-ren-fen/case.json`. These are local source inventories, not runtime schemas.
-Parent audio, lyrics, generated material, raw metadata, reviews and case notes stay outside this Git
-history.
+On the original host the parent workspace has `projects/README.md`, `projects/soft-harm/case.json`
+and `projects/zhi-mai-yi-ren-fen/case.json`. These are updated local source inventories, not runtime
+schemas. Parent audio, lyrics, generated material, raw metadata, reviews, comparisons and case notes
+stay outside this Git history.

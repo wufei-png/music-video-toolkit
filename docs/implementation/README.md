@@ -4,9 +4,9 @@
 
 通用检查：`uv sync --locked --group dev`、`uv run --locked pytest`、`uv run --locked ruff check .`、`git diff --check`。有 renderer 改动时执行 `pnpm --dir renderer check`。这些命令在 bootstrap 完成后可运行。
 
-**各切片中的 `tests/stages/test_sNN.py` 和新增 CLI 是对应切片的验收入口，当前已随 S01–S10 实现。** 安装的模型环境应单独锁定；CPU 模拟或 mock 不算真实模型验证。阶段测试生成可公开的 synthetic fixtures；本地歌曲验收证据保存在仓库外。
+**各切片中的 `tests/stages/test_sNN.py` 和新增 CLI 是对应切片的验收入口，当前已随 S01–S11 实现。** 安装的模型环境应单独锁定；CPU 模拟或 mock 不算真实模型验证。阶段测试生成可公开的 synthetic fixtures；本地歌曲验收证据保存在仓库外。
 
-S10 之后的候选工作、依赖顺序和选择门槛见 [post-S10 backlog](TODO.md)。S11–S13 已完成设计确认，但尚未实现，也不属于当前 capabilities；必须依次实施，每次只推进一个。
+S10 之后的候选工作、依赖顺序和选择门槛见 [post-S10 backlog](TODO.md)。S11 已实现并进入当前 capabilities；S12–S13 已完成设计确认但尚未实现，必须依次实施，每次只推进一个。
 
 | ID | Result | Dependencies |
 | --- | --- | --- |
