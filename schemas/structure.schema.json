@@ -1,0 +1,274 @@
+{
+  "$defs": {
+    "FileRef": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "title": "FileRef",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "tool": {
+          "minLength": 1,
+          "title": "Tool",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "tool",
+        "version"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "RepeatedSpan": {
+      "additionalProperties": false,
+      "properties": {
+        "start_sample": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Start Sample",
+          "type": "integer"
+        },
+        "end_sample": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "End Sample",
+          "type": "integer"
+        },
+        "id": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "group_id": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Group Id",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "start_anchor_index": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Start Anchor Index",
+          "type": "integer"
+        },
+        "end_anchor_index": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "End Anchor Index",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start_sample",
+        "end_sample",
+        "id",
+        "group_id",
+        "confidence",
+        "start_anchor_index",
+        "end_anchor_index"
+      ],
+      "title": "RepeatedSpan",
+      "type": "object"
+    },
+    "RepeatedSpanGroup": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "spans": {
+          "items": {
+            "$ref": "#/$defs/RepeatedSpan"
+          },
+          "minItems": 2,
+          "title": "Spans",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "confidence",
+        "spans"
+      ],
+      "title": "RepeatedSpanGroup",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "sample_rate": {
+          "maximum": 48000,
+          "minimum": 48000,
+          "title": "Sample Rate",
+          "type": "integer"
+        },
+        "duration_samples": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Duration Samples",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "sample_rate",
+        "duration_samples"
+      ],
+      "title": "Source",
+      "type": "object"
+    },
+    "StructureBoundary": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "sample": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Sample",
+          "type": "integer"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "sources": {
+          "items": {
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_.-]+$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "sample",
+        "confidence",
+        "sources"
+      ],
+      "title": "StructureBoundary",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "0.1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source": {
+      "$ref": "#/$defs/Source"
+    },
+    "timeline": {
+      "$ref": "#/$defs/FileRef"
+    },
+    "cache_key": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Cache Key",
+      "type": "string"
+    },
+    "analyzer": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "beat_samples": {
+      "items": {
+        "exclusiveMinimum": 0,
+        "maximum": 9007199254740991,
+        "type": "integer"
+      },
+      "title": "Beat Samples",
+      "type": "array"
+    },
+    "boundaries": {
+      "items": {
+        "$ref": "#/$defs/StructureBoundary"
+      },
+      "title": "Boundaries",
+      "type": "array"
+    },
+    "repeated_groups": {
+      "items": {
+        "$ref": "#/$defs/RepeatedSpanGroup"
+      },
+      "title": "Repeated Groups",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "source",
+    "timeline",
+    "cache_key",
+    "analyzer"
+  ],
+  "title": "Structure",
+  "type": "object"
+}

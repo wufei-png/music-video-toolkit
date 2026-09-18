@@ -195,6 +195,87 @@ class Timeline(Artifact):
         return self
 
 
+class StructureBoundary(Contract):
+    id: Name
+    sample: Positive
+    confidence: Unit
+    sources: Annotated[list[Name], Field(min_length=1)]
+
+    @model_validator(mode="after")
+    def unique_sources(self) -> Self:
+        unique(self.sources, "structure boundary source")
+        return self
+
+
+class RepeatedSpan(SampleRange):
+    id: Name
+    group_id: Name
+    confidence: Unit
+    start_anchor_index: NonNegative
+    end_anchor_index: Positive
+
+    @model_validator(mode="after")
+    def ordered_anchors(self) -> Self:
+        if self.end_anchor_index <= self.start_anchor_index:
+            raise ValueError("repeated span anchor indexes must be ordered")
+        return self
+
+
+class RepeatedSpanGroup(Contract):
+    id: Name
+    confidence: Unit
+    spans: Annotated[list[RepeatedSpan], Field(min_length=2)]
+
+    @model_validator(mode="after")
+    def coherent_spans(self) -> Self:
+        unique([span.id for span in self.spans], "repeated span id")
+        if any(span.group_id != self.id for span in self.spans):
+            raise ValueError("repeated span group IDs must match their container")
+        ordered_ranges(self.spans)
+        return self
+
+
+class Structure(Artifact):
+    source: Source
+    timeline: FileRef
+    cache_key: Sha256
+    analyzer: Provenance
+    beat_samples: list[Positive] = Field(default_factory=list)
+    boundaries: list[StructureBoundary] = Field(default_factory=list)
+    repeated_groups: list[RepeatedSpanGroup] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def coherent_structure(self) -> Self:
+        unique([boundary.id for boundary in self.boundaries], "structure boundary id")
+        unique([group.id for group in self.repeated_groups], "repeated group id")
+        if self.beat_samples != sorted(set(self.beat_samples)):
+            raise ValueError("beat samples must be unique and ordered")
+        if any(sample >= self.source.duration_samples for sample in self.beat_samples):
+            raise ValueError("beat sample lies outside canonical duration")
+        samples = [boundary.sample for boundary in self.boundaries]
+        if samples != sorted(set(samples)):
+            raise ValueError("structure boundaries must be unique and ordered")
+        if any(sample >= self.source.duration_samples for sample in samples):
+            raise ValueError("structure boundary lies outside canonical duration")
+        known_sources = {"novelty"} | {group.id for group in self.repeated_groups}
+        if any(set(boundary.sources) - known_sources for boundary in self.boundaries):
+            raise ValueError("structure boundary references unknown evidence")
+        anchors = [0, *self.beat_samples, self.source.duration_samples]
+        maximum_anchor_index = len(self.beat_samples) + 1
+        for group in self.repeated_groups:
+            for span in group.spans:
+                if span.end_sample > self.source.duration_samples:
+                    raise ValueError("repeated span lies outside canonical duration")
+                if span.end_anchor_index > maximum_anchor_index:
+                    raise ValueError("repeated span anchor lies outside beat-synchronized grid")
+                if (
+                    span.start_sample != anchors[span.start_anchor_index]
+                    or span.end_sample != anchors[span.end_anchor_index]
+                ):
+                    raise ValueError("repeated span does not align to its recorded anchors")
+        return self
+
+
 class LandscapeOutputProfile(Contract):
     width: Literal[1920] = 1920
     height: Literal[1080] = 1080
@@ -716,6 +797,7 @@ CONTRACTS: dict[str, type[Artifact]] = {
     "stems": StemManifest,
     "analysis": AnalysisRun,
     "timeline": Timeline,
+    "structure": Structure,
     "plan": VisualPlan,
     "resolved-plan": ResolvedPlan,
     "assets": AssetManifest,

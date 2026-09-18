@@ -22,6 +22,7 @@ from .lyrics import LyricsError, import_lyrics
 from .plan import PlanError, resolve_plan
 from .preview import PreviewError, render_preview
 from .render import RenderError, render_minimal, renderer_doctor
+from .structure import StructureError, analyze_structure
 
 AVAILABLE = [
     "capabilities",
@@ -63,6 +64,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     analyze.add_argument("--project", type=Path, required=True)
     analyze.add_argument("--stems", choices=("four", "none"), required=True)
+    structure = commands.add_parser("structure", help="Analyze or apply reviewable structure")
+    structure_commands = structure.add_subparsers(dest="structure_command", required=True)
+    structure_analyze = structure_commands.add_parser(
+        "analyze", help="Write deterministic unlabeled structure candidates"
+    )
+    structure_analyze.add_argument("--project", type=Path, required=True)
+    structure_analyze.add_argument("--timeline", type=Path)
+    structure_analyze.add_argument("--output", type=Path)
     plan = commands.add_parser("plan", help="Resolve bounded visual plans")
     plan_commands = plan.add_subparsers(dest="plan_command", required=True)
     resolve = plan_commands.add_parser("resolve", help="Resolve sections and layer parameters")
@@ -232,6 +241,13 @@ def main(argv: list[str] | None = None) -> int:
             emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
             return exc.exit_code
         emit(result.report())
+    elif args.command == "structure" and args.structure_command == "analyze":
+        try:
+            result = analyze_structure(args.project, args.timeline, args.output)
+        except StructureError as exc:
+            emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
+            return exc.exit_code
+        emit(result.summary())
     elif args.command == "plan" and args.plan_command == "resolve":
         try:
             resolved, output = resolve_plan(args.project, args.plan, args.output)

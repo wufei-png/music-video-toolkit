@@ -1,0 +1,77 @@
+{
+  "schema_version": "0.1",
+  "source": {
+    "path": "source/canonical.wav",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "sample_rate": 48000,
+    "duration_samples": 480000
+  },
+  "timeline": {
+    "path": "timeline.json",
+    "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "cache_key": "2222222222222222222222222222222222222222222222222222222222222222",
+  "analyzer": {
+    "tool": "librosa-structure",
+    "version": "0.10.2.post1",
+    "parameters": {
+      "semantics": "unlabeled candidates only",
+      "similarity": "cosine self-similarity"
+    }
+  },
+  "beat_samples": [
+    48000,
+    96000,
+    144000,
+    192000,
+    240000,
+    288000,
+    336000,
+    384000,
+    432000
+  ],
+  "boundaries": [
+    {
+      "id": "boundary-001",
+      "sample": 192000,
+      "confidence": 0.9,
+      "sources": [
+        "repeat-001"
+      ]
+    },
+    {
+      "id": "boundary-002",
+      "sample": 240000,
+      "confidence": 0.9,
+      "sources": [
+        "repeat-001"
+      ]
+    }
+  ],
+  "repeated_groups": [
+    {
+      "id": "repeat-001",
+      "confidence": 0.9,
+      "spans": [
+        {
+          "id": "repeat-001-1",
+          "group_id": "repeat-001",
+          "start_sample": 0,
+          "end_sample": 192000,
+          "confidence": 0.9,
+          "start_anchor_index": 0,
+          "end_anchor_index": 4
+        },
+        {
+          "id": "repeat-001-2",
+          "group_id": "repeat-001",
+          "start_sample": 240000,
+          "end_sample": 432000,
+          "confidence": 0.9,
+          "start_anchor_index": 5,
+          "end_anchor_index": 9
+        }
+      ]
+    }
+  ]
+}

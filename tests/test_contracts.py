@@ -19,6 +19,7 @@ def document(name):
     "kind,name",
     [
         ("timeline", "timeline.json"),
+        ("structure", "structure.json"),
         ("assets", "assets.json"),
         ("lyrics", "lyrics.json"),
         ("preview", "preview.json"),
@@ -63,6 +64,22 @@ def test_timeline_rejects_invalid_clock_or_identity(mutate):
     mutate(data)
     with pytest.raises(ValidationError):
         CONTRACTS["timeline"].model_validate(data)
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda d: d["beat_samples"].append(d["beat_samples"][-1]),
+        lambda d: d["boundaries"][0].update(sources=["verse"]),
+        lambda d: d["repeated_groups"][0]["spans"][0].update(end_sample=191999),
+        lambda d: d["repeated_groups"][0]["spans"][1].update(group_id="repeat-999"),
+    ],
+)
+def test_structure_rejects_incoherent_evidence(mutate):
+    data = document("structure.json")
+    mutate(data)
+    with pytest.raises(ValidationError):
+        CONTRACTS["structure"].model_validate(data)
 
 
 @pytest.mark.parametrize(
