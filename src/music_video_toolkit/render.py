@@ -492,6 +492,7 @@ def _manifest_inputs(inputs: dict[str, object]) -> dict[str, str]:
         "renderer_frame": sha256_file(root / "src/frame.ts"),
         "renderer_media": sha256_file(root / "src/media.ts"),
         "renderer_lyrics": sha256_file(root / "src/lyrics.ts"),
+        "renderer_layout": sha256_file(root / "src/layout.ts"),
         "renderer_routing": sha256_file(root / "src/routing.ts"),
     }
     if inputs["scene_mode"] == "fixture":

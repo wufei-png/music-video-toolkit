@@ -6,6 +6,12 @@ import {
   type LyricCue,
 } from "./lyrics.js";
 import {
+  layoutForOutput,
+  mediaScale,
+  normalizedX,
+  type OutputLayout,
+} from "./layout.js";
+import {
   sampleSignal,
   smoothValue,
   targetValue,
@@ -112,6 +118,7 @@ let scene: THREE.Scene;
 let camera: THREE.Camera;
 let background: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
 let config: SceneConfig;
+let outputLayout: OutputLayout;
 let imageReady = false;
 let glyphInkPixels = 0;
 let abstractReady = false;
@@ -172,18 +179,21 @@ function wrapCharacters(
 }
 
 function captionTexture(text: string): THREE.CanvasTexture {
+  const lyricLayout = outputLayout.lyrics;
   const canvas = document.createElement("canvas");
-  canvas.width = 2048;
-  canvas.height = 512;
+  canvas.width = lyricLayout.textureWidth;
+  canvas.height = lyricLayout.textureHeight;
   const context = canvas.getContext("2d", {willReadFrequently: true});
   if (context === null) throw new Error("2D canvas is unavailable");
-  let fontSize = 114;
+  let fontSize = lyricLayout.initialFontSize;
   let lines: string[] = [];
-  while (fontSize >= 38) {
+  while (fontSize >= lyricLayout.minimumFontSize) {
     context.font = `${fontSize}px "MVT Subtitle"`;
-    lines = text.split("\n").flatMap((line) => wrapCharacters(context, line, 1860));
-    if (lines.length <= 3) break;
-    fontSize -= 6;
+    lines = text
+      .split("\n")
+      .flatMap((line) => wrapCharacters(context, line, lyricLayout.maximumTextWidth));
+    if (lines.length <= lyricLayout.maximumLines) break;
+    fontSize -= lyricLayout.fontStep;
   }
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.textAlign = "center";
@@ -295,7 +305,15 @@ function createLyricMesh(tint: number, trailMix: number): LyricMesh {
     side: THREE.DoubleSide,
   });
   if (trailMix > 0) material.blending = THREE.AdditiveBlending;
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1.82, 0.52, 192, 48), material);
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(
+      outputLayout.lyrics.meshWidth,
+      outputLayout.lyrics.meshHeight,
+      192,
+      48,
+    ),
+    material,
+  );
   mesh.visible = false;
   return {mesh, material};
 }
@@ -313,7 +331,7 @@ async function initializeLyrics(lyrics: LyricsConfig | undefined): Promise<void>
   const trails = [createLyricMesh(0x73cfff, 0.82), createLyricMesh(0xffa9d5, 0.88)];
   caption = {main, trails};
   for (const target of [...trails, main]) {
-    target.mesh.position.set(0, -0.56, 0.42);
+    target.mesh.position.set(0, outputLayout.lyrics.centerY, 0.42);
     scene.add(target.mesh);
   }
   lyricsReady = true;
@@ -345,7 +363,7 @@ function configureLyrics(sample: number, lyrics: LyricsConfig | undefined): void
   caption.main.material.uniforms.uOpacity!.value = opacity;
   caption.main.material.uniforms.uBulgeStrength!.value = motion.bulgeStrength;
   caption.main.material.uniforms.uBulgeCenter!.value.set(motion.bulgeCenterX, centerY);
-  caption.main.mesh.position.set(0, -0.56 + motion.lift, 0.42);
+  caption.main.mesh.position.set(0, outputLayout.lyrics.centerY + motion.lift, 0.42);
   caption.main.mesh.scale.setScalar(motion.scale);
   caption.main.mesh.rotation.set(
     -0.055 + Math.sin(motion.progress * Math.PI) * 0.026,
@@ -367,7 +385,7 @@ function configureLyrics(sample: number, lyrics: LyricsConfig | undefined): void
     );
     target.mesh.position.set(
       -exitDirection * 0.018 * distance,
-      -0.56 + motion.lift - 0.012 * distance,
+      outputLayout.lyrics.centerY + motion.lift - 0.012 * distance,
       0.4 - 0.015 * distance,
     );
     target.mesh.scale.setScalar(motion.scale * (1 - 0.008 * distance));
@@ -466,7 +484,7 @@ function createAbstractObject(layer: LayerConfig, seed: number, maximumCount: nu
   const makeRandom = random(seed);
   const positions = new Float32Array(maximumCount * 3);
   for (let index = 0; index < maximumCount; index += 1) {
-    positions[index * 3] = makeRandom() * 2 - 1;
+    positions[index * 3] = (makeRandom() * 2 - 1) * outputLayout.aspect;
     positions[index * 3 + 1] = makeRandom() * 2 - 1;
     positions[index * 3 + 2] = makeRandom() * 0.2;
   }
@@ -530,10 +548,9 @@ async function setMediaTexture(
     object[key] = frame.dataUrl;
     old?.dispose();
   }
-  const canvasAspect = config.width / config.height;
   const assetAspect = frame.width / frame.height;
   mesh.userData.assetAspect = assetAspect;
-  mesh.userData.canvasAspect = canvasAspect;
+  mesh.userData.canvasAspect = outputLayout.aspect;
 }
 
 function placeMedia(
@@ -553,18 +570,18 @@ function placeMedia(
   mesh.material.blending =
     layer.parameters.blend === "add" ? THREE.AdditiveBlending : THREE.NormalBlending;
   mesh.material.needsUpdate = true;
-  const canvasAspect = config.width / config.height;
   const assetAspect = frame.width / frame.height;
-  const cover = layer.parameters.fit === "cover";
-  const xScale = cover
-    ? Math.max(1, assetAspect / canvasAspect)
-    : Math.min(1, assetAspect / canvasAspect);
-  const yScale = cover
-    ? Math.max(1, canvasAspect / assetAspect)
-    : Math.min(1, canvasAspect / assetAspect);
+  const fitted = mediaScale(
+    outputLayout,
+    assetAspect,
+    layer.parameters.fit === "cover" ? "cover" : "contain",
+  );
   const scale = Number(layer.parameters.scale);
-  mesh.scale.set(xScale * scale, yScale * scale, 1);
-  mesh.position.x = Number(layer.parameters.x) + Math.sin(seconds * 0.2) * Number(layer.parameters.motion);
+  mesh.scale.set(fitted.x * scale, fitted.y * scale, 1);
+  mesh.position.x = normalizedX(
+    outputLayout,
+    Number(layer.parameters.x) + Math.sin(seconds * 0.2) * Number(layer.parameters.motion),
+  );
   mesh.position.y = Number(layer.parameters.y) + Math.cos(seconds * 0.17) * Number(layer.parameters.motion);
   mesh.position.z = Number(layer.parameters.z) * 0.02 - 0.2;
   mesh.material.opacity = opacity;
@@ -623,13 +640,13 @@ function configureObject(
   if (target.kind === "orb") {
     const radius = parameter("radius");
     target.object.scale.set(radius, radius, 1);
-    target.object.position.x = parameter("x");
+    target.object.position.x = normalizedX(outputLayout, parameter("x"));
     target.object.position.y = parameter("y");
     target.object.rotation.z = seconds * 0.08;
   } else if (target.kind === "ribbon") {
     const width = parameter("width");
     const amplitude = parameter("amplitude");
-    target.object.scale.set(1, width + amplitude, 1);
+    target.object.scale.set(outputLayout.aspect, width + amplitude, 1);
     target.object.position.y = parameter("y");
     target.object.rotation.z = Math.sin(seconds * 0.7) * amplitude * 0.25;
   } else {
@@ -726,6 +743,7 @@ function advanceRoutes(
 
 export async function initialize(sceneConfig: SceneConfig): Promise<void> {
   config = sceneConfig;
+  outputLayout = layoutForOutput(config.width, config.height);
   const canvas = document.querySelector<HTMLCanvasElement>("#mvt-canvas");
   if (canvas === null) throw new Error("render canvas is missing");
   renderer = new THREE.WebGLRenderer({
@@ -739,10 +757,17 @@ export async function initialize(sceneConfig: SceneConfig): Promise<void> {
   renderer.setSize(config.width, config.height, false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   scene = new THREE.Scene();
-  camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+  camera = new THREE.OrthographicCamera(
+    -outputLayout.aspect,
+    outputLayout.aspect,
+    1,
+    -1,
+    0.1,
+    10,
+  );
   camera.position.z = 2;
   background = new THREE.Mesh(
-    new THREE.PlaneGeometry(2, 2),
+    new THREE.PlaneGeometry(2 * outputLayout.aspect, 2),
     new THREE.MeshBasicMaterial({color: 0x10182c}),
   );
   background.position.z = -0.5;
@@ -755,15 +780,15 @@ export async function initialize(sceneConfig: SceneConfig): Promise<void> {
       new THREE.PlaneGeometry(0.72, 0.72),
       new THREE.MeshBasicMaterial({map: imageTexture}),
     );
-    image.position.set(0.52, 0.18, 0);
+    image.position.set(normalizedX(outputLayout, 0.52), 0.18, 0);
     scene.add(image);
     imageReady = true;
     await document.fonts.ready;
     const title = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.5, 0.193),
+      new THREE.PlaneGeometry(1.5 * outputLayout.aspect, 0.193),
       new THREE.MeshBasicMaterial({map: textTexture(config.title), transparent: true}),
     );
-    title.position.set(-0.12, -0.67, 0.1);
+    title.position.set(normalizedX(outputLayout, -0.12), -0.67, 0.1);
     scene.add(title);
   } else {
     initializeAbstract(config);

@@ -110,6 +110,64 @@ def lower_frame(path: Path, frame: int) -> bytes:
     return result.stdout
 
 
+def gray_frame(path: Path, frame: int, width: int, height: int) -> bytes:
+    result = subprocess.run(
+        [
+            shutil.which("ffmpeg") or "ffmpeg",
+            "-v",
+            "error",
+            "-i",
+            str(path),
+            "-vf",
+            f"select='eq(n,{frame})',format=gray",
+            "-vsync",
+            "0",
+            "-frames:v",
+            "1",
+            "-f",
+            "rawvideo",
+            "pipe:1",
+        ],
+        capture_output=True,
+    )
+    assert result.returncode == 0, result.stderr.decode()
+    assert len(result.stdout) == width * height
+    return result.stdout
+
+
+def changed_bounds(left: bytes, right: bytes, width: int, threshold: int = 32):
+    changed = [
+        index
+        for index, values in enumerate(zip(left, right, strict=True))
+        if abs(values[0] - values[1]) >= threshold
+    ]
+    assert len(changed) > 500
+    xs = [index % width for index in changed]
+    ys = [index // width for index in changed]
+    return min(xs), max(xs), min(ys), max(ys)
+
+
+def write_contact_sheet(video: Path, output: Path) -> None:
+    result = subprocess.run(
+        [
+            shutil.which("ffmpeg") or "ffmpeg",
+            "-v",
+            "error",
+            "-i",
+            str(video),
+            "-vf",
+            "select='eq(n,10)+eq(n,30)+eq(n,50)',scale=270:480,tile=3x1",
+            "-frames:v",
+            "1",
+            "-y",
+            str(output),
+        ],
+        capture_output=True,
+    )
+    assert result.returncode == 0, result.stderr.decode()
+    assert output.is_file() and output.stat().st_size > 0
+
+
 def test_lrc_import_records_end_rule_and_preserves_repeated_text(tmp_path):
     project = project_fixture(tmp_path)
     source = tmp_path / "bilingual.lrc"
@@ -252,6 +310,30 @@ def test_bilingual_captions_render_on_exact_cues_with_safe_interlude(tmp_path):
     assert sha256_bytes(first) != sha256_bytes(interlude)
     assert sha256_bytes(second) != sha256_bytes(interlude)
     assert min(first) < max(first) and min(second) < max(second)
+
+    portrait_plan = json.loads(plan.read_text())
+    portrait_plan["output"] = {
+        "width": 1080,
+        "height": 1920,
+        "fps_num": 30,
+        "fps_den": 1,
+    }
+    plan.write_text(json.dumps(portrait_plan), encoding="utf-8")
+    _, portrait_resolved = resolve_plan(project, plan, project / "plans/portrait.json")
+    portrait = project / "portrait.mp4"
+    portrait_report = render_minimal(project, portrait_resolved, portrait)
+    assert portrait_report["profile"] == portrait_plan["output"]
+    first_portrait, blank_portrait, dense_portrait = (
+        gray_frame(portrait, frame, 1080, 1920) for frame in (10, 30, 50)
+    )
+    assert min(blank_portrait) < max(blank_portrait)
+    for caption_frame in (first_portrait, dense_portrait):
+        left, right, top, bottom = changed_bounds(caption_frame, blank_portrait, 1080)
+        assert left >= int(1080 * 0.05)
+        assert right <= int(1080 * 0.95)
+        assert top >= int(1920 * 0.50)
+        assert bottom <= int(1920 * 0.93)
+    write_contact_sheet(portrait, project / "portrait-contact-sheet.png")
 
 
 def sha256_bytes(value: bytes) -> str:

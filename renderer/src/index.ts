@@ -7,3 +7,11 @@ export { videoFrameAtSample } from "./media.js";
 export type { VideoClock, VideoPolicy } from "./media.js";
 export { activeCueAtSample, lyricMotionAtSample, lyricOpacity } from "./lyrics.js";
 export type { LyricCue, LyricMotion } from "./lyrics.js";
+export { layoutForOutput, lyricBounds, mediaScale, normalizedX } from "./layout.js";
+export type {
+  LyricLayout,
+  MediaFit,
+  NormalizedBounds,
+  OutputLayout,
+  Scale2D,
+} from "./layout.js";
