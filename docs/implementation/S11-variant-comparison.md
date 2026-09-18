@@ -16,17 +16,20 @@ cases have not started. Private inputs, plans, reviews and generated media remai
 - Add authoritative Python `ComparisonRequest` and `ComparisonManifest` models, generated schemas,
   validation support and synthetic examples. A request contains ordered stable variant IDs, labels
   and completed preview-manifest paths.
-- `mvt compare --request FILE --output DIR` consumes existing preview outputs. It never invokes
-  analysis, alignment, plan resolution or rendering.
-- Every variant must have the same canonical source hash, ordered global sample ranges, actual
-  probed width/height/fps, range count and audio presence. Variant plan/assets/renderer/input hashes
-  are expected to differ and are recorded, not normalized away.
+- `mvt compare --request FILE --output DIR` consumes distinct completed aggregate previews carrying
+  preview-request/adapter evidence. It never invokes analysis, alignment, plan resolution or
+  rendering.
+- Every variant must have the same canonical source hash, ordered global sample ranges, H.264/
+  yuv420p + AAC 48 kHz stereo CFR compatibility signature, dimensions/fps, range count and audio
+  presence. Variant plan/assets/renderer/input hashes are expected to differ and are recorded, not
+  normalized away.
 - The command validates every referenced hash and media file, probes the clips, and installs a new
   output directory atomically. An intact identical request may reuse its cache; stale, partial or
   damaged output fails without overwrite.
 - The comparison directory contains `comparison.json`, an FFmpeg stream-copy review reel ordered
   range-major then variant-major, and a labeled contact sheet sampled at the same relative frame in
-  each range. The manifest binds the request, input manifests, generated artifacts, tool versions
+  each range. The reel is re-probed for the shared signature and summed frame count before atomic
+  installation. The manifest binds the request, input manifests, generated artifacts, tool versions
   and hashes. Subjective feedback is a separate external record.
 - Repository tests use synthetic A/B/C variants. External acceptance uses `soft-harm`, shared
   canonical audio/timeline/lyrics and identical sparse/transition/climax ranges. It must not add the

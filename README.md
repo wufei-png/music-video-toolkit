@@ -67,7 +67,7 @@ pnpm --dir renderer exec playwright install chromium
 
 `preview` 接受有序、互不重叠且对齐 30 fps 帧边界的全局 sample ranges，为每段输出独立 MP4，并可无损拼接 review reel。独立样片继续按全曲帧号取视觉、歌词和媒体时间，音频从相同全局采样点开始。aggregate manifest 绑定源记录、timeline、plan、素材、字体、渲染器源码/锁文件、seed、ranges 和所有输出哈希；完全相同且完整的结果才命中缓存，任何 stale、缺失或损坏结果都会被拒绝且不会覆盖。
 
-`compare` 只读取至少两个已完成的 preview manifest，不会运行分析、对齐、plan resolve、preview 或 render。它要求相同 canonical audio、原始来源、全局 ranges、实际探测到的尺寸/fps/帧数/音频存在性，并比较每个 range 的 decoded PCM hash；plan、assets、seed、renderer 和 environment 差异原样记录。输出目录原子安装 `comparison.json`、按 range-major → variant-major 排列的 FFmpeg stream-copy reel，以及在每个 range 相同相对中点采样的 labeled contact sheet。相同请求可命中缓存，但会重新校验所有输入和输出哈希；主观反馈仍是外部记录。
+`compare` 只读取至少两个带 preview request/adapter 证据的已完成 aggregate preview manifest，不会运行分析、对齐、plan resolve、preview 或 render。它拒绝解析到同一 manifest 的路径别名，要求相同 canonical audio、原始来源、全局 ranges、H.264/yuv420p + AAC 48 kHz stereo CFR stream compatibility signature、尺寸/fps/帧数/音频存在性，并比较每个 range 的 decoded PCM hash；plan、assets、seed、renderer 和 environment 差异原样记录。输出目录在重新探测成片 profile 和总帧数后原子安装 `comparison.json`、按 range-major → variant-major 排列的 FFmpeg stream-copy reel，以及在每个 range 相同相对中点采样的 labeled contact sheet。相同请求可命中缓存，但会重新校验所有输入和输出哈希；主观反馈仍是外部记录。
 
 原始研究报告、两首歌及其制作资产留在父目录，公共工具仓库不依赖它们。新用户可以安装工具、检查协议、解码、分析、导入或自动对齐歌词、渲染自己的本地计划、制作多区间样片并比较已完成变体；完整生产工作流已由 S09/S10 验证，S11 比较已用外部真实歌曲证据验证，具体歌曲仍应在外部制作工作区完成。
 

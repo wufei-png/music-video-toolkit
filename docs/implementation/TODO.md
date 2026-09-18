@@ -14,9 +14,10 @@ the first dependency-ready unfinished slice.
   `../projects/zhi-mai-yi-ren-fen/s10/final-v1-bulge/`. Both have exact expected frame counts,
   H.264 video, AAC 48 kHz stereo audio, and no detected black interval.
 - The repository supports A abstract, B mood-media, and C hybrid plans. `mvt compare` now validates
-  completed variants against one canonical audio, exact global ranges, probed profile/frame/audio
-  evidence and hashes, then installs an auditable manifest, range-major reel and labeled contact
-  sheet without running upstream pipeline commands.
+  distinct completed aggregate variants against one canonical audio, exact global ranges, H.264/
+  yuv420p + AAC 48 kHz stereo CFR compatibility, frame/audio evidence and hashes, then re-probes
+  and installs an auditable manifest, range-major reel and labeled contact sheet without running
+  upstream pipeline commands.
 - Output contracts, renderer configuration, probing, preview frame alignment, schemas, and tests
   are fixed to 1920x1080 at 30 fps. Portrait is not a parameter switch today.
 - Current analysis provides mix/stem RMS, drum onset, bass low energy, beat estimates, and chroma.

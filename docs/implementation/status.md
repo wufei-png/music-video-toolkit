@@ -10,40 +10,50 @@ decoded per-range audio hashes, each variant's input/environment/seed evidence, 
 generated artifact hashes. Python models remain authoritative and generated schemas plus synthetic
 examples cover both new artifacts.
 
-Preflight verifies every referenced preview clip and optional per-preview reel hash, requires exact
-frame counts from the probed rational fps, and rejects source, range, profile, audio and hash
-mismatches before output installation. The comparison directory is installed atomically and
-contains `comparison.json`, an FFmpeg stream-copy reel in range-major then variant-major order, and
-a deterministic labeled contact sheet sampled at each clip's midpoint. Intact identical work hits
-the cache only after all input/output hashes and media probes are revalidated; stale, partial,
-tampered or differently keyed directories fail without overwrite. Reordering variants changes the
-comparison identity and reel order.
+Preflight requires distinct completed aggregate previews with preview-request/adapter evidence,
+verifies every referenced clip and optional per-preview reel hash, requires H.264/yuv420p plus AAC
+48 kHz stereo constant-frame-rate streams with an exact codec-parameter compatibility signature,
+and rejects source, range, profile, frame-count, audio and hash mismatches before output
+installation. The comparison directory is installed atomically and contains `comparison.json`, an
+FFmpeg stream-copy reel in range-major then variant-major order, and a deterministic labeled
+contact sheet sampled at each clip's midpoint. The finished reel is decoded/probed for the shared
+signature and summed frame count before installation. Intact identical work hits the cache only
+after all input/output hashes and media probes are revalidated; stale, partial, tampered or
+differently keyed directories fail without overwrite. Resolved manifest aliases are rejected, and
+reordering variants changes the comparison identity and reel order.
 
 The public S11 fixture generator creates actual A/B/C H.264/AAC clips with shared source,
 timeline/lyrics/renderer identities and differing plan/assets hashes. Its integration decoded all
 90 reel frames to prove A/B/C then A/B/C ordering, inspected all six label bands and midpoint cells,
 and passed while every upstream pipeline entry point was replaced with a hard failure. Focused S11
-tests report 5 passed. Commits are `5fad921` (contracts/schemas/examples), `827f629` (atomic command
-and strict preflight), `2f7f667` (real review-artifact proof), plus the commit containing this
-handoff and the final optional-reel hash-validation fix.
+tests report 9 passed. Commits are `5fad921` (contracts/schemas/examples), `827f629` (atomic command
+and strict preflight), `2f7f667` (real review-artifact proof), `9f0b51e` (handoff and optional-reel
+hash validation), and `c6e00fc` (delegated-review remediation for stream compatibility,
+preview-only identity, semantic frame counts and resolved path uniqueness).
 
 External acceptance is under `../projects/soft-harm/s11/`. A abstract and B mood-media were resolved
 and rendered from the same S10 canonical audio, production timeline, reviewed edited lyrics,
 checked assets and 10–22 s / 39–51 s / 190–202 s ranges. C reuses the byte-identical approved S10
-`preview-v6-bulge` clips. The comparison cache key is
-`37f7b53b78f7b33234ca51ed2673e89643405043df45c1d320dfa367b8a807f3`; manifest SHA-256 is
-`46c79214322c208807f3c7d4d916e3d6dfcffe6f84a821efd118026ce7bdd785`, reel SHA-256 is
+`preview-v6-bulge` clips. After review hardening, the comparison cache key is
+`ab18928e2edd17cc3b72ddd6363f2b5f4357114c2828a1f5732a1da02c00c4c7`; manifest SHA-256 is
+`39085d82bc0143b3fd004f154f4241ad52dfe3f93b0c066052ef99a0b169b109`, stream compatibility
+SHA-256 is `605557c1dbf1874b5feb0013a477fc50d0f1f5544e6f44e88fad1f30e8022f2f`, reel SHA-256 is
 `6172e2d85030f4002cc4175f5014fdecf021582d5bb9d55f2e2add5b25eba4d8`, and contact-sheet SHA-256
 is `e327165c8cc04da56e4d5b610f09dc75abc7880538298dfd70a0345e75899875`. The reel probes as H.264
 1920x1080/30 fps with 3240 frames and AAC 48 kHz stereo; the contact sheet is 1440x900. Cache replay
-and standalone schema validation passed. Visual inspection confirmed the 3x3 labels and expected
-A/B/C compositions only; no subjective winner or new user approval is claimed.
+and standalone schema validation passed. The prior comparison is preserved at
+`../projects/soft-harm/s11/comparison-pre-review-20260919/`; the current comparison was regenerated
+at the canonical path and its second identical run hit cache. Visual inspection from the original
+acceptance confirmed the 3x3 labels and expected A/B/C compositions only; no new subjective review,
+winner or user approval is claimed.
 
 The parent project index, both production-case READMEs, both canonical sample counts and both
 `case.json` status blocks now reflect actual S10 evidence. These external ledgers and all S11 song
 plans/media remain outside this Git repository. Comparison remains limited to compatible completed
 preview streams; fixed landscape output and SwiftShader production rendering remain current
-constraints, and subjective review stays external.
+constraints. Exact compatibility is deliberately conservative: previews from differing encoder
+configurations are rejected even when a player might decode their individual clips. Subjective
+review stays external.
 
 ## S10 songs and release readiness complete — 2026-09-18
 
@@ -171,7 +181,7 @@ Current analyzer: isolated locked librosa/audio-separator environment, explicit 
 ## Verified
 
 - `uv sync --locked --group dev`: succeeded with Python 3.12.13.
-- `uv run --locked pytest -q`: **114 passed in 226.46s** (including actual browser/FFmpeg production rehearsals through S10 and real FFmpeg S11 A/B/C comparison artifacts).
+- `uv run --locked pytest -q`: **119 passed in 221.88s** (including actual browser/FFmpeg production rehearsals through S10 and real FFmpeg S11 A/B/C comparison artifacts).
 - `uv run --locked pytest tests/stages/test_s01.py -q`: **12 passed** with real FFmpeg/ffprobe 8.1. A generated 11,025-frame mono 44.1kHz WAV was encoded to MP3, decoded from a different cwd through Chinese/space-bearing paths, and verified as 48kHz stereo 24-bit PCM with its actual decoded frame count. Cache reuse, different-input conflict, missing tools, corrupt input, partial output and cleanup paths passed.
 - `uv run --locked ruff check .` and `ruff format --check .`: passed.
 - `uv run --locked python scripts/export_schemas.py --check`: fourteen schemas match models; tests also validate JSON Schema structure and examples.
@@ -186,7 +196,7 @@ Current analyzer: isolated locked librosa/audio-separator environment, explicit 
 - `uv run --locked pytest tests/stages/test_s07.py -q`: **5 passed**. Known-text mapping, repeated lyrics, unmatched lines, fixed reference metrics, complete edit application, cache/conflict handling, missing runtime and CLI output passed.
 - `uv run --locked pytest tests/stages/test_s08.py -q`: **5 passed in 29.26s**. Actual full/excerpt rendering, global frame equivalence, start-audio alignment, independent reproduction, cache reuse and stale/missing-output rejection passed.
 - `uv run --locked pytest tests/stages/test_s09.py -q`: **2 passed in 84.37s**. Capability/doctor preflight, sample feedback gating, autonomous first cut, complete artifact bundles, mode-specific scripts, no-model rerenders and byte-identical full reproduction passed.
-- `uv run --locked pytest tests/stages/test_s11.py -q`: **5 passed**. Contract/preflight/cache/tamper/conflict paths, optional preview-reel hash validation, actual FFmpeg A/B/C order, labeled midpoint contact sheet and upstream-pipeline isolation passed.
+- `uv run --locked pytest tests/stages/test_s11.py -q`: **9 passed**. Contract/preflight/cache/tamper/conflict paths, unsupported-codec/CFR rejection, aggregate-preview identity, resolved-path uniqueness, optional preview-reel hash validation, actual FFmpeg A/B/C order, final-reel re-probe, labeled midpoint contact sheet and upstream-pipeline isolation passed.
 - Two external 20-second excerpts completed the formal `mvt analyze --stems four` path, artifact/schema validation and a second cached run. Reports and generated media remain outside Git in each case's `s03/` directory.
 - `uv build`: wheel and source archive built; isolated wheel-installed `mvt capabilities` worked. Archive inspection found no original songs, local production workspace or generated media.
 - skill-creator `quick_validate.py`: passed using PyYAML in the project environment. Markdown local links checked.

@@ -34,7 +34,7 @@ mvt render --project PROJECT --plan PROJECT/resolved-plan.json --output OUTPUT.m
 
 Lyrics commands are conditional. `render` is conditional on accepted sample feedback unless the recorded mode is autonomous. After analysis, alignment and material creation are complete, reproducible preview/full commands use only the saved project, plan, ranges and local assets; they do not run models or contact generation services.
 
-Comparison is also conditional. Its request points only to already-completed preview manifests and preserves variant order. Verify that variants intentionally share canonical audio and ranges before running it. Save `comparison.json`, the range-major reel and labeled contact sheet alongside a separate feedback record; objective comparison success is not user approval.
+Comparison is also conditional. Its request points only to distinct completed aggregate preview manifests and preserves variant order. Verify that variants intentionally share canonical audio, ranges and H.264/yuv420p + AAC 48 kHz stereo CFR compatibility before running it. Save `comparison.json`, the range-major reel and labeled contact sheet alongside a separate feedback record; objective comparison success is not user approval.
 
 ## Feedback record
 
