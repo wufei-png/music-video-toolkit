@@ -15,6 +15,7 @@ from .alignment import AlignmentError, align_lyrics, apply_alignment_edits
 from .analysis import AnalysisError, analyze_project
 from .assets import AssetError, check_assets
 from .audio import DecodeError, decode_audio
+from .comparison import ComparisonError, compare_previews
 from .contracts import CONTRACTS
 from .documents import read_document
 from .lyrics import LyricsError, import_lyrics
@@ -35,6 +36,7 @@ AVAILABLE = [
     "lyrics align",
     "lyrics apply-edits",
     "preview",
+    "compare",
     "render",
 ]
 PLANNED = []
@@ -101,6 +103,9 @@ def main(argv: list[str] | None = None) -> int:
     preview.add_argument("--ranges", type=Path, required=True)
     preview.add_argument("--output", type=Path, required=True)
     preview.add_argument("--review-reel", action="store_true")
+    compare = commands.add_parser("compare", help="Compare completed same-audio previews")
+    compare.add_argument("--request", type=Path, required=True)
+    compare.add_argument("--output", type=Path, required=True)
     render = commands.add_parser("render", help="Render the supported fixed-frame plan")
     render.add_argument("--project", type=Path, required=True)
     render.add_argument("--plan", type=Path, required=True)
@@ -303,6 +308,13 @@ def main(argv: list[str] | None = None) -> int:
                 review_reel=args.review_reel,
             )
         except PreviewError as exc:
+            emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
+            return exc.exit_code
+        emit(result.summary())
+    elif args.command == "compare":
+        try:
+            result = compare_previews(args.request, args.output)
+        except ComparisonError as exc:
             emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
             return exc.exit_code
         emit(result.summary())

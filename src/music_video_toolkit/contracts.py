@@ -543,6 +543,7 @@ class RenderManifest(Artifact):
     cache_key: Sha256
     status: Literal["completed", "failed"]
     source_sha256: Sha256
+    canonical_audio_sha256: Sha256 | None = None
     inputs: Annotated[dict[Name, Sha256], Field(min_length=1)]
     seed: NonNegative
     environment: Annotated[dict[Name, Text], Field(min_length=1)]
@@ -586,12 +587,17 @@ class ComparisonMediaProbe(Contract):
     fps_den: Positive
     frame_count: Positive
     has_audio: bool
+    audio_sha256: Sha256 | None = None
     audio_sample_rate: Positive | None = None
     audio_channels: Positive | None = None
 
     @model_validator(mode="after")
     def coherent_audio(self) -> Self:
-        audio_metadata = self.audio_sample_rate is not None and self.audio_channels is not None
+        audio_metadata = (
+            self.audio_sha256 is not None
+            and self.audio_sample_rate is not None
+            and self.audio_channels is not None
+        )
         if self.has_audio != audio_metadata:
             raise ValueError("audio metadata must be present exactly when has_audio is true")
         return self
@@ -646,6 +652,7 @@ class ComparisonManifest(Artifact):
             raise ValueError("comparison profile range_count must match ranges")
         unique([variant.id for variant in self.variants], "comparison variant id")
         expected_indexes = list(range(1, len(self.ranges) + 1))
+        reference_clips = self.variants[0].clips
         for variant in self.variants:
             if [clip.range_index for clip in variant.clips] != expected_indexes:
                 raise ValueError("comparison clips must cover each range once in order")
@@ -669,6 +676,11 @@ class ComparisonManifest(Artifact):
                 )
                 if actual_profile != expected_profile:
                     raise ValueError("comparison clip probe does not match the shared profile")
+            for reference, clip in zip(reference_clips, variant.clips, strict=True):
+                if clip.probe.frame_count != reference.probe.frame_count:
+                    raise ValueError("comparison variants must have matching frame counts")
+                if clip.probe.audio_sha256 != reference.probe.audio_sha256:
+                    raise ValueError("comparison variants must have matching decoded audio")
         return self
 
 

@@ -59,6 +59,7 @@
             "fps_den": 1,
             "frame_count": 300,
             "has_audio": true,
+            "audio_sha256": "1212121212121212121212121212121212121212121212121212121212121212",
             "audio_sample_rate": 48000,
             "audio_channels": 2
           }
@@ -80,6 +81,7 @@
             "fps_den": 1,
             "frame_count": 600,
             "has_audio": true,
+            "audio_sha256": "1313131313131313131313131313131313131313131313131313131313131313",
             "audio_sample_rate": 48000,
             "audio_channels": 2
           }
@@ -120,6 +122,7 @@
             "fps_den": 1,
             "frame_count": 300,
             "has_audio": true,
+            "audio_sha256": "1212121212121212121212121212121212121212121212121212121212121212",
             "audio_sample_rate": 48000,
             "audio_channels": 2
           }
@@ -141,6 +144,7 @@
             "fps_den": 1,
             "frame_count": 600,
             "has_audio": true,
+            "audio_sha256": "1313131313131313131313131313131313131313131313131313131313131313",
             "audio_sample_rate": 48000,
             "audio_channels": 2
           }

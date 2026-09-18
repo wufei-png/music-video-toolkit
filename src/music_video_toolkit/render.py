@@ -666,6 +666,7 @@ def render_minimal(
             cache_key=_render_cache_key(inputs, manifest_inputs, selected_range),
             status="completed",
             source_sha256=inputs["source"].record.original.sha256,
+            canonical_audio_sha256=inputs["source"].record.canonical.sha256,
             inputs=manifest_inputs,
             seed=inputs["plan"].seed,
             environment={

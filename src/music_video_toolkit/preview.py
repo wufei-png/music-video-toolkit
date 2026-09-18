@@ -264,6 +264,7 @@ def render_preview(
             cache_key=cache_key,
             status="completed",
             source_sha256=inputs["source"].record.original.sha256,
+            canonical_audio_sha256=inputs["source"].record.canonical.sha256,
             inputs=manifest_inputs,
             seed=inputs["plan"].seed,
             environment=environment or {"renderer": "unavailable"},
