@@ -21,6 +21,68 @@
       "title": "FileRef",
       "type": "object"
     },
+    "LandscapeOutputProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "const": 1920,
+          "default": 1920,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "const": 1080,
+          "default": 1080,
+          "title": "Height",
+          "type": "integer"
+        },
+        "fps_num": {
+          "const": 30,
+          "default": 30,
+          "title": "Fps Num",
+          "type": "integer"
+        },
+        "fps_den": {
+          "const": 1,
+          "default": 1,
+          "title": "Fps Den",
+          "type": "integer"
+        }
+      },
+      "title": "LandscapeOutputProfile",
+      "type": "object"
+    },
+    "PortraitOutputProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "const": 1080,
+          "default": 1080,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "const": 1920,
+          "default": 1920,
+          "title": "Height",
+          "type": "integer"
+        },
+        "fps_num": {
+          "const": 30,
+          "default": 30,
+          "title": "Fps Num",
+          "type": "integer"
+        },
+        "fps_den": {
+          "const": 1,
+          "default": 1,
+          "title": "Fps Den",
+          "type": "integer"
+        }
+      },
+      "title": "PortraitOutputProfile",
+      "type": "object"
+    },
     "SampleRange": {
       "additionalProperties": false,
       "properties": {
@@ -82,6 +144,21 @@
       ],
       "default": null,
       "title": "Canonical Audio Sha256"
+    },
+    "profile": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LandscapeOutputProfile"
+        },
+        {
+          "$ref": "#/$defs/PortraitOutputProfile"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Profile"
     },
     "inputs": {
       "minProperties": 1,

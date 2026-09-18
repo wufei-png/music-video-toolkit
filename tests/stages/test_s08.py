@@ -256,12 +256,15 @@ def test_preview_cache_key_covers_material_inputs_seed_and_analysis():
         "asset.font": "3" * 64,
         "timeline": "4" * 64,
     }
-    baseline = _cache_key("0" * 64, inputs, 7, request, False)
+    landscape = {"width": 1920, "height": 1080, "fps_num": 30, "fps_den": 1}
+    portrait = {"width": 1080, "height": 1920, "fps_num": 30, "fps_den": 1}
+    baseline = _cache_key("0" * 64, inputs, 7, landscape, request, False)
     for field in inputs:
         changed = dict(inputs)
         changed[field] = "f" * 64
-        assert _cache_key("0" * 64, changed, 7, request, False) != baseline
-    assert _cache_key("0" * 64, inputs, 8, request, False) != baseline
+        assert _cache_key("0" * 64, changed, 7, landscape, request, False) != baseline
+    assert _cache_key("0" * 64, inputs, 8, landscape, request, False) != baseline
+    assert _cache_key("0" * 64, inputs, 7, portrait, request, False) != baseline
 
 
 @pytest.mark.skipif(
@@ -317,6 +320,7 @@ def test_preview_matches_full_global_frames_reproduces_and_invalidates(tmp_path)
     )
     assert all((first_dir / item.path).is_file() for item in aggregate.outputs)
     assert all(sha256(first_dir / item.path) == item.sha256 for item in aggregate.outputs)
+    assert aggregate.profile == first.manifest.profile
 
     (first_dir / "02-second-click.mp4").unlink()
     with pytest.raises(PreviewError) as caught:

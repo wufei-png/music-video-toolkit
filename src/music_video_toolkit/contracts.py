@@ -554,6 +554,7 @@ class RenderManifest(Artifact):
     status: Literal["completed", "failed"]
     source_sha256: Sha256
     canonical_audio_sha256: Sha256 | None = None
+    profile: OutputProfile | None = None
     inputs: Annotated[dict[Name, Sha256], Field(min_length=1)]
     seed: NonNegative
     environment: Annotated[dict[Name, Text], Field(min_length=1)]

@@ -27,10 +27,7 @@ from .documents import read_document
 from .plan import PlanError, validate_resolved_plan
 from .project import ProjectPreflightError, preflight_source, resolve_record_path, sha256_file
 
-FPS_NUM = 30
-FPS_DEN = 1
 SAMPLE_RATE = 48000
-SAMPLES_PER_FRAME = SAMPLE_RATE * FPS_DEN // FPS_NUM
 SUPPORTED_LAYER_KINDS = {"s02.pulse", "s02.image", "s02.text"}
 
 
@@ -42,6 +39,16 @@ class RenderError(Exception):
         self.code = code
         self.details = details
         self.exit_code = exit_code
+
+
+def _frame_count(duration_samples: int, profile) -> int:
+    denominator = SAMPLE_RATE * profile.fps_den
+    return (duration_samples * profile.fps_num + denominator - 1) // denominator
+
+
+def _event_frame(sample: int, profile) -> int:
+    denominator = SAMPLE_RATE * profile.fps_den
+    return (sample * profile.fps_num + denominator - 1) // denominator
 
 
 def renderer_root() -> Path:
@@ -195,7 +202,7 @@ def _abstract_inputs(project: Path, plan_path: Path, source) -> dict[str, object
             raise RenderError(
                 "invalid_lyrics_font", {"font_asset_id": plan.lyrics.font_asset_id}, 4
             )
-    frame_count = (timeline.source.duration_samples * FPS_NUM + SAMPLE_RATE - 1) // SAMPLE_RATE
+    frame_count = _frame_count(timeline.source.duration_samples, plan.output)
     return {
         "scene_mode": "abstract",
         "source": source,
@@ -312,10 +319,10 @@ def _renderer_inputs(project: Path, plan_path: Path) -> dict[str, object]:
     if not image_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
         raise RenderError("unsupported_render_asset", "S02 local image fixture must be PNG", 4)
 
-    frame_count = (timeline.source.duration_samples * FPS_NUM + SAMPLE_RATE - 1) // SAMPLE_RATE
+    frame_count = _frame_count(timeline.source.duration_samples, plan.output)
     pulse_frames = sorted(
         {
-            (event.sample * FPS_NUM + SAMPLE_RATE - 1) // SAMPLE_RATE
+            _event_frame(event.sample, plan.output)
             for event in timeline.events
             if event.name == pulse_event
         }
@@ -338,7 +345,7 @@ def _renderer_inputs(project: Path, plan_path: Path) -> dict[str, object]:
     }
 
 
-def _probe_output(ffprobe: str, path: Path, frame_count: int) -> dict[str, object]:
+def _probe_output(ffprobe: str, path: Path, frame_count: int, profile) -> dict[str, object]:
     result = _run(
         [
             ffprobe,
@@ -370,9 +377,9 @@ def _probe_output(ffprobe: str, path: Path, frame_count: int) -> dict[str, objec
         raise RenderError("render_probe_failed", "ffprobe returned incomplete streams", 5) from exc
     expected = {
         "video_codec": "h264",
-        "width": 1920,
-        "height": 1080,
-        "fps": "30/1",
+        "width": profile.width,
+        "height": profile.height,
+        "fps": f"{profile.fps_num}/{profile.fps_den}",
         "frames": frame_count,
         "audio_codec": "aac",
         "audio_rate": 48000,
@@ -512,8 +519,7 @@ def _render_cache_key(
         "inputs": hashes,
         "seed": inputs["plan"].seed,
         "range": selected_range.model_dump(mode="json"),
-        "fps_num": FPS_NUM,
-        "fps_den": FPS_DEN,
+        "profile": inputs["plan"].output.model_dump(mode="json"),
     }
     return hashlib.sha256(
         json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
@@ -534,6 +540,7 @@ def render_minimal(
             "output_conflict", {"output": str(output), "manifest": str(manifest_path)}, 4
         )
     inputs = _renderer_inputs(project, plan_path)
+    profile = inputs["plan"].output
     full_duration = inputs["timeline"].source.duration_samples
     selected_range = sample_range or SampleRange(start_sample=0, end_sample=full_duration)
     if selected_range.end_sample > full_duration:
@@ -546,20 +553,18 @@ def render_minimal(
         frame_start = 0
         frame_count = int(inputs["frame_count"])
     else:
-        if (
-            selected_range.start_sample % SAMPLES_PER_FRAME
-            or selected_range.end_sample % SAMPLES_PER_FRAME
-        ):
+        frame_samples = SAMPLE_RATE * profile.fps_den // profile.fps_num
+        if selected_range.start_sample % frame_samples or selected_range.end_sample % frame_samples:
             raise RenderError(
                 "render_range_not_frame_aligned",
                 {
                     "range": selected_range.model_dump(mode="json"),
-                    "frame_samples": SAMPLES_PER_FRAME,
+                    "frame_samples": frame_samples,
                 },
                 4,
             )
-        frame_start = selected_range.start_sample // SAMPLES_PER_FRAME
-        frame_count = (selected_range.end_sample - selected_range.start_sample) // SAMPLES_PER_FRAME
+        frame_start = selected_range.start_sample // frame_samples
+        frame_count = (selected_range.end_sample - selected_range.start_sample) // frame_samples
     node = _dependency("node")
     pnpm = _dependency("pnpm")
     ffmpeg = _dependency("ffmpeg")
@@ -603,10 +608,10 @@ def render_minimal(
         media_temporary = tempfile.TemporaryDirectory(dir=output.parent, prefix=".render-media-")
         config = {
             "sceneMode": inputs["scene_mode"],
-            "width": 1920,
-            "height": 1080,
-            "fpsNum": FPS_NUM,
-            "fpsDen": FPS_DEN,
+            "width": profile.width,
+            "height": profile.height,
+            "fpsNum": profile.fps_num,
+            "fpsDen": profile.fps_den,
             "frameCount": frame_count,
             "frameStart": frame_start,
             "audioStartSeconds": selected_range.start_sample / SAMPLE_RATE,
@@ -646,7 +651,7 @@ def render_minimal(
             host = json.loads(host_result.stdout)
         except json.JSONDecodeError as exc:
             raise RenderError("renderer_failed", "renderer returned invalid JSON", 5) from exc
-        probe = _probe_output(ffprobe, temporary, frame_count)
+        probe = _probe_output(ffprobe, temporary, frame_count, profile)
         os.replace(temporary, output)
         output_installed = True
 
@@ -667,6 +672,7 @@ def render_minimal(
             status="completed",
             source_sha256=inputs["source"].record.original.sha256,
             canonical_audio_sha256=inputs["source"].record.canonical.sha256,
+            profile=profile,
             inputs=manifest_inputs,
             seed=inputs["plan"].seed,
             environment={
@@ -722,6 +728,7 @@ def render_minimal(
         "global_frame_start": frame_start,
         "pulse_frames": inputs["pulse_frames"],
         "probe": probe,
+        "profile": profile.model_dump(mode="json"),
         "readiness": host["readiness"],
         "webgl": host["webgl"],
         "acceleration": acceleration,

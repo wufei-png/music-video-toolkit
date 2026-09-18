@@ -16,9 +16,7 @@ from .contracts import FileRef, PreviewRequest, RenderManifest, SampleRange
 from .documents import read_document
 from .project import resolve_record_path, sha256_file
 from .render import (
-    FPS_DEN,
-    FPS_NUM,
-    SAMPLES_PER_FRAME,
+    SAMPLE_RATE,
     RenderError,
     _dependency,
     _manifest_inputs,
@@ -74,6 +72,7 @@ def _cache_key(
     source_sha256: str,
     inputs: dict[str, str],
     seed: int,
+    profile: dict[str, int],
     request: PreviewRequest,
     review_reel: bool,
 ) -> str:
@@ -81,10 +80,9 @@ def _cache_key(
         "source_sha256": source_sha256,
         "inputs": inputs,
         "seed": seed,
+        "profile": profile,
         "ranges": [item.model_dump(mode="json") for item in request.ranges],
         "review_reel": review_reel,
-        "fps_num": FPS_NUM,
-        "fps_den": FPS_DEN,
     }
     return hashlib.sha256(
         json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
@@ -95,6 +93,7 @@ def _validated_cache(
     output_dir: Path,
     cache_key: str,
     inputs: dict[str, str],
+    profile,
     ranges: list[SampleRange],
     expected_outputs: list[str],
 ) -> tuple[RenderManifest, Path] | None:
@@ -105,6 +104,7 @@ def _validated_cache(
             manifest.status != "completed"
             or manifest.cache_key != cache_key
             or manifest.inputs != inputs
+            or manifest.profile != profile
             or manifest.ranges != ranges
             or [output.path for output in manifest.outputs] != expected_outputs
         ):
@@ -186,6 +186,8 @@ def render_preview(
     except RenderError as exc:
         raise PreviewError(exc.code, exc.details, exc.exit_code) from exc
     duration = inputs["timeline"].source.duration_samples
+    profile = inputs["plan"].output
+    frame_samples = SAMPLE_RATE * profile.fps_den // profile.fps_num
     for item in request.ranges:
         if item.end_sample > duration:
             raise PreviewError(
@@ -193,10 +195,10 @@ def render_preview(
                 {"id": item.id, "end_sample": item.end_sample, "duration_samples": duration},
                 4,
             )
-        if item.start_sample % SAMPLES_PER_FRAME or item.end_sample % SAMPLES_PER_FRAME:
+        if item.start_sample % frame_samples or item.end_sample % frame_samples:
             raise PreviewError(
                 "preview_range_not_frame_aligned",
-                {"id": item.id, "frame_samples": SAMPLES_PER_FRAME},
+                {"id": item.id, "frame_samples": frame_samples},
                 4,
             )
     manifest_inputs = _manifest_inputs(inputs)
@@ -210,6 +212,7 @@ def render_preview(
         inputs["source"].record.original.sha256,
         manifest_inputs,
         inputs["plan"].seed,
+        profile.model_dump(mode="json"),
         request,
         review_reel,
     )
@@ -223,6 +226,7 @@ def render_preview(
             output_dir,
             cache_key,
             manifest_inputs,
+            profile,
             selected_ranges,
             expected_outputs,
         )
@@ -265,6 +269,7 @@ def render_preview(
             status="completed",
             source_sha256=inputs["source"].record.original.sha256,
             canonical_audio_sha256=inputs["source"].record.canonical.sha256,
+            profile=profile,
             inputs=manifest_inputs,
             seed=inputs["plan"].seed,
             environment=environment or {"renderer": "unavailable"},

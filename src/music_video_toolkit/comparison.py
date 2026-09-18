@@ -404,6 +404,19 @@ def _prepare_comparison(
             raise ComparisonError(
                 "comparison_profile_mismatch", {"variant": variant.id, "scope": "ranges"}, 4
             )
+        if preview.profile is not None:
+            declared_profile = (
+                preview.profile.width,
+                preview.profile.height,
+                preview.profile.fps_num,
+                preview.profile.fps_den,
+            )
+            if declared_profile != profile[2:6]:
+                raise ComparisonError(
+                    "comparison_profile_mismatch",
+                    {"variant": variant.id, "scope": "manifest"},
+                    4,
+                )
         if reference_manifest is None:
             reference_manifest = preview
             reference_profile = profile

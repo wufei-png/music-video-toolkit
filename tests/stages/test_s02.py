@@ -11,7 +11,7 @@ import pytest
 
 from music_video_toolkit.audio import decode_audio
 from music_video_toolkit.cli import main
-from music_video_toolkit.contracts import RenderManifest
+from music_video_toolkit.contracts import RenderManifest, SampleRange
 from music_video_toolkit.render import RenderError, render_minimal, renderer_doctor
 
 
@@ -206,6 +206,8 @@ def test_fixed_frame_browser_render_audio_sync_and_repeatability(tmp_path, capsy
         json.loads(first.with_suffix(".mp4.render.json").read_text())
     )
     assert manifest.status == "completed"
+    assert manifest.profile is not None
+    assert (manifest.profile.width, manifest.profile.height) == (1920, 1080)
     assert manifest.outputs[0].sha256 == sha256(first)
 
     second = tmp_path / "second output.mp4"
@@ -214,6 +216,21 @@ def test_fixed_frame_browser_render_audio_sync_and_repeatability(tmp_path, capsy
     second_luma = decode_video_luma(second)
     assert len(second_luma) == 150
     assert max(abs(a - b) for a, b in zip(luma, second_luma, strict=True)) <= 2
+
+    plan_data = json.loads(plan.read_text())
+    plan_data["output"] = {"width": 1080, "height": 1920, "fps_num": 30, "fps_den": 1}
+    plan.write_text(json.dumps(plan_data), encoding="utf-8")
+    portrait = tmp_path / "portrait output.mp4"
+    portrait_report = render_minimal(
+        project,
+        plan,
+        portrait,
+        sample_range=SampleRange(start_sample=0, end_sample=1600),
+    )
+    assert (portrait_report["probe"]["width"], portrait_report["probe"]["height"]) == (
+        1080,
+        1920,
+    )
 
 
 def test_render_rejects_unknown_layer_before_creating_output(tmp_path):

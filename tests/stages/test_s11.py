@@ -57,6 +57,7 @@ def write_preview(
         "status": "completed",
         "source_sha256": HASHES["original"],
         "canonical_audio_sha256": canonical,
+        "profile": {"width": 1920, "height": 1080, "fps_num": 30, "fps_den": 1},
         "inputs": {
             "timeline": HASHES["timeline"],
             "plan": HASHES[f"plan-{variant}"],

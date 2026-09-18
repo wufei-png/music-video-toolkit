@@ -91,6 +91,13 @@ function nonNegativeFinite(value: number, label: string): void {
   }
 }
 
+function supportedOutputProfile(config: RenderConfig): void {
+  const profile = [config.width, config.height, config.fpsNum, config.fpsDen].join("x");
+  if (profile !== "1920x1080x30x1" && profile !== "1080x1920x30x1") {
+    throw new Error(`unsupported output profile ${profile}`);
+  }
+}
+
 async function mediaFrame(
   asset: MediaAssetConfig,
   layer: RenderLayerConfig,
@@ -173,6 +180,7 @@ async function main(): Promise<void> {
   positiveInteger(config.frameCount, "frameCount");
   nonNegativeInteger(config.frameStart ?? 0, "frameStart");
   nonNegativeFinite(config.audioStartSeconds ?? 0, "audioStartSeconds");
+  supportedOutputProfile(config);
 
   const browser = await chromium.launch({headless: true});
   let encoder: ReturnType<typeof spawn> | undefined;
