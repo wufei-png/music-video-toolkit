@@ -1,4 +1,7 @@
 import json
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -7,6 +10,8 @@ from music_video_toolkit.cli import main
 from music_video_toolkit.comparison import ComparisonError, compare_previews
 from music_video_toolkit.contracts import ComparisonManifest, ComparisonMediaProbe
 from music_video_toolkit.project import sha256_file
+
+ROOT = Path(__file__).resolve().parents[2]
 
 HASHES = {
     "original": "0" * 64,
@@ -226,3 +231,101 @@ def test_compare_rejects_stale_or_damaged_output(tmp_path, fake_media):
     with pytest.raises(ComparisonError) as caught:
         compare_previews(request, partial)
     assert caught.value.code == "comparison_output_conflict"
+
+
+def decode_rgb(path: Path, *, scale: str | None = None) -> bytes:
+    command = [shutil.which("ffmpeg") or "ffmpeg", "-nostdin", "-v", "error", "-i", str(path)]
+    if scale is not None:
+        command.extend(["-vf", f"scale={scale}:flags=neighbor,format=rgb24"])
+    command.extend(["-fps_mode", "passthrough", "-f", "rawvideo", "-pix_fmt", "rgb24", "pipe:1"])
+    result = subprocess.run(command, capture_output=True, check=False)
+    assert result.returncode == 0, result.stderr.decode()
+    return result.stdout
+
+
+def assert_color(actual: bytes, expected: tuple[int, int, int]) -> None:
+    assert all(
+        abs(channel - target) <= 20 for channel, target in zip(actual, expected, strict=True)
+    )
+
+
+@pytest.mark.skipif(
+    not all(shutil.which(tool) for tool in ("ffmpeg", "ffprobe")),
+    reason="S11 external tools required",
+)
+def test_real_abc_review_artifacts_are_ordered_labeled_and_pipeline_isolated(tmp_path, monkeypatch):
+    fixture = tmp_path / "public-abc"
+    script = ROOT / "tests/fixtures/s11/create_fixture.py"
+    generated = subprocess.run(
+        [sys.executable, str(script), str(fixture)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert generated.returncode == 0, generated.stderr
+    request = fixture / "comparison-request.json"
+
+    def forbidden(*args, **kwargs):
+        del args, kwargs
+        raise AssertionError("compare invoked an upstream pipeline stage")
+
+    for target in (
+        "music_video_toolkit.analysis.analyze_project",
+        "music_video_toolkit.alignment.align_lyrics",
+        "music_video_toolkit.plan.resolve_plan",
+        "music_video_toolkit.preview.render_preview",
+        "music_video_toolkit.render.render_minimal",
+    ):
+        monkeypatch.setattr(target, forbidden)
+
+    output = tmp_path / "comparison"
+    result = compare_previews(request, output)
+    assert result.cached is False
+    assert compare_previews(request, output).cached is True
+    manifest = result.manifest
+    assert [variant.id for variant in manifest.variants] == ["a", "b", "c"]
+    assert manifest.profile.model_dump() == {
+        "width": 320,
+        "height": 180,
+        "fps_num": 30,
+        "fps_den": 1,
+        "has_audio": True,
+        "range_count": 2,
+    }
+    assert len({variant.inputs["plan"] for variant in manifest.variants}) == 3
+    assert len({variant.inputs["assets"] for variant in manifest.variants}) == 3
+    assert len({variant.inputs["timeline"] for variant in manifest.variants}) == 1
+    assert len({variant.inputs["lyrics"] for variant in manifest.variants}) == 1
+
+    reel_frames = decode_rgb(output / "review-reel.mp4", scale="1:1")
+    assert len(reel_frames) == 90 * 3
+    expected_colors = [
+        (255, 0, 0),
+        (0, 255, 0),
+        (0, 0, 255),
+        (255, 255, 0),
+        (255, 0, 255),
+        (0, 255, 255),
+    ]
+    for segment, expected in enumerate(expected_colors):
+        frame = segment * 15 + 5
+        assert_color(reel_frames[frame * 3 : frame * 3 + 3], expected)
+
+    sheet = decode_rgb(output / "contact-sheet.png")
+    width, height = 1440, 600
+    assert len(sheet) == width * height * 3
+    for range_index in range(2):
+        for variant_index, expected in enumerate(
+            expected_colors[range_index * 3 : range_index * 3 + 3]
+        ):
+            label_white = 0
+            for y in range(range_index * 300, range_index * 300 + 30):
+                for x in range(variant_index * 480, (variant_index + 1) * 480):
+                    pixel = (y * width + x) * 3
+                    if min(sheet[pixel : pixel + 3]) >= 240:
+                        label_white += 1
+            assert label_white >= 50
+            x = variant_index * 480 + 240
+            y = range_index * 300 + 30 + 135
+            pixel = (y * width + x) * 3
+            assert_color(sheet[pixel : pixel + 3], expected)
