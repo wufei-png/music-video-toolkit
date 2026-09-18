@@ -162,11 +162,17 @@ Model installation/inference, browser/WebGL rendering, external media compositio
 | S08 samples/reproduction | Complete — commit containing this handoff |
 | S09 production workflow | Complete — commit containing this handoff |
 | S10 songs/release readiness | Complete — final full-song renders and objective QA recorded |
+| S11 same-audio variant comparison | Designed and authorized — not implemented |
+| S12 portrait and repeated structure | Designed and authorized — depends on S11, not implemented |
+| S13 Astrofox automated backend | Designed and authorized — depends on S12, not implemented |
 
 ## Exact next action
 
-No implementation slice remains. The next optional action is user viewing or separately authorized
-publication of the two local final MP4 files; neither is required to validate the repository.
+S11–S13 are selected and authorized in dependency order but remain unimplemented and must not be
+advertised as available. The exact next development action is S11
+([same-audio variant comparison](S11-variant-comparison.md)); S12 and S13 must wait for their
+predecessor's committed acceptance evidence. User viewing or separately authorized publication of
+the two local final MP4 files remains optional and is not required to validate the repository.
 
 On the original host the parent workspace has `projects/README.md`, `projects/soft-harm/case.json` and
 `projects/zhi-mai-yi-ren-fen/case.json`. These are local source inventories, not runtime schemas.

@@ -6,6 +6,8 @@
 
 **各切片中的 `tests/stages/test_sNN.py` 和新增 CLI 是对应切片的验收入口，当前已随 S01–S10 实现。** 安装的模型环境应单独锁定；CPU 模拟或 mock 不算真实模型验证。阶段测试生成可公开的 synthetic fixtures；本地歌曲验收证据保存在仓库外。
 
+S10 之后的候选工作、依赖顺序和选择门槛见 [post-S10 backlog](TODO.md)。S11–S13 已完成设计确认，但尚未实现，也不属于当前 capabilities；必须依次实施，每次只推进一个。
+
 | ID | Result | Dependencies |
 | --- | --- | --- |
 | [S01 统一音频与协议](S01-canonical-audio.md) | canonical WAV 与来源记录 | none |
@@ -18,3 +20,6 @@
 | [S08 多区间样片与可复现重渲染](S08-preview-reproduction.md) | 多区间预览、缓存与无模型重渲染 | S05, S06, S07 |
 | [S09 制作 Skill 全流程验证](S09-production-workflow.md) | 实际制作流程与工具易用性 | S08 |
 | [S10 两首歌成片与开源使用就绪](S10-songs-quality.md) | 两首 C 全曲成片与反馈驱动改进 | S09 |
+| [S11 同音频方案比较基线](S11-variant-comparison.md) | comparison 协议、审阅产物与外部状态修复 | S10 |
+| [S12 竖屏与重复结构分析](S12-portrait-structure.md) | 1080x1920 输出与显式应用的结构候选 | S11 |
+| [S13 Astrofox 自动化后端](S13-astrofox-backend.md) | headless Astrofox 全流程与 projectM 可行性证明 | S12 |

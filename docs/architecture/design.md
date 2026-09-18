@@ -49,9 +49,28 @@ Default: agree direction → generate/import media → several short samples →
 
 Sample rendering must use global song time. Stateful simulation requires deterministic seek/pre-roll or a pure time-indexed implementation. Starting an excerpt at frame zero must not reset its song position.
 
-## Future work
+## Selected post-S10 direction
 
-Linux + NVIDIA validation, 4K/60fps and portrait layouts, Astrofox/projectM adapters, advanced pitch/downbeat/structure analyzers, GUI editing. AI service orchestration is outside the core; extend the harness-facing workflow only when a concrete need appears.
+Post-S10 development proceeds in three dependency-ordered slices:
+
+1. A renderer-neutral comparison artifact must first prove that variants use the same canonical
+   audio, global sample ranges and output profile while binding every differing input. Comparison
+   consumes completed previews; it does not hide rendering or creative changes.
+2. Output profiles remain a closed compatibility surface. The next profile is 1080x1920 at 30 fps
+   alongside the existing 1920x1080 at 30 fps, not arbitrary dimensions. Automatic structure work
+   emits provenance-bearing, unlabeled candidates into a separate artifact and requires an explicit
+   apply step; it never silently relabels or replaces a timeline.
+3. External visual backends return a silent constant-frame-rate visual plus a manifest that binds
+   backend, project, plugin, asset, parameter and output identities. MVT retains canonical audio,
+   lyrics, comparison and final QA. Astrofox automation is the first full adapter: a pinned
+   downstream `astrofox-render` CLI drives its hidden Electron renderer and deterministic export
+   bridge without Playwright, AppleScript or UI clicks. Manual editor handoff is a diagnostic
+   fallback. projectM receives only a locked feasibility proof in this sequence; full adapter work
+   requires a later authorization.
+
+Linux + NVIDIA validation, 4K/60fps, complete projectM integration, pitch/downbeat analyzers and GUI
+editing remain later work. AI service orchestration is outside the core; extend the harness-facing
+workflow only when a concrete need appears.
 
 ## Delivery separation
 
