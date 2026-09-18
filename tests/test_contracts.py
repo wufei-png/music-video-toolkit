@@ -85,6 +85,81 @@ def test_plan_rejects_unusable_local_structure(mutate):
         CONTRACTS["plan"].model_validate(data)
 
 
+@pytest.mark.parametrize(
+    ("width", "height", "fps_num", "fps_den"),
+    [
+        (1920, 1080, 30, 1),
+        (1080, 1920, 30, 1),
+    ],
+)
+def test_plan_accepts_only_the_two_supported_output_profiles(width, height, fps_num, fps_den):
+    data = document("plan-abstract.json")
+    data["output"] = {
+        "width": width,
+        "height": height,
+        "fps_num": fps_num,
+        "fps_den": fps_den,
+    }
+
+    parsed = CONTRACTS["plan"].model_validate(data)
+    assert (
+        parsed.output.width,
+        parsed.output.height,
+        parsed.output.fps_num,
+        parsed.output.fps_den,
+    ) == (
+        width,
+        height,
+        fps_num,
+        fps_den,
+    )
+
+
+@pytest.mark.parametrize(
+    ("width", "height", "fps_num", "fps_den"),
+    [
+        (1920, 1920, 30, 1),
+        (1080, 1080, 30, 1),
+        (1080, 1920, 60, 1),
+        (3840, 2160, 30, 1),
+        (720, 1280, 30, 1),
+        (1920, 1080, 30000, 1001),
+    ],
+)
+def test_plan_and_schema_reject_every_unsupported_output_tuple(width, height, fps_num, fps_den):
+    data = document("plan-abstract.json")
+    data["output"] = {
+        "width": width,
+        "height": height,
+        "fps_num": fps_num,
+        "fps_den": fps_den,
+    }
+
+    with pytest.raises(ValidationError):
+        CONTRACTS["plan"].model_validate(data)
+    schema = json.loads((ROOT / "schemas" / "plan.schema.json").read_text())
+    errors = list(Draft202012Validator(schema).iter_errors(data))
+    assert errors
+
+
+def test_legacy_plan_without_output_defaults_to_landscape():
+    data = document("plan-abstract.json")
+    data.pop("output", None)
+
+    parsed = CONTRACTS["plan"].model_validate(data)
+    assert (
+        parsed.output.width,
+        parsed.output.height,
+        parsed.output.fps_num,
+        parsed.output.fps_den,
+    ) == (
+        1920,
+        1080,
+        30,
+        1,
+    )
+
+
 def test_lyric_overlap_and_empty_cues_rejected():
     data = document("lyrics.json")
     data["cues"][1]["start_sample"] = 95000

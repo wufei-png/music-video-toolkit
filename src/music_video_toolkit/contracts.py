@@ -195,11 +195,21 @@ class Timeline(Artifact):
         return self
 
 
-class OutputProfile(Contract):
-    width: Annotated[int, Field(ge=1920, le=1920)] = 1920
-    height: Annotated[int, Field(ge=1080, le=1080)] = 1080
-    fps_num: Annotated[int, Field(ge=30, le=30)] = 30
-    fps_den: Annotated[int, Field(ge=1, le=1)] = 1
+class LandscapeOutputProfile(Contract):
+    width: Literal[1920] = 1920
+    height: Literal[1080] = 1080
+    fps_num: Literal[30] = 30
+    fps_den: Literal[1] = 1
+
+
+class PortraitOutputProfile(Contract):
+    width: Literal[1080] = 1080
+    height: Literal[1920] = 1920
+    fps_num: Literal[30] = 30
+    fps_den: Literal[1] = 1
+
+
+OutputProfile = LandscapeOutputProfile | PortraitOutputProfile
 
 
 class Layer(Contract):
@@ -264,7 +274,7 @@ class VisualPlan(Artifact):
     assets_path: Text
     mode: Literal["abstract", "mood", "hybrid"]
     seed: NonNegative
-    output: OutputProfile = Field(default_factory=OutputProfile)
+    output: OutputProfile = Field(default_factory=LandscapeOutputProfile)
     layers: Annotated[list[Layer], Field(min_length=1)]
     routes: list[Route] = Field(default_factory=list)
     sections: list[SectionOverride] = Field(default_factory=list)
@@ -321,7 +331,7 @@ class ResolvedPlan(Artifact):
     checked_assets_sha256: Sha256
     mode: Literal["abstract", "mood", "hybrid"]
     seed: NonNegative
-    output: OutputProfile = Field(default_factory=OutputProfile)
+    output: OutputProfile = Field(default_factory=LandscapeOutputProfile)
     duration_samples: Positive
     routes: list[Route] = Field(default_factory=list)
     spans: Annotated[list[ResolvedSpan], Field(min_length=1)]

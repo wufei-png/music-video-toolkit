@@ -1,6 +1,37 @@
 {
   "$defs": {
     "JsonValue": {},
+    "LandscapeOutputProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "const": 1920,
+          "default": 1920,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "const": 1080,
+          "default": 1080,
+          "title": "Height",
+          "type": "integer"
+        },
+        "fps_num": {
+          "const": 30,
+          "default": 30,
+          "title": "Fps Num",
+          "type": "integer"
+        },
+        "fps_den": {
+          "const": 1,
+          "default": 1,
+          "title": "Fps Den",
+          "type": "integer"
+        }
+      },
+      "title": "LandscapeOutputProfile",
+      "type": "object"
+    },
     "Layer": {
       "additionalProperties": false,
       "properties": {
@@ -174,39 +205,35 @@
       "title": "LyricsChoice",
       "type": "object"
     },
-    "OutputProfile": {
+    "PortraitOutputProfile": {
       "additionalProperties": false,
       "properties": {
         "width": {
-          "default": 1920,
-          "maximum": 1920,
-          "minimum": 1920,
+          "const": 1080,
+          "default": 1080,
           "title": "Width",
           "type": "integer"
         },
         "height": {
-          "default": 1080,
-          "maximum": 1080,
-          "minimum": 1080,
+          "const": 1920,
+          "default": 1920,
           "title": "Height",
           "type": "integer"
         },
         "fps_num": {
+          "const": 30,
           "default": 30,
-          "maximum": 30,
-          "minimum": 30,
           "title": "Fps Num",
           "type": "integer"
         },
         "fps_den": {
+          "const": 1,
           "default": 1,
-          "maximum": 1,
-          "minimum": 1,
           "title": "Fps Den",
           "type": "integer"
         }
       },
-      "title": "OutputProfile",
+      "title": "PortraitOutputProfile",
       "type": "object"
     },
     "Route": {
@@ -334,7 +361,15 @@
       "type": "integer"
     },
     "output": {
-      "$ref": "#/$defs/OutputProfile"
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LandscapeOutputProfile"
+        },
+        {
+          "$ref": "#/$defs/PortraitOutputProfile"
+        }
+      ],
+      "title": "Output"
     },
     "layers": {
       "items": {
