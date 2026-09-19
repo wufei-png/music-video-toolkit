@@ -1,5 +1,36 @@
 # Implementation status
 
+## Two full-song Astrofox overlays complete — 2026-09-20
+
+The user explicitly requested the retained Astrofox bar effect on both completed
+S10 songs. Local commit `94a902a` adds a full-render composition helper to the
+production Skill. It preserves each accepted S10 video, checks source/provider
+hashes and profile, copies its AAC audio, and holds the last silent Astrofox
+frame once because each canonical duration has a partial final video frame.
+The two Astrofox projects use the same S13 bar-project SHA-256
+`fcfc0a6f3f9f4e6f9c8cd16a3a09d34f3b5bb7347ca7b96e5082128525e252f4`
+and the retained preview settings: backdrop subtraction [50, 63, 90], upward
+placement 300 px and additive mix 0.4.
+
+Outside Git, `../projects/soft-harm/astrofox-overlay-full-v1/final/` contains
+`soft-harm-astrofox-overlay.mp4` (SHA-256
+`2b6d535bf8f4cda756e932f24e15be5da3b9fc6b71e26afb2bb79fd930a3b882`),
+and `../projects/zhi-mai-yi-ren-fen/astrofox-overlay-full-v1/final/`
+contains `zhi-mai-yi-ren-fen-astrofox-overlay.mp4` (SHA-256
+`6bb571530c9f4f3f30803fe09347ac005611e6b865baafefdc9cd57e08bb3fb0`).
+Both real provider manifests and output render manifests passed single-artifact
+validation. The outputs match their accepted bases at 6833 / 6611 H.264 frames,
+227.766667 / 220.366667 seconds, and identical copied AAC packet hashes.
+Blackdetect found no interval of at least 0.1 s; six full-song frames per video
+were inspected for visible bars and readable captions. Each external
+`final/qa-summary.json` and contact sheet retains exact evidence. Subjective
+final approval and distribution remain separate user decisions.
+
+For this scoped Skill change, locked Ruff lint/format and skill-creator
+`quick_validate.py` passed; the script refused an existing output directory.
+The two real full-song runs are the integration check. The full Python/Node
+suites were not rerun.
+
 ## Astrofox bar tuning in the production Skill — 2026-09-20
 
 Local commit `8992d1e` adds hash-bound Astrofox bar-project variants and a checked
@@ -440,10 +471,11 @@ Model installation/inference, browser/WebGL rendering, external media compositio
 
 ## Exact next action
 
-For `soft-harm`, review the paired 12-second Astrofox samples in
-`../projects/soft-harm/mode-compare/astrofox-tuning-v1/comparison/` and record
-whether to retain the current overlay or iterate the warm variant. A full-song
-Astrofox overlay remains gated on that sample feedback.
+The retained Astrofox look has been rendered over both accepted full videos.
+Next, explore a new projectM visual on `soft-harm`; its sole approved `mvt-wave`
+line preset was rejected by the user, so additional visual forms require a
+new self-authored preset, review samples and a separate capability gate before
+being described as production-ready.
 
 S14 is complete within the single approved projectM preset and pinned macOS runtime
 boundary. The exact next development action is to choose a separate later slice:
