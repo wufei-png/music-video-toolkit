@@ -4,6 +4,7 @@ import json
 import re
 import shutil
 import subprocess
+import wave
 from fractions import Fraction
 from pathlib import Path
 
@@ -52,9 +53,24 @@ def _local_file(record: Path, value: str, digest: str, label: str) -> Path:
 
 def validate_provider_request(path: Path) -> ProviderRequest:
     request = _load(ProviderRequest, path)
-    _local_file(
+    canonical = _local_file(
         path, request.canonical_audio.path, request.canonical_audio.sha256, "canonical_audio"
     )
+    try:
+        with wave.open(str(canonical), "rb") as stream:
+            observed = (
+                stream.getframerate(),
+                stream.getnchannels(),
+                stream.getsampwidth(),
+                stream.getnframes(),
+            )
+    except (OSError, EOFError, wave.Error) as exc:
+        raise ProviderError("invalid_provider_audio", str(exc)) from exc
+    expected_audio = (48000, 2, 3, request.source.duration_samples)
+    if observed != expected_audio:
+        raise ProviderError(
+            "provider_audio_mismatch", {"expected": expected_audio, "actual": observed}
+        )
     if resolve_record_path(path, request.source.path) != resolve_record_path(
         path, request.canonical_audio.path
     ):

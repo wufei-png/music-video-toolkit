@@ -14,6 +14,7 @@ from . import __version__
 from .alignment import AlignmentError, align_lyrics, apply_alignment_edits
 from .analysis import AnalysisError, analyze_project
 from .assets import AssetError, check_assets
+from .astrofox import AstrofoxError, astrofox_doctor, render_astrofox
 from .audio import DecodeError, decode_audio
 from .comparison import ComparisonError, compare_previews
 from .contracts import CONTRACTS
@@ -41,6 +42,7 @@ AVAILABLE = [
     "preview",
     "compare",
     "render",
+    "provider astrofox",
 ]
 PLANNED = []
 
@@ -127,6 +129,12 @@ def main(argv: list[str] | None = None) -> int:
     render.add_argument("--project", type=Path, required=True)
     render.add_argument("--plan", type=Path, required=True)
     render.add_argument("--output", type=Path, required=True)
+    provider = commands.add_parser("provider", help="Run an external visual provider")
+    provider_commands = provider.add_subparsers(dest="provider_command", required=True)
+    astrofox = provider_commands.add_parser("astrofox", help="Run pinned offline Astrofox job")
+    astrofox.add_argument("--request", type=Path, required=True)
+    astrofox.add_argument("--output", type=Path, required=True)
+    astrofox.add_argument("--checkout", type=Path)
     validate = commands.add_parser("validate", help="Validate a single JSON artifact, not media")
     validate.add_argument("--kind", choices=CONTRACTS, required=True)
     validate.add_argument("file", type=Path)
@@ -152,6 +160,14 @@ def main(argv: list[str] | None = None) -> int:
                     "completed same-audio previews with shared ranges/profile/audio validation, "
                     "range-major review reel and labeled contact sheet"
                 ),
+                "external_visual_providers": {
+                    "astrofox": {
+                        "request_contract": "provider_request",
+                        "result_contract": "provider_manifest",
+                        "status": astrofox_doctor()["state"],
+                        "command": "provider astrofox",
+                    }
+                },
                 "analysis_scope": (
                     "48 kHz mix features; optional htdemucs vocals/drums/bass/other; "
                     "reviewable unlabeled beat-synchronous novelty and repetition candidates"
@@ -225,6 +241,7 @@ def main(argv: list[str] | None = None) -> int:
                 "python": platform.python_version(),
                 "tools": tools,
                 "renderer": renderer,
+                "astrofox": astrofox_doctor(),
                 "analysis_runtime": analysis_runtime,
                 "alignment_runtime": alignment_runtime,
                 "pipeline_ready": ready,
@@ -359,6 +376,13 @@ def main(argv: list[str] | None = None) -> int:
         try:
             result = render_minimal(args.project, args.plan, args.output)
         except RenderError as exc:
+            emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
+            return exc.exit_code
+        emit(result)
+    elif args.command == "provider" and args.provider_command == "astrofox":
+        try:
+            result = render_astrofox(args.request, args.output, checkout=args.checkout)
+        except AstrofoxError as exc:
             emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
             return exc.exit_code
         emit(result)
