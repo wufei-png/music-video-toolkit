@@ -1,5 +1,7 @@
 """Strict v0.1 artifact envelopes. Cross-file/media preflight arrives in S01/S05."""
 
+import hashlib
+import json
 from itertools import pairwise
 from typing import Annotated, Literal, Self
 
@@ -676,6 +678,119 @@ class RenderManifest(Artifact):
         return self
 
 
+class ProviderBackend(Contract):
+    name: Name
+    version: Text
+    commit: Annotated[str, Field(pattern=r"^[a-f0-9]{40}$")]
+    integration_patch_sha256: Sha256
+
+
+class ProviderRequest(Artifact):
+    source: Source
+    canonical_audio: FileRef
+    profile: OutputProfile
+    range: SampleRange
+    backend: ProviderBackend
+    project: FileRef
+    plugins: list[FileRef] = Field(default_factory=list)
+    assets: list[FileRef] = Field(default_factory=list)
+    parameters: dict[str, JsonValue] = Field(default_factory=dict)
+    parameters_sha256: Sha256
+
+    @model_validator(mode="after")
+    def coherent_job(self) -> Self:
+        if self.source.sha256 != self.canonical_audio.sha256:
+            raise ValueError("provider source and canonical audio hashes differ")
+        if self.range.end_sample > self.source.duration_samples:
+            raise ValueError("provider range exceeds canonical duration")
+        frame_samples = 48000 * self.profile.fps_den
+        if any(
+            sample * self.profile.fps_num % frame_samples
+            for sample in (self.range.start_sample, self.range.end_sample)
+        ):
+            raise ValueError("provider range must align to output frames")
+        expected = hashlib.sha256(
+            json.dumps(
+                self.parameters, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+            ).encode()
+        ).hexdigest()
+        if self.parameters_sha256 != expected:
+            raise ValueError("provider parameters hash differs from canonical JSON")
+        paths = [self.canonical_audio.path, self.project.path]
+        paths += [ref.path for ref in self.plugins + self.assets]
+        unique(paths, "provider input path")
+        return self
+
+
+class ProviderVideoProbe(Contract):
+    video_codec: Literal["h264"]
+    pixel_format: Literal["yuv420p"]
+    width: Positive
+    height: Positive
+    fps_num: Positive
+    fps_den: Positive
+    avg_fps_num: Positive
+    avg_fps_den: Positive
+    frame_count: Positive
+    has_audio: Literal[False]
+
+    @model_validator(mode="after")
+    def constant_frame_rate(self) -> Self:
+        if (self.fps_num, self.fps_den) != (self.avg_fps_num, self.avg_fps_den):
+            raise ValueError("provider output must be constant frame rate")
+        return self
+
+
+class ProviderFailure(Contract):
+    stage: Name
+    code: Name
+    message: Text
+
+
+class ProviderManifest(Artifact):
+    status: Literal["completed", "failed"]
+    request: FileRef
+    source_sha256: Sha256
+    profile: OutputProfile
+    range: SampleRange
+    backend: ProviderBackend
+    project_sha256: Sha256
+    plugin_sha256: list[Sha256]
+    asset_sha256: list[Sha256]
+    parameters_sha256: Sha256
+    environment: Annotated[dict[Name, Text], Field(min_length=1)]
+    video: FileRef | None = None
+    probe: ProviderVideoProbe | None = None
+    error: ProviderFailure | None = None
+
+    @model_validator(mode="after")
+    def outcome(self) -> Self:
+        if self.status == "completed" and (
+            self.video is None or self.probe is None or self.error is not None
+        ):
+            raise ValueError("completed provider manifest requires video and probe without error")
+        if self.status == "failed" and (
+            self.video is not None or self.probe is not None or self.error is None
+        ):
+            raise ValueError("failed provider manifest requires error without completed output")
+        if self.probe is not None:
+            p = self.probe
+            profile = self.profile
+            if (p.width, p.height, p.fps_num, p.fps_den) != (
+                profile.width,
+                profile.height,
+                profile.fps_num,
+                profile.fps_den,
+            ):
+                raise ValueError("provider probe differs from profile")
+            frames = (self.range.end_sample - self.range.start_sample) * profile.fps_num
+            if frames % (48000 * profile.fps_den) or p.frame_count != frames // (
+                48000 * profile.fps_den
+            ):
+                raise ValueError("provider probe frame count differs from range")
+        return self
+
+
 class ComparisonVariantRequest(Contract):
     id: Name
     label: Text
@@ -830,6 +945,8 @@ CONTRACTS: dict[str, type[Artifact]] = {
     "alignment": AlignmentReport,
     "preview": PreviewRequest,
     "render": RenderManifest,
+    "provider-request": ProviderRequest,
+    "provider-manifest": ProviderManifest,
     "comparison-request": ComparisonRequest,
     "comparison": ComparisonManifest,
 }

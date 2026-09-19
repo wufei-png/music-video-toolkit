@@ -1,0 +1,252 @@
+{
+  "$defs": {
+    "FileRef": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "title": "FileRef",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "LandscapeOutputProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "const": 1920,
+          "default": 1920,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "const": 1080,
+          "default": 1080,
+          "title": "Height",
+          "type": "integer"
+        },
+        "fps_num": {
+          "const": 30,
+          "default": 30,
+          "title": "Fps Num",
+          "type": "integer"
+        },
+        "fps_den": {
+          "const": 1,
+          "default": 1,
+          "title": "Fps Den",
+          "type": "integer"
+        }
+      },
+      "title": "LandscapeOutputProfile",
+      "type": "object"
+    },
+    "PortraitOutputProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "const": 1080,
+          "default": 1080,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "const": 1920,
+          "default": 1920,
+          "title": "Height",
+          "type": "integer"
+        },
+        "fps_num": {
+          "const": 30,
+          "default": 30,
+          "title": "Fps Num",
+          "type": "integer"
+        },
+        "fps_den": {
+          "const": 1,
+          "default": 1,
+          "title": "Fps Den",
+          "type": "integer"
+        }
+      },
+      "title": "PortraitOutputProfile",
+      "type": "object"
+    },
+    "ProviderBackend": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        },
+        "commit": {
+          "pattern": "^[a-f0-9]{40}$",
+          "title": "Commit",
+          "type": "string"
+        },
+        "integration_patch_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Integration Patch Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "commit",
+        "integration_patch_sha256"
+      ],
+      "title": "ProviderBackend",
+      "type": "object"
+    },
+    "SampleRange": {
+      "additionalProperties": false,
+      "properties": {
+        "start_sample": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Start Sample",
+          "type": "integer"
+        },
+        "end_sample": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "End Sample",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start_sample",
+        "end_sample"
+      ],
+      "title": "SampleRange",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "sample_rate": {
+          "maximum": 48000,
+          "minimum": 48000,
+          "title": "Sample Rate",
+          "type": "integer"
+        },
+        "duration_samples": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Duration Samples",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "sample_rate",
+        "duration_samples"
+      ],
+      "title": "Source",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "0.1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source": {
+      "$ref": "#/$defs/Source"
+    },
+    "canonical_audio": {
+      "$ref": "#/$defs/FileRef"
+    },
+    "profile": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LandscapeOutputProfile"
+        },
+        {
+          "$ref": "#/$defs/PortraitOutputProfile"
+        }
+      ],
+      "title": "Profile"
+    },
+    "range": {
+      "$ref": "#/$defs/SampleRange"
+    },
+    "backend": {
+      "$ref": "#/$defs/ProviderBackend"
+    },
+    "project": {
+      "$ref": "#/$defs/FileRef"
+    },
+    "plugins": {
+      "items": {
+        "$ref": "#/$defs/FileRef"
+      },
+      "title": "Plugins",
+      "type": "array"
+    },
+    "assets": {
+      "items": {
+        "$ref": "#/$defs/FileRef"
+      },
+      "title": "Assets",
+      "type": "array"
+    },
+    "parameters": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Parameters",
+      "type": "object"
+    },
+    "parameters_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Parameters Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "source",
+    "canonical_audio",
+    "profile",
+    "range",
+    "backend",
+    "project",
+    "parameters_sha256"
+  ],
+  "title": "ProviderRequest",
+  "type": "object"
+}

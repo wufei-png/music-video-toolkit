@@ -1,0 +1,379 @@
+{
+  "$defs": {
+    "FileRef": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "title": "FileRef",
+      "type": "object"
+    },
+    "LandscapeOutputProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "const": 1920,
+          "default": 1920,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "const": 1080,
+          "default": 1080,
+          "title": "Height",
+          "type": "integer"
+        },
+        "fps_num": {
+          "const": 30,
+          "default": 30,
+          "title": "Fps Num",
+          "type": "integer"
+        },
+        "fps_den": {
+          "const": 1,
+          "default": 1,
+          "title": "Fps Den",
+          "type": "integer"
+        }
+      },
+      "title": "LandscapeOutputProfile",
+      "type": "object"
+    },
+    "PortraitOutputProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "const": 1080,
+          "default": 1080,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "const": 1920,
+          "default": 1920,
+          "title": "Height",
+          "type": "integer"
+        },
+        "fps_num": {
+          "const": 30,
+          "default": 30,
+          "title": "Fps Num",
+          "type": "integer"
+        },
+        "fps_den": {
+          "const": 1,
+          "default": 1,
+          "title": "Fps Den",
+          "type": "integer"
+        }
+      },
+      "title": "PortraitOutputProfile",
+      "type": "object"
+    },
+    "ProviderBackend": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        },
+        "commit": {
+          "pattern": "^[a-f0-9]{40}$",
+          "title": "Commit",
+          "type": "string"
+        },
+        "integration_patch_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Integration Patch Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "commit",
+        "integration_patch_sha256"
+      ],
+      "title": "ProviderBackend",
+      "type": "object"
+    },
+    "ProviderFailure": {
+      "additionalProperties": false,
+      "properties": {
+        "stage": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Stage",
+          "type": "string"
+        },
+        "code": {
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "stage",
+        "code",
+        "message"
+      ],
+      "title": "ProviderFailure",
+      "type": "object"
+    },
+    "ProviderVideoProbe": {
+      "additionalProperties": false,
+      "properties": {
+        "video_codec": {
+          "const": "h264",
+          "title": "Video Codec",
+          "type": "string"
+        },
+        "pixel_format": {
+          "const": "yuv420p",
+          "title": "Pixel Format",
+          "type": "string"
+        },
+        "width": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Height",
+          "type": "integer"
+        },
+        "fps_num": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Fps Num",
+          "type": "integer"
+        },
+        "fps_den": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Fps Den",
+          "type": "integer"
+        },
+        "avg_fps_num": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Avg Fps Num",
+          "type": "integer"
+        },
+        "avg_fps_den": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Avg Fps Den",
+          "type": "integer"
+        },
+        "frame_count": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "Frame Count",
+          "type": "integer"
+        },
+        "has_audio": {
+          "const": false,
+          "title": "Has Audio",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "video_codec",
+        "pixel_format",
+        "width",
+        "height",
+        "fps_num",
+        "fps_den",
+        "avg_fps_num",
+        "avg_fps_den",
+        "frame_count",
+        "has_audio"
+      ],
+      "title": "ProviderVideoProbe",
+      "type": "object"
+    },
+    "SampleRange": {
+      "additionalProperties": false,
+      "properties": {
+        "start_sample": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Start Sample",
+          "type": "integer"
+        },
+        "end_sample": {
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "title": "End Sample",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start_sample",
+        "end_sample"
+      ],
+      "title": "SampleRange",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "0.1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "completed",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "request": {
+      "$ref": "#/$defs/FileRef"
+    },
+    "source_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Source Sha256",
+      "type": "string"
+    },
+    "profile": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LandscapeOutputProfile"
+        },
+        {
+          "$ref": "#/$defs/PortraitOutputProfile"
+        }
+      ],
+      "title": "Profile"
+    },
+    "range": {
+      "$ref": "#/$defs/SampleRange"
+    },
+    "backend": {
+      "$ref": "#/$defs/ProviderBackend"
+    },
+    "project_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Project Sha256",
+      "type": "string"
+    },
+    "plugin_sha256": {
+      "items": {
+        "pattern": "^[a-f0-9]{64}$",
+        "type": "string"
+      },
+      "title": "Plugin Sha256",
+      "type": "array"
+    },
+    "asset_sha256": {
+      "items": {
+        "pattern": "^[a-f0-9]{64}$",
+        "type": "string"
+      },
+      "title": "Asset Sha256",
+      "type": "array"
+    },
+    "parameters_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Parameters Sha256",
+      "type": "string"
+    },
+    "environment": {
+      "minProperties": 1,
+      "patternProperties": {
+        "^[a-zA-Z0-9_.-]+$": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "propertyNames": {
+        "minLength": 1
+      },
+      "title": "Environment",
+      "type": "object"
+    },
+    "video": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FileRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "probe": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ProviderVideoProbe"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "error": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ProviderFailure"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "schema_version",
+    "status",
+    "request",
+    "source_sha256",
+    "profile",
+    "range",
+    "backend",
+    "project_sha256",
+    "plugin_sha256",
+    "asset_sha256",
+    "parameters_sha256",
+    "environment"
+  ],
+  "title": "ProviderManifest",
+  "type": "object"
+}
