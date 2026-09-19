@@ -22,6 +22,7 @@ from .documents import read_document
 from .lyrics import LyricsError, import_lyrics
 from .plan import PlanError, resolve_plan
 from .preview import PreviewError, render_preview
+from .provider_bundle import BundleError, bundle_provider_previews
 from .provider_composition import CompositionError, compose_provider_preview
 from .render import RenderError, render_minimal, renderer_doctor
 from .structure import StructureError, analyze_structure, apply_structure
@@ -45,6 +46,7 @@ AVAILABLE = [
     "render",
     "provider astrofox",
     "provider compose",
+    "provider bundle",
 ]
 PLANNED = []
 
@@ -145,6 +147,9 @@ def main(argv: list[str] | None = None) -> int:
     compose.add_argument("--output", type=Path, required=True)
     compose.add_argument("--lyrics", type=Path)
     compose.add_argument("--font", type=Path)
+    bundle = provider_commands.add_parser("bundle", help="Bundle checked provider previews")
+    bundle.add_argument("--composition", type=Path, action="append", required=True)
+    bundle.add_argument("--output", type=Path, required=True)
     validate = commands.add_parser("validate", help="Validate a single JSON artifact, not media")
     validate.add_argument("--kind", choices=CONTRACTS, required=True)
     validate.add_argument("file", type=Path)
@@ -410,6 +415,13 @@ def main(argv: list[str] | None = None) -> int:
         except CompositionError as exc:
             emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
             return exc.exit_code
+        emit(result)
+    elif args.command == "provider" and args.provider_command == "bundle":
+        try:
+            result = bundle_provider_previews(args.composition, args.output)
+        except BundleError as exc:
+            emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
+            return 4
         emit(result)
     elif args.command == "validate":
         try:

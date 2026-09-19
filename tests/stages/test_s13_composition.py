@@ -3,12 +3,14 @@
 import json
 from pathlib import Path
 
+import pytest
 from test_s13_protocol import fake_provider as protocol_fixture
 
 from music_video_toolkit.audio import decode_audio
 from music_video_toolkit.contracts import RenderManifest
 from music_video_toolkit.documents import read_document
 from music_video_toolkit.project import sha256_file
+from music_video_toolkit.provider_bundle import BundleError, bundle_provider_previews
 from music_video_toolkit.provider_composition import compose_provider_preview
 
 
@@ -54,3 +56,13 @@ def test_checked_provider_video_gets_canonical_audio_and_preview_manifest(tmp_pa
     assert preview.inputs["asset.provider-video"] == manifest["video"]["sha256"]
     assert preview.inputs["preview_request"] == sha256_file(output / "ranges.json")
     assert (output / "preview/01-provider-range.mp4").is_file()
+    binding_path = output / "provider-composition.json"
+    bundle = bundle_provider_previews([binding_path], tmp_path / "bundle")
+    bundled = RenderManifest.model_validate(read_document(Path(bundle["manifest"])))
+    assert bundled.ranges == preview.ranges
+    assert bundled.canonical_audio_sha256 == preview.canonical_audio_sha256
+    binding = read_document(binding_path)
+    binding["provider_video_sha256"] = "0" * 64
+    binding_path.write_text(json.dumps(binding), encoding="utf-8")
+    with pytest.raises(BundleError):
+        bundle_provider_previews([binding_path], tmp_path / "rejected-bundle")
