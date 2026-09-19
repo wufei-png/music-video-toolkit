@@ -68,3 +68,31 @@ the same encoded SHA-256 twice:
 `ed79f203d65222cee0f350c93b507b298019e7334df45f76428957773985f559`.
 This proves only the short self-authored feasibility preset on this Mac; S14's
 full-range production gates are still pending.
+
+## S14 offline provider CLI (pending production acceptance)
+
+`build` also compiles the repository's `provider.cpp` into
+`/absolute/external/build/mvt-projectm-render`, and records its hash. The CLI
+accepts the existing `provider-request` schema. Its project JSON contains only a
+`preset` reference with path and SHA-256; that file is the request's sole asset.
+For the current approved `mvt-wave` preset, parameters are exactly
+`{"preset_id":"mvt-wave","policy":"locked-single"}`. The backend's
+`integration_patch_sha256` is the SHA-256 of the locked patch digest bytes followed
+by `provider.cpp` bytes. No plugin, additional texture or preset transition is
+accepted. The source WAV must be the checked canonical 48 kHz stereo 24-bit PCM.
+
+After explicit setup, run an offline job:
+
+```sh
+uv run --locked python scripts/projectm_render.py --request /absolute/input/request.json --output /absolute/new-output --checkout /absolute/external/core --build /absolute/external/build
+uv run --locked python scripts/projectm_render_check.py --checkout /absolute/external/core --build /absolute/external/build
+```
+
+The native renderer consumes PCM from song frame zero, holds one preset, and writes
+only requested global frames to FFmpeg. The wrapper checks the pinned runtime,
+approved preset, request, exact raw frame bytes, silent CFR video and completed
+manifest before atomically installing the result. Existing/contended destinations
+and damaged inputs fail without an installed result. The synthetic check runs two
+real exports and exercises output conflict, lock and hash rejection. The MVT
+`provider projectm` command and production capability are not enabled until later
+S14 gates pass.

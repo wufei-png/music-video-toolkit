@@ -41,6 +41,10 @@ def library_path(build: Path) -> Path:
     return build / "src/libprojectM/libprojectM-4.dylib"
 
 
+def provider_path(build: Path) -> Path:
+    return build / "mvt-projectm-render"
+
+
 def runtime_lock(checkout: Path) -> Path:
     return checkout / ".git/mvt-projectm-lock.json"
 
@@ -55,6 +59,8 @@ def build_identity(checkout: Path, build: Path) -> dict[str, str]:
         "commit": LOCK["commit"],
         "patch_stack_sha256": LOCK["patch_stack_sha256"],
         "library_sha256": sha256(library_path(build)),
+        "provider_sha256": sha256(provider_path(build)),
+        "provider_source_sha256": sha256(INTEGRATION / "provider.cpp"),
         "cmake_cache_sha256": sha256(build / "CMakeCache.txt"),
     }
 
@@ -133,6 +139,26 @@ def build_runtime(checkout: Path, build: Path) -> dict[str, str]:
         "-DENABLE_INSTALL=ON",
     )
     run("cmake", "--build", str(build), "--parallel", "6")
+    lib = library_path(build)
+    run(
+        "c++",
+        "-std=c++17",
+        "-O2",
+        "-DGL_SILENCE_DEPRECATION",
+        "-I",
+        str(checkout / "src/api/include"),
+        "-I",
+        str(build / "src/api/include"),
+        str(INTEGRATION / "provider.cpp"),
+        "-L",
+        str(lib.parent),
+        "-lprojectM-4",
+        f"-Wl,-rpath,{lib.parent}",
+        "-framework",
+        "OpenGL",
+        "-o",
+        str(provider_path(build)),
+    )
     build_lock(build).write_text(
         json.dumps(build_identity(checkout, build), sort_keys=True) + "\n", encoding="utf-8"
     )

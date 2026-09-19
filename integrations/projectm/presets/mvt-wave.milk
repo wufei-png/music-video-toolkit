@@ -1,0 +1,10 @@
+[preset00]
+fdecay=0.85
+warp=0
+nWaveMode=6
+fWaveScale=1
+wave_r=0.2
+wave_g=0.8
+wave_b=1.0
+wave_x=0.5
+wave_y=0.5
