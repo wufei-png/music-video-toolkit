@@ -6,7 +6,7 @@
 
 **各切片中的阶段测试和新增 CLI 是对应切片的验收入口，当前已随 S01–S13 实现。** 安装的模型和外部提供器环境应单独锁定；CPU 模拟或 mock 不算真实模型/提供器验证。阶段测试生成可公开的 synthetic fixtures；本地歌曲验收证据保存在仓库外。
 
-S10 之后的工作、依赖顺序和后续选择门槛见 [backlog](TODO.md)。S11–S13 已完成；Astrofox 仍需本地锁定 checkout，projectM 仍是可行性结果。
+S10 之后的工作、依赖顺序和后续选择门槛见 [backlog](TODO.md)。S11–S13 已完成；S14 已选定但尚未交付。Astrofox 仍需本地锁定 checkout，projectM 仍是可行性结果。
 
 | ID | Result | Dependencies |
 | --- | --- | --- |
@@ -23,3 +23,4 @@ S10 之后的工作、依赖顺序和后续选择门槛见 [backlog](TODO.md)。
 | [S11 同音频方案比较基线](S11-variant-comparison.md) | comparison 协议、审阅产物与外部状态修复 | S10 |
 | [S12 竖屏与重复结构分析](S12-portrait-structure.md) | 1080x1920 输出与显式应用的结构候选 | S11 |
 | [S13 Astrofox 自动化后端](S13-astrofox-backend.md) | 无界面 Astrofox 提供器、MVT 合成/比较与 projectM 可行性证明 | S12 |
+| [S14 受检 projectM 后端](S14-projectm-provider.md) | 锁定预设的离线提供器、全局时间复现与同音频比较 | S13 |

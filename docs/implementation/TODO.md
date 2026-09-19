@@ -99,6 +99,8 @@ Pinned upstream references:
 
 ## Confirmed sequence
 
-S13 is complete with the evidence in [status](status.md). The next development choice is a separate
-slice: projectM determinism/global-time investigation, broader host validation, or the P3 product
-surface. GUI, complete projectM integration and MCP remain outside S13.
+S13 is complete with the evidence in [status](status.md). The user selected
+[S14](S14-projectm-provider.md) as the next slice: a bounded, approved-preset projectM
+provider with repeat/global-time gates and a same-audio comparison. Until those gates
+pass, projectM remains unavailable. GUI, broader host validation, 4K/60 and MCP remain
+later work.

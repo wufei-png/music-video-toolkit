@@ -1,5 +1,13 @@
 # Implementation status
 
+## S14 selected — bounded projectM provider
+
+The user selected a limited, approved-preset production adapter after S13. Its
+[implementation contract](S14-projectm-provider.md) is recorded; projectM is still
+feasibility-only and remains unavailable until repeat, global-time, composition and
+same-audio gates pass. The selected next action is the pinned deterministic runtime
+stage. S13 evidence below remains the current delivered capability.
+
 ## S13 pinned Astrofox external visual provider complete — 2026-09-19
 
 S11 and S12 were verified before S13 from their committed code, status, synthetic tests (21
