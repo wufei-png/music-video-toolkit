@@ -1,5 +1,32 @@
 # Implementation status
 
+## Astrofox bar tuning in the production Skill — 2026-09-20
+
+Local commit `8992d1e` adds hash-bound Astrofox bar-project variants and a checked
+silent-provider overlay helper to `skills/make-music-video/`, with adjustable
+gradient/reflection/frequency/bar geometry and composite backdrop subtraction,
+upward placement and intensity. The Skill reference records inherited pinned
+defaults and the same-song comparison procedure. These are production Skill
+helpers, not a new MVT backend or a changed S13 provider contract.
+
+External `../projects/soft-harm/mode-compare/astrofox-tuning-v1/` holds three
+12-second short samples comparing the existing C+Astrofox overlay with a variant
+that changes only the bar gradient (`#55ccff`/`#ff77aa` to
+`#f4c978`/`#b45138`), inherited `shadowHeight=100` to 0, and inherited
+`maxFrequency=6000` to 3000 Hz. All three real provider manifests, the new
+aggregate render manifest and S11 comparison passed validation; each paired
+clip has 360 frames, identical decoded audio hashes and identical H.264 stream
+compatibility hashes. The comparison replay hit cache. Contact-sheet and
+climax-frame inspection found warmer, more prominent bars, but the changed
+geometry reaches farther downward across the instruments. `qa.json` and
+`review-notes.md` retain the outside-Git evidence and self-review. User style
+feedback is pending; the accepted full-song C render was not changed.
+
+Checks for the Skill change: `uv run --locked ruff check .`,
+`ruff format --check .`, skill-creator `quick_validate.py` and
+`git diff --check` passed. Existing-output and invalid-frequency rejection
+checks passed. This scoped Skill change did not rerun the full Python/Node suites.
+
 ## S14 bounded projectM provider complete — 2026-09-19
 
 The user selected a limited, approved-preset production adapter after S13. Its
@@ -412,6 +439,11 @@ Model installation/inference, browser/WebGL rendering, external media compositio
 | S14 bounded projectM provider | Complete — five dependency-ordered commits plus final capability/validation handoff; one approved preset |
 
 ## Exact next action
+
+For `soft-harm`, review the paired 12-second Astrofox samples in
+`../projects/soft-harm/mode-compare/astrofox-tuning-v1/comparison/` and record
+whether to retain the current overlay or iterate the warm variant. A full-song
+Astrofox overlay remains gated on that sample feedback.
 
 S14 is complete within the single approved projectM preset and pinned macOS runtime
 boundary. The exact next development action is to choose a separate later slice:
