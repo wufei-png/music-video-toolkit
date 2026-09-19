@@ -7,6 +7,14 @@
   "license_file": "LICENSE.txt",
   "license_sha256": "0fecfb1582cb164c14e948a4f28447689b3fbf2866d03c09a353c9c5fc93610d",
   "provider_source_sha256": "3d773c536839cccd8a2ba5e5d7ff84bc0922c1d3c294e8220dd3fd3a7be23b22",
+  "patches": [
+    {
+      "file": "0001-seeded-rendering.patch",
+      "sha256": "78067f37876ad1a41b5a11768f60ff08bc7b8ade1a2b6b444781b62ee56a14f1"
+    }
+  ],
+  "patch_stack_sha256": "78067f37876ad1a41b5a11768f60ff08bc7b8ade1a2b6b444781b62ee56a14f1",
+  "applied_diff_sha256": "e6425d7b42cbd76f0839d136400e887630e003646a4f13c7a3244e26d058c311",
   "preset_sha256": "6bec602cdb6c53818f76717c364ad34d25082eb21977f5518f44f510b694610c",
   "texture_sha256": "d51e3e9ad7aac0c151828e63216960a1a29ad7b689efc4409aeb3ee15188b5b7",
   "preset_texture_license": "MIT repository-generated synthetic feasibility inputs"

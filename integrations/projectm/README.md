@@ -42,3 +42,29 @@ differed even with the same input, explicit frame times and environment. The exa
 isolated. Nonzero global-range replay, longer preset state, texture sampling and cross-host output
 have not been tested. These are concrete gates before any production adapter, so projectM remains
 absent from `mvt capabilities`.
+
+## S14 locked deterministic runtime
+
+S14 pins a small downstream patch in `patches/0001-seeded-rendering.patch`. It fixes the
+random seeds used by preset state, generated noise textures and the preset timekeeper;
+the supported provider path also locks one preset per job. This does not establish
+cross-host pixel identity or support arbitrary preset packs.
+
+Prepare and build in separate external directories. `prepare` can clone from the
+upstream URL, or `--source` may name an existing local clone. Build and render are
+offline after preparation:
+
+```sh
+uv run --locked python scripts/projectm_env.py prepare --checkout /absolute/external/core
+uv run --locked python scripts/projectm_env.py build --checkout /absolute/external/core --build /absolute/external/build
+uv run --locked python scripts/projectm_env.py check --checkout /absolute/external/core --build /absolute/external/build
+```
+
+`check` verifies the pinned commit, evaluation submodule, license, exact applied
+patch diff, untracked source, CMake origin and built library hash. A source or binary
+change requires explicit rebuild and a fresh evidence record. The retained patched
+six-frame probe at `/Users/wufei2/.cache/mvt/projectm/s14-seeded-probe/` produced
+the same encoded SHA-256 twice:
+`ed79f203d65222cee0f350c93b507b298019e7334df45f76428957773985f559`.
+This proves only the short self-authored feasibility preset on this Mac; S14's
+full-range production gates are still pending.

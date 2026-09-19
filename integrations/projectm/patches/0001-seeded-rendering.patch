@@ -1,0 +1,26 @@
+diff --git a/src/libprojectM/MilkdropPreset/PresetState.cpp b/src/libprojectM/MilkdropPreset/PresetState.cpp
+index 72c0f61c..4b5d2093 100644
+--- a/src/libprojectM/MilkdropPreset/PresetState.cpp
++++ b/src/libprojectM/MilkdropPreset/PresetState.cpp
+@@ -21,2 +21 @@ PresetState::PresetState()
+-    std::random_device randomDevice;
+-    std::mt19937 randomGenerator(randomDevice());
++    std::mt19937 randomGenerator(0x4d565432u);
+diff --git a/src/libprojectM/Renderer/MilkdropNoise.cpp b/src/libprojectM/Renderer/MilkdropNoise.cpp
+index 20d5f0bd..4aa72d2d 100644
+--- a/src/libprojectM/Renderer/MilkdropNoise.cpp
++++ b/src/libprojectM/Renderer/MilkdropNoise.cpp
+@@ -56 +56 @@ auto MilkdropNoise::generate2D(int size, int zoomFactor) -> std::vector<uint32_t
+-    uint32_t randomSeed = static_cast<uint32_t>(std::chrono::system_clock::now().time_since_epoch().count());
++    uint32_t randomSeed = static_cast<uint32_t>(0x4d565433u + size * 31 + zoomFactor);
+@@ -143 +143 @@ auto MilkdropNoise::generate3D(int size, int zoomFactor) -> std::vector<uint32_t
+-    uint32_t randomSeed = static_cast<uint32_t>(std::chrono::system_clock::now().time_since_epoch().count());
++    uint32_t randomSeed = static_cast<uint32_t>(0x4d565433u + size * 31 + zoomFactor);
+diff --git a/src/libprojectM/TimeKeeper.hpp b/src/libprojectM/TimeKeeper.hpp
+index 949bcf5c..75a062c3 100644
+--- a/src/libprojectM/TimeKeeper.hpp
++++ b/src/libprojectM/TimeKeeper.hpp
+@@ -112,2 +112 @@ private:
+-    std::random_device m_randomDevice{};
+-    std::mt19937 m_randomGenerator{m_randomDevice()};
++    std::mt19937 m_randomGenerator{0x4d565431u};
