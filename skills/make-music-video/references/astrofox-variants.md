@@ -48,3 +48,31 @@ mvt validate --kind render SONG/overlay-preview/preview.render.json
 ```
 
 For a fair A/B, hold the base preview, ranges, profile, overlay parameter values and encoding settings fixed while changing only the intended Astrofox project properties. Each overlay config points to its own provider manifests. Compare two completed aggregate preview manifests with `mvt compare`; review the contact sheet and short reel, then record user feedback. Do not render a full song in sample-approval mode until its changed material is accepted.
+
+## Overlay on an accepted full render
+
+When the user explicitly requests a full-song overlay, keep the completed built-in render and its manifest unchanged. Make a new Astrofox request with range start 0 and end at the largest frame-aligned sample position **within** the canonical duration. A full MVT render may have one final frame beyond that position. [astrofox_overlay_full.py](../scripts/astrofox_overlay_full.py) checks both source identities, hashes, profile and frame counts, then holds the final Astrofox frame once if needed. It copies the built-in audio stream and writes a separate full-render manifest. Run `mvt validate --kind provider-manifest` and `mvt validate --kind render`, and check the final audio packets, endpoints, black frames and representative visuals against the saved base render. Keep all song inputs and media outside Git.
+
+Use a per-song config with the same overlay choices as the accepted short samples:
+
+```json
+{
+  "schema_version": "0.1",
+  "source_record": "../mvt-project/source/source.json",
+  "base_render_manifest": "../final/accepted.mp4.render.json",
+  "provider_manifest": "provider/provider-manifest.json",
+  "profile": {"width": 1920, "height": 1080, "fps_num": 30, "fps_den": 1},
+  "background_subtract_rgb": [50, 63, 90],
+  "up_px": 300,
+  "mix": 0.4,
+  "output_name": "song-astrofox-overlay.mp4"
+}
+```
+
+```text
+python3 TOOLKIT/skills/make-music-video/scripts/astrofox_overlay_full.py \
+  --config SONG/overlay-config.json --output SONG/full-overlay
+mvt validate --kind render SONG/full-overlay/song-astrofox-overlay.mp4.render.json
+```
+
+This script uses channel subtraction and additive blending. It assumes a full-frame Astrofox output with the same selected style and a previously completed MVT base render. A changed palette, placement or intensity needs visual review against that song; a setting accepted for one song is not automatically approved for another.
