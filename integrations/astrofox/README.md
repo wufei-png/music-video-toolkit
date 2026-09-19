@@ -24,3 +24,16 @@ uv run --locked python scripts/astrofox_smoke.py --checkout /absolute/external/a
 
 The smoke check exercises a hidden renderer, checks that a real HTTP request is blocked, and
 rejects synthetic tampered audio, remote media and unpinned plugins.
+
+The second patch adds `pnpm astrofox-render --request FILE --output DIR` inside the pinned
+checkout. FFmpeg and FFprobe must be installed on `PATH` before rendering. The command verifies
+the prepared patch identity, uses a hidden window and prints one JSON result to stdout. Progress
+goes to stderr. It writes a silent H.264/yuv420p CFR video and provider manifest together by
+renaming a completed sibling directory. An existing destination is never overwritten. A failed or
+cancelled job removes its temporary output. No setup or download runs in the render command.
+
+Run the real synthetic export checks after prepare/build:
+
+```sh
+uv run --locked python scripts/astrofox_render_check.py --checkout /absolute/external/astrofox-checkout
+```

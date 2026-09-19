@@ -11,9 +11,18 @@
     {
       "file": "0001-headless-controller.patch",
       "sha256": "6d289a2e0d1da3a82ff94b543a14fc13a4dd56a049f59882dea650d2c00ab967"
+    },
+    {
+      "file": "0002-silent-export.patch",
+      "sha256": "c1d04c41f42369bea0101a307a5cdadadf8dad96762e5119ca38529e162b0ad6"
     }
   ],
-  "new_files": ["electron/mvt-job.mjs", "src/app/mvt-job.ts"],
-  "patch_stack_sha256": "6d289a2e0d1da3a82ff94b543a14fc13a4dd56a049f59882dea650d2c00ab967",
-  "applied_diff_sha256": "6d289a2e0d1da3a82ff94b543a14fc13a4dd56a049f59882dea650d2c00ab967"
+  "new_files": [
+    "electron/mvt-export.mjs",
+    "electron/mvt-job.mjs",
+    "scripts/astrofox-render.mjs",
+    "src/app/mvt-job.ts"
+  ],
+  "patch_stack_sha256": "2a837810d385cb04411d903e7420848feef06fd43e920a168081b4e3c0888695",
+  "applied_diff_sha256": "ef43a07a648bcae33ec723581201ef7065793c9b7ed234a98ed7c97591f5401f"
 }

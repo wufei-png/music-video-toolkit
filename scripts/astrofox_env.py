@@ -42,6 +42,17 @@ def patch_bytes() -> list[bytes]:
     return patches
 
 
+def runtime_lock(checkout: Path) -> Path:
+    return checkout / ".git/mvt-lock.json"
+
+
+def write_runtime_lock(checkout: Path) -> None:
+    identity = {key: LOCK[key] for key in ("commit", "patch_stack_sha256", "applied_diff_sha256")}
+    runtime_lock(checkout).write_text(
+        json.dumps(identity, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+    )
+
+
 def check(checkout: Path) -> None:
     patches = patch_bytes()
     if not checkout.is_dir():
@@ -70,6 +81,11 @@ def check(checkout: Path) -> None:
     untracked = run("git", "ls-files", "--others", "--exclude-standard", cwd=checkout, capture=True)
     if untracked:
         raise ValueError(f"unexpected untracked source: {untracked.decode().strip()}")
+    expected_runtime_lock = {
+        key: LOCK[key] for key in ("commit", "patch_stack_sha256", "applied_diff_sha256")
+    }
+    if json.loads(runtime_lock(checkout).read_text(encoding="utf-8")) != expected_runtime_lock:
+        raise ValueError("runtime lock differs from repository lock")
     print(
         json.dumps(
             {
@@ -92,6 +108,7 @@ def prepare(checkout: Path) -> None:
         run("git", "checkout", "--detach", LOCK["commit"], cwd=checkout)
     current = run("git", "diff", "--binary", "HEAD", cwd=checkout, capture=True)
     if digest(current) == LOCK["applied_diff_sha256"]:
+        write_runtime_lock(checkout)
         check(checkout)
         return
     if current:
@@ -102,6 +119,7 @@ def prepare(checkout: Path) -> None:
         run("git", "apply", str(patch), cwd=checkout)
     if LOCK["new_files"]:
         run("git", "add", "-N", "--", *LOCK["new_files"], cwd=checkout)
+    write_runtime_lock(checkout)
     check(checkout)
 
 
@@ -111,6 +129,8 @@ def build(checkout: Path) -> None:
         raise ValueError("pnpm is required")
     run("pnpm", "install", "--frozen-lockfile", cwd=checkout)
     run("pnpm", "build:renderer", cwd=checkout)
+    run("pnpm", "exec", "tsc", "--noEmit", cwd=checkout)
+    run("pnpm", "lint", cwd=checkout)
     check(checkout)
     if not (checkout / "out/index.html").is_file():
         raise ValueError("desktop static renderer missing out/index.html")

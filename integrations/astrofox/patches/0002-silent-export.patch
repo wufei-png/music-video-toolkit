@@ -1,0 +1,538 @@
+diff --git a/electron/main.mjs b/electron/main.mjs
+index 9d4f90c..3df0b5e 100644
+--- a/electron/main.mjs
++++ b/electron/main.mjs
+@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
+ import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, session, shell } from 'electron';
+ import { registerDialogIpc } from './dialogs-ipc.mjs';
+ import { isPathInside, killAllFfmpeg, registerFfmpegIpc } from './ffmpeg-ipc.mjs';
++import { discardMvtOutput, installMvtOutput, prepareMvtOutput } from './mvt-export.mjs';
+ import { readMvtJob } from './mvt-job.mjs';
+ import { PLUGIN_SANDBOX_HEADERS } from './plugin-sandbox-policy.mjs';
+ import { closeDatabase, isDatabasePersistent, openDatabase } from './storage/db.mjs';
+@@ -17,8 +18,12 @@ const mvtArgIndex = process.argv.indexOf('--mvt-job');
+ const mvtJobMode = mvtArgIndex !== -1;
+ const mvtRequestPath = mvtJobMode ? process.argv[mvtArgIndex + 1] : null;
+ const mvtSmoke = process.argv.includes('--mvt-smoke');
++const mvtOutputArgIndex = process.argv.indexOf('--mvt-output');
++const mvtOutputPath = mvtOutputArgIndex !== -1 ? process.argv[mvtOutputArgIndex + 1] : null;
+ let mvtInput = null;
+ let mvtJobWindow = null;
++let mvtOutputJob = null;
++let mvtCancelled = false;
+ let mvtBlockedNetworkRequests = 0;
+ if (mvtJobMode) {
+   const jobUserData = path.join(app.getPath('temp'), `astrofox-mvt-${process.pid}`);
+@@ -88,6 +93,11 @@ function getFfmpegBinaryPath() {
+ }
+ 
+ function getTempPath() {
++  if (mvtJobMode) {
++    const tempPath = path.join(app.getPath('userData'), 'tmp');
++    fs.mkdirSync(tempPath, { recursive: true });
++    return tempPath;
++  }
+   return path.join(app.getPath('temp'), 'Astrofox');
+ }
+ 
+@@ -464,6 +474,7 @@ function hardenSession() {
+ }
+ 
+ function emitMvtResult(result, exitCode) {
++  discardMvtOutput(mvtOutputJob);
+   process.stdout.write(`${JSON.stringify(result)}\n`);
+   process.exitCode = exitCode;
+   mvtJobWindow?.destroy();
+@@ -474,6 +485,7 @@ function emitMvtResult(result, exitCode) {
+ function createMvtJobWindow() {
+   if (!mvtRequestPath) throw new Error('--mvt-job requires a request path');
+   mvtInput = readMvtJob(mvtRequestPath);
++  if (!mvtSmoke) mvtOutputJob = prepareMvtOutput(mvtOutputPath);
+   let finished = false;
+   const finish = (result, code) => {
+     if (finished) return;
+@@ -492,6 +504,7 @@ function createMvtJobWindow() {
+       payload: mvtInput.payload,
+       audio: mvtInput.audio,
+       plugins: mvtInput.plugins,
++      outputPath: mvtOutputJob?.video ?? null,
+     };
+   });
+   ipcMain.on('mvt:ready', event => {
+@@ -506,10 +519,36 @@ function createMvtJobWindow() {
+         },
+         0,
+       );
++    else mvtJobWindow.webContents.send('mvt:render');
++  });
++  ipcMain.on('mvt:progress', (event, progress) => {
++    if (event.sender.id !== mvtJobWindow?.webContents.id) return;
++    process.stderr.write(`${JSON.stringify({ stage: 'render', ...progress })}\n`);
++  });
++  ipcMain.on('mvt:finished', event => {
++    if (event.sender.id !== mvtJobWindow?.webContents.id) return;
++    try {
++      const report = installMvtOutput(
++        mvtOutputJob,
++        mvtInput,
++        getFfmpegBinaryPath(),
++        process.env.ASTROFOX_JOB_FFPROBE,
++      );
++      finish(report, 0);
++    } catch (error) {
++      finish({ status: 'failed', code: 'output_validation_failed', message: String(error) }, 5);
++    }
+   });
+   ipcMain.on('mvt:failed', (event, message) => {
+     if (event.sender.id !== mvtJobWindow?.webContents.id) return;
+-    finish({ status: 'failed', code: 'renderer_failed', message: String(message) }, 5);
++    finish(
++      {
++        status: 'failed',
++        code: mvtCancelled ? 'cancelled' : 'renderer_failed',
++        message: String(message),
++      },
++      5,
++    );
+   });
+   mvtJobWindow = new BrowserWindow({
+     width: mvtInput.request.profile.width,
+@@ -539,6 +578,19 @@ function createMvtJobWindow() {
+   mvtJobWindow.loadURL('astrofox://app/').catch(error => {
+     finish({ status: 'failed', code: 'load_failed', message: String(error) }, 5);
+   });
++  const cancel = () => {
++    if (finished) return;
++    mvtCancelled = true;
++    mvtJobWindow?.webContents.send('mvt:cancel');
++    setTimeout(() => {
++      if (!finished) {
++        killAllFfmpeg();
++        finish({ status: 'failed', code: 'cancelled', message: 'Job cancelled' }, 5);
++      }
++    }, 3000).unref();
++  };
++  process.on('SIGINT', cancel);
++  process.on('SIGTERM', cancel);
+ }
+ 
+ function createWindow() {
+diff --git a/electron/mvt-export.mjs b/electron/mvt-export.mjs
+new file mode 100644
+index 0000000..c232756
+--- /dev/null
++++ b/electron/mvt-export.mjs
+@@ -0,0 +1,158 @@
++import { spawnSync } from 'node:child_process';
++import { createHash } from 'node:crypto';
++import fs from 'node:fs';
++import path from 'node:path';
++
++function fileSha256(file) {
++  return createHash('sha256').update(fs.readFileSync(file)).digest('hex');
++}
++
++function toolOutput(tool, args) {
++  const result = spawnSync(tool, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
++  if (result.error || result.status !== 0) {
++    throw new Error(`${path.basename(tool)} failed: ${result.error?.message ?? result.stderr}`);
++  }
++  return result.stdout;
++}
++
++function rational(value) {
++  const [numerator, denominator] = value.split('/').map(Number);
++  if (!Number.isSafeInteger(numerator) || !Number.isSafeInteger(denominator) || denominator < 1) {
++    throw new Error(`Invalid media rate: ${value}`);
++  }
++  return [numerator, denominator];
++}
++
++export function prepareMvtOutput(directory) {
++  if (!directory) throw new Error('--mvt-output requires a destination');
++  const output = path.resolve(directory);
++  if (fs.existsSync(output)) throw new Error(`Output already exists: ${output}`);
++  const parent = path.dirname(output);
++  if (!fs.statSync(parent).isDirectory()) throw new Error(`Output parent missing: ${parent}`);
++  const temporary = fs.mkdtempSync(path.join(parent, `.${path.basename(output)}.tmp-`));
++  return { output, temporary, video: path.join(temporary, 'video.mp4') };
++}
++
++export function discardMvtOutput(job) {
++  if (job?.temporary) fs.rmSync(job.temporary, { recursive: true, force: true });
++}
++
++export function probeMvtOutput(videoFile, request, ffprobe) {
++  const result = JSON.parse(
++    toolOutput(ffprobe, [
++      '-v',
++      'error',
++      '-count_frames',
++      '-show_entries',
++      'stream=codec_type,codec_name,pix_fmt,width,height,r_frame_rate,avg_frame_rate,nb_read_frames,time_base',
++      '-of',
++      'json',
++      videoFile,
++    ]),
++  );
++  if (result.streams?.length !== 1 || result.streams[0].codec_type !== 'video') {
++    throw new Error('Provider result requires exactly one silent video stream');
++  }
++  const stream = result.streams[0];
++  const [fpsNum, fpsDen] = rational(stream.r_frame_rate);
++  const [avgNum, avgDen] = rational(stream.avg_frame_rate);
++  const frameCount = Number(stream.nb_read_frames);
++  const expectedFrames =
++    ((request.range.end_sample - request.range.start_sample) * request.profile.fps_num) /
++    (48000 * request.profile.fps_den);
++  if (
++    stream.codec_name !== 'h264' ||
++    stream.pix_fmt !== 'yuv420p' ||
++    stream.width !== request.profile.width ||
++    stream.height !== request.profile.height ||
++    fpsNum * request.profile.fps_den !== request.profile.fps_num * fpsDen ||
++    avgNum * request.profile.fps_den !== request.profile.fps_num * avgDen ||
++    !Number.isSafeInteger(expectedFrames) ||
++    frameCount !== expectedFrames
++  ) {
++    throw new Error(`Provider video clock/profile mismatch: ${JSON.stringify(stream)}`);
++  }
++  const [timeNum, timeDen] = rational(stream.time_base);
++  const frames = JSON.parse(
++    toolOutput(ffprobe, [
++      '-v',
++      'error',
++      '-select_streams',
++      'v:0',
++      '-show_frames',
++      '-show_entries',
++      'frame=best_effort_timestamp',
++      '-of',
++      'json',
++      videoFile,
++    ]),
++  ).frames;
++  if (
++    frames.length !== frameCount ||
++    frames.some((frame, index) => {
++      const actual = (Number(frame.best_effort_timestamp) * timeNum) / timeDen;
++      const expected = (index * request.profile.fps_den) / request.profile.fps_num;
++      return !Number.isFinite(actual) || Math.abs(actual - expected) > timeNum / timeDen;
++    })
++  ) {
++    throw new Error('Provider video timestamps are not exact CFR from local time zero');
++  }
++  return {
++    video_codec: 'h264',
++    pixel_format: 'yuv420p',
++    width: stream.width,
++    height: stream.height,
++    fps_num: request.profile.fps_num,
++    fps_den: request.profile.fps_den,
++    avg_fps_num: request.profile.fps_num,
++    avg_fps_den: request.profile.fps_den,
++    frame_count: frameCount,
++    has_audio: false,
++  };
++}
++
++export function installMvtOutput(job, input, ffmpeg, ffprobe) {
++  if (!fs.statSync(job.video).isFile()) throw new Error('Export did not write video.mp4');
++  const probe = probeMvtOutput(job.video, input.request, ffprobe);
++  const manifest = {
++    schema_version: '0.1',
++    status: 'completed',
++    request: {
++      path: path.relative(job.temporary, input.requestFile),
++      sha256: input.requestSha256,
++    },
++    source_sha256: input.request.source.sha256,
++    profile: input.request.profile,
++    range: input.request.range,
++    backend: input.request.backend,
++    project_sha256: input.request.project.sha256,
++    plugin_sha256: (input.request.plugins ?? []).map(ref => ref.sha256),
++    asset_sha256: (input.request.assets ?? []).map(ref => ref.sha256),
++    parameters_sha256: input.request.parameters_sha256,
++    environment: {
++      platform: process.platform,
++      arch: process.arch,
++      node: process.versions.node,
++      electron: process.versions.electron,
++      chromium: process.versions.chrome,
++      ffmpeg: toolOutput(ffmpeg, ['-version']).split('\n')[0],
++      ffmpeg_sha256: fileSha256(ffmpeg),
++      ffprobe: toolOutput(ffprobe, ['-version']).split('\n')[0],
++    },
++    video: { path: 'video.mp4', sha256: fileSha256(job.video) },
++    probe,
++  };
++  fs.writeFileSync(
++    path.join(job.temporary, 'provider-manifest.json'),
++    `${JSON.stringify(manifest, null, 2)}\n`,
++    { flag: 'wx' },
++  );
++  if (fs.existsSync(job.output)) throw new Error(`Output appeared during render: ${job.output}`);
++  fs.renameSync(job.temporary, job.output);
++  return {
++    status: 'completed',
++    manifest: path.join(job.output, 'provider-manifest.json'),
++    video: path.join(job.output, 'video.mp4'),
++    video_sha256: manifest.video.sha256,
++  };
++}
+diff --git a/electron/mvt-job.mjs b/electron/mvt-job.mjs
+index 6e62ef6..74a3563 100644
+--- a/electron/mvt-job.mjs
++++ b/electron/mvt-job.mjs
+@@ -53,6 +53,9 @@ function validateProjectMedia(payload, projectFile, allowedAssets) {
+         const value = props[field];
+         if (!value || typeof value !== 'string') continue;
+         if (/^https?:|^\/\//i.test(value)) throw new Error(`Remote media forbidden: ${value}`);
++        if (/^(?:blob:|astrofox-media:)/i.test(value)) {
++          throw new Error(`Unbound media URL forbidden: ${value}`);
++        }
+       }
+       if (element.plugin?.url && /^(?:https?:|\/\/)/i.test(element.plugin.url)) {
+         throw new Error(`Remote plugin forbidden: ${element.plugin.url}`);
+diff --git a/electron/preload.mjs b/electron/preload.mjs
+index 25a1b1d..cee8cc6 100644
+--- a/electron/preload.mjs
++++ b/electron/preload.mjs
+@@ -113,5 +113,9 @@ if (process.argv.includes('--mvt-job-window')) {
+     getInput: () => ipcRenderer.invoke('mvt:get-input'),
+     ready: () => ipcRenderer.send('mvt:ready'),
+     fail: message => ipcRenderer.send('mvt:failed', String(message)),
++    progress: progress => ipcRenderer.send('mvt:progress', progress),
++    finished: () => ipcRenderer.send('mvt:finished'),
++    onRender: callback => ipcRenderer.on('mvt:render', () => callback()),
++    onCancel: callback => ipcRenderer.on('mvt:cancel', () => callback()),
+   });
+ }
+diff --git a/package.json b/package.json
+index be3424c..75e5863 100644
+--- a/package.json
++++ b/package.json
+@@ -36,6 +36,7 @@
+     "dist:linux": "pnpm install-ffmpeg && pnpm build:renderer && electron-builder --linux --publish never",
+     "install-ffmpeg": "node ./scripts/install-ffmpeg.mjs",
+     "plugin-libs": "node ./scripts/copy-plugin-libs.mjs",
++    "astrofox-render": "node ./scripts/astrofox-render.mjs",
+     "postinstall": "node ./scripts/copy-plugin-libs.mjs"
+   },
+   "build": {
+diff --git a/scripts/astrofox-render.mjs b/scripts/astrofox-render.mjs
+new file mode 100644
+index 0000000..baf03f5
+--- /dev/null
++++ b/scripts/astrofox-render.mjs
+@@ -0,0 +1,114 @@
++#!/usr/bin/env node
++import { spawn, spawnSync } from 'node:child_process';
++import { createHash } from 'node:crypto';
++import fs from 'node:fs';
++import path from 'node:path';
++import { fileURLToPath } from 'node:url';
++
++const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
++
++function fail(code, message) {
++  process.stdout.write(`${JSON.stringify({ status: 'failed', code, message })}\n`);
++  process.exitCode = 5;
++}
++
++function executable(name) {
++  const found = (process.env.PATH ?? '')
++    .split(path.delimiter)
++    .map(directory => path.join(directory, name))
++    .find(candidate => fs.existsSync(candidate) && fs.statSync(candidate).isFile());
++  if (!found) throw new Error(`${name} is not on PATH`);
++  return found;
++}
++
++function gitOutput(args) {
++  const result = spawnSync('git', args, { cwd: root, encoding: null });
++  if (result.error || result.status !== 0)
++    throw new Error(`git verification failed: ${result.stderr}`);
++  return result.stdout;
++}
++
++function verify(requestFile) {
++  const lock = JSON.parse(fs.readFileSync(path.join(root, '.git/mvt-lock.json'), 'utf8'));
++  const request = JSON.parse(fs.readFileSync(requestFile, 'utf8'));
++  const commit = gitOutput(['rev-parse', 'HEAD']).toString().trim();
++  const diffHash = createHash('sha256')
++    .update(gitOutput(['diff', '--binary', 'HEAD']))
++    .digest('hex');
++  if (
++    commit !== lock.commit ||
++    diffHash !== lock.applied_diff_sha256 ||
++    request.backend?.commit !== commit ||
++    request.backend?.integration_patch_sha256 !== lock.patch_stack_sha256 ||
++    request.backend?.version !==
++      JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version
++  ) {
++    throw new Error('Request does not match the pinned Astrofox source and patch stack');
++  }
++}
++
++async function main() {
++  const args = process.argv.slice(2);
++  const requestIndex = args.indexOf('--request');
++  const outputIndex = args.indexOf('--output');
++  if (requestIndex < 0 || !args[requestIndex + 1] || outputIndex < 0 || !args[outputIndex + 1]) {
++    fail('invalid_arguments', 'Usage: astrofox-render --request FILE --output DIR');
++    return;
++  }
++  const request = path.resolve(args[requestIndex + 1]);
++  const output = path.resolve(args[outputIndex + 1]);
++  let ffmpeg;
++  let ffprobe;
++  try {
++    verify(request);
++    ffmpeg = executable('ffmpeg');
++    ffprobe = executable('ffprobe');
++  } catch (error) {
++    fail('preflight_failed', String(error));
++    return;
++  }
++  const electron = path.join(root, 'node_modules/.bin/electron');
++  const child = spawn(
++    electron,
++    [path.join(root, 'electron/main.mjs'), '--mvt-job', request, '--mvt-output', output],
++    {
++      cwd: root,
++      env: { ...process.env, ASTROFOX_JOB_FFMPEG: ffmpeg, ASTROFOX_JOB_FFPROBE: ffprobe },
++      stdio: ['ignore', 'pipe', 'inherit'],
++    },
++  );
++  let stdout = '';
++  child.stdout.setEncoding('utf8');
++  child.stdout.on('data', chunk => {
++    stdout += chunk;
++    if (stdout.length > 1024 * 1024) stdout = stdout.slice(-1024 * 1024);
++  });
++  let cancellation = false;
++  for (const signal of ['SIGINT', 'SIGTERM']) {
++    process.on(signal, () => {
++      cancellation = true;
++      child.kill(signal);
++    });
++  }
++  const code = await new Promise(resolve => {
++    child.on('error', () => resolve(5));
++    child.on('close', exitCode => resolve(exitCode ?? 5));
++  });
++  const lines = stdout.trim().split('\n').filter(Boolean);
++  let report;
++  try {
++    if (lines.length !== 1) throw new Error('Electron did not return one result');
++    report = JSON.parse(lines[0]);
++    if (!['completed', 'failed'].includes(report.status)) throw new Error('Invalid status');
++  } catch {
++    report = {
++      status: 'failed',
++      code: cancellation ? 'cancelled' : 'electron_failed',
++      message: `Electron exit ${code}`,
++    };
++  }
++  process.stdout.write(`${JSON.stringify(report)}\n`);
++  process.exitCode = report.status === 'completed' && code === 0 ? 0 : 5;
++}
++
++await main();
+diff --git a/src/app/mvt-job.ts b/src/app/mvt-job.ts
+index 62bae1b..f5aae27 100644
+--- a/src/app/mvt-job.ts
++++ b/src/app/mvt-job.ts
+@@ -1,7 +1,8 @@
+ import { initApp } from '@/app/actions/app';
+ import { loadProjectFromPayload } from '@/app/actions/project';
+-import { analyzer, audioContext, player, renderBackend, renderer } from '@/app/global';
++import { analyzer, audioContext, library, player, renderBackend, renderer } from '@/app/global';
+ import { loadAudioData } from '@/lib/utils/audio';
++import VideoExporter from '@/lib/video/VideoExporter';
+ 
+ async function waitForCanvas() {
+   for (let tries = 0; tries < 200; tries += 1) {
+@@ -26,6 +27,12 @@ export async function runMvtJob() {
+     }
+     await storage.flush();
+     await initApp();
++    const loadedPlugins = (library.get('plugins') ?? {}) as Record<string, unknown>;
++    for (const plugin of input.plugins) {
++      if (!(plugin.manifest.name in loadedPlugins)) {
++        throw new Error(`Pinned plugin failed to load: ${plugin.manifest.name}`);
++      }
++    }
+     await loadProjectFromPayload(input.payload, 'MVT job', true);
+     const bytes = new Uint8Array(input.audio);
+     const data = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+@@ -50,6 +57,39 @@ export async function runMvtJob() {
+     await waitForCanvas();
+     renderer.stop();
+     await renderer.renderFrame(0, 30);
++    let exporter: VideoExporter | null = null;
++    bridge.onCancel(() => exporter?.cancel());
++    bridge.onRender(async () => {
++      if (!input.outputPath) {
++        bridge.fail('Export destination missing');
++        return;
++      }
++      exporter = new VideoExporter();
++      try {
++        const output = await exporter.export({
++          outputPath: input.outputPath,
++          includeAudio: false,
++          startTime: input.request.range.start_sample / 48000,
++          endTime: input.request.range.end_sample / 48000,
++          fps: 30,
++          encoder: 'x264',
++          quality: 'medium',
++          onProgress: progress => {
++            if (
++              progress.currentFrame === 0 ||
++              progress.currentFrame === progress.totalFrames ||
++              (progress.currentFrame ?? 0) % 30 === 0
++            ) {
++              bridge.progress(progress);
++            }
++          },
++        });
++        if (output !== input.outputPath) throw new Error('Exporter changed output path');
++        bridge.finished();
++      } catch (error) {
++        bridge.fail(error instanceof Error ? error.stack || error.message : String(error));
++      }
++    });
+     bridge.ready();
+   } catch (error) {
+     bridge.fail(error instanceof Error ? error.stack || error.message : String(error));
+diff --git a/src/global.d.ts b/src/global.d.ts
+index ff716d5..dcd97b0 100644
+--- a/src/global.d.ts
++++ b/src/global.d.ts
+@@ -65,13 +65,22 @@ interface AstrofoxDesktopBridge {
+ interface Window {
+   __ASTROFOX_JOB__?: {
+     getInput: () => Promise<{
+-      request: { source: { duration_samples: number }; profile: { width: number; height: number } };
++      request: {
++        source: { duration_samples: number };
++        profile: { width: number; height: number };
++        range: { start_sample: number; end_sample: number };
++      };
+       payload: Record<string, unknown>;
+       audio: Uint8Array;
+       plugins: Array<{ manifest: { name: string } }>;
++      outputPath: string | null;
+     }>;
+     ready: () => void;
+     fail: (message: string) => void;
++    progress: (progress: { status: string; currentFrame?: number; totalFrames?: number }) => void;
++    finished: () => void;
++    onRender: (callback: () => void) => void;
++    onCancel: (callback: () => void) => void;
+   };
+   _astrofox: unknown;
+   __astrofox?: Record<string, unknown>;
