@@ -59,8 +59,11 @@ fails, retain projectM as unavailable and document the blocker. Do not push.
 
 ## Acceptance boundary
 
-Repeated jobs in the same locked environment have identical decoded frames for the
-approved preset, and excerpts match the corresponding frames of a full run. The
-provider result passes the shared silent-CFR contract; composed previews pass canonical
-audio, caption and S11 comparison checks. Cross-host pixel identity, arbitrary preset
-packs, automated preset transitions, GUI and publication are outside this slice.
+Repeated jobs in the same locked environment have identical video bytes for the
+approved preset. Pre-encode raw RGBA excerpt frames equal the corresponding frames
+of a full run. Separately encoded H.264 clips may differ at the decoded-pixel level
+because their prediction context differs; the synthetic full/excerpt check requires
+at least 48 dB PSNR. The provider result passes the shared silent-CFR contract;
+composed previews pass canonical audio, caption and S11 comparison checks.
+Cross-host pixel identity, arbitrary preset packs, automated preset transitions,
+GUI and publication are outside this slice.

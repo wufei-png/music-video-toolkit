@@ -9,9 +9,21 @@ same-audio gates pass. The pinned deterministic runtime and standalone offline
 provider CLI are implemented, with a repeatable six-frame synthetic export and
 input/output rejection checks. The MVT child-process adapter and doctor check are
 implemented and revalidate real synthetic output. The next action is
-full-versus-excerpt, both-profile and canonical composition verification, followed
-by the external same-audio song comparison. S13 evidence below remains the current
-advertised capability.
+the external same-audio song comparison, followed by capability and documentation
+handoff. S13 evidence below remains the current advertised capability.
+
+The real synthetic S14 acceptance under
+`/Users/wufei2/.cache/mvt/projectm/s14-synthetic-acceptance/` used one second of
+public 48 kHz PCM. A 30-frame full run and nonzero 15–20-frame excerpt had identical
+corresponding raw RGBA frame hashes; repeated encoded excerpts had the same SHA-256
+`4721769ba73c479b884854d83719c01f9754a22a98261fce7d7de75b85b2be60`.
+Independently encoded full/excerpt decoded frames measured 51.892 dB PSNR against
+the 48 dB gate. Landscape and portrait silent-CFR outputs passed provider
+validation; MVT added canonical audio and saved captions, reproduced the landscape
+composition byte-for-byte and completed an S11 comparison with a built-in abstract
+preview. Contact-sheet and portrait-frame inspection found the waveform and caption
+visible. This is a bounded technical result; the simple waveform's artistic value
+has not been approved.
 
 ## S13 pinned Astrofox external visual provider complete — 2026-09-19
 

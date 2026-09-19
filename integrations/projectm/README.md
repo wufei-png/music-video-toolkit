@@ -108,3 +108,19 @@ configured runtime (`MVT_PROJECTM_CHECKOUT` and `MVT_PROJECTM_BUILD`); `ready`
 means the pinned binary is intact, not that the S14 production gates are complete.
 The command remains out of advertised production capabilities until those gates
 pass.
+
+The synthetic S14 acceptance command also checks the full 30-frame run against a
+nonzero 15–20-frame excerpt at the raw RGBA boundary, repeats the encoded excerpt,
+exercises both closed profiles, composes canonical audio and saved captions,
+re-renders from saved artifacts, and compares a projectM preview with a built-in
+abstract preview:
+
+```sh
+uv run --locked python scripts/projectm_acceptance_check.py --checkout /absolute/external/core --build /absolute/external/build
+```
+
+The retained run under `/Users/wufei2/.cache/mvt/projectm/s14-synthetic-acceptance/`
+found exact raw global-frame equality, byte-identical repeat excerpts and 51.89 dB
+decoded full/excerpt PSNR. Both profile compositions, saved rerender and S11
+comparison passed. This is a synthetic technical proof, not song-level artistic
+acceptance.
