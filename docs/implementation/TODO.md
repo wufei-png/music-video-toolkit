@@ -1,14 +1,15 @@
-# Post-S13 backlog — 2026-09-19
+# Post-S14 backlog — 2026-09-19
 
-This is the local, evidence-ordered backlog after S01–S13. On 2026-09-19 the user selected P0, P1
-and P2 in order; their confirmed implementation contracts are S11, S12 and S13. Those slices are
-complete within the proven scope below. Later work requires its own selection and acceptance gate.
+This is the local, evidence-ordered backlog after S01–S14. On 2026-09-19 the user selected P0, P1
+and P2 in order; their confirmed implementation contracts were S11, S12 and S13. The later selected
+S14 projectM slice is also complete within the proven scope below. Further work requires its own
+selection and acceptance gate.
 
 ## Current baseline
 
-- This audit began from clean `main` at `ea614da`; S01–S13 are complete. `mvt capabilities` reports CLI and
-  production stage `s13`, including the pinned external Astrofox provider route, composition and
-  completed-preview comparison. Astrofox readiness still depends on the local pinned checkout.
+- The original audit began from clean `main` at `ea614da`. S01–S14 are complete;
+  `mvt capabilities` reports CLI and production stage `s14`, including bounded projectM and
+  pinned Astrofox provider routes. Local readiness still depends on each external runtime.
 - The two external production finals and their QA evidence exist under
   `../projects/soft-harm/s10/final-v1-bulge/` and
   `../projects/zhi-mai-yi-ren-fen/s10/final-v1-bulge/`. Both have exact expected frame counts,
@@ -73,10 +74,19 @@ first would either encode the old fixed profile or need immediate migration.
    FFmpeg pipe. The silent CFR result binds the upstream/patch, project, plugin, assets, parameters
    and output. MVT adds canonical audio, saved lyrics and S11 comparison evidence. Manual editor
    opening remains a debugging/failure fallback; MCP is absent.
-6. **Completed feasibility only: projectM remains unavailable.** Core/provider/preset identities and
-   licenses are pinned; an isolated provider fed canonical PCM and produced two conforming short
-   silent-CFR results. Repeat output bytes differed and nonzero global-time replay is unproven.
-   Complete production integration needs a separately authorized later slice.
+6. **S13 historical feasibility result.** Core/provider/preset identities and licenses were pinned;
+   the original isolated short exports conformed but repeat bytes differed. The selected S14 slice
+   subsequently patched the supported random path and completed bounded production integration.
+
+### S14 — complete within the approved preset boundary
+
+The user selected one hash-approved self-authored `mvt-wave` preset, one preset per job, global
+pre-roll, both closed profiles, silent-CFR output and the existing MVT composition/comparison path.
+Synthetic acceptance proved exact raw full/excerpt global frames, byte-identical repeated excerpts,
+both profiles and saved-artifact composition. External `soft-harm/s14/projectm-v1/` completed the
+three exact S11 ranges with matching decoded audio and a byte-identical first-range repeat. The
+waveform's artistic value still needs song-workspace feedback; arbitrary presets, preset switching,
+other hosts and full-song projectM output remain outside the proven boundary.
 
 Pinned upstream references:
 
@@ -99,8 +109,6 @@ Pinned upstream references:
 
 ## Confirmed sequence
 
-S13 is complete with the evidence in [status](status.md). The user selected
-[S14](S14-projectm-provider.md) as the next slice: a bounded, approved-preset projectM
-provider with repeat/global-time gates and a same-audio comparison. Until those gates
-pass, projectM remains unavailable. GUI, broader host validation, 4K/60 and MCP remain
-later work.
+S14 is complete with the evidence in [status](status.md). Its bounded approved-preset projectM
+route is available when the pinned local runtime is ready. The next development slice requires a
+new choice; GUI, broader host validation, 4K/60 and MCP remain later work.

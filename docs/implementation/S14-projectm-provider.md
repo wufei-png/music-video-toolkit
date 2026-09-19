@@ -67,3 +67,20 @@ at least 48 dB PSNR. The provider result passes the shared silent-CFR contract;
 composed previews pass canonical audio, caption and S11 comparison checks.
 Cross-host pixel identity, arbitrary preset packs, automated preset transitions,
 GUI and publication are outside this slice.
+
+## Delivered evidence
+
+Stages 1–5 were committed as `5c57e37`, `a01326d`, `c8687c5`, `0b476b2`
+and `77dd722`. Synthetic acceptance found byte-identical repeated excerpts,
+exact corresponding raw RGBA frames in a full run and a nonzero global excerpt,
+51.892 dB independently encoded decoded PSNR, both closed profiles, canonical
+audio/captions, saved-artifact rerender and S11 comparison.
+
+The final external `../projects/soft-harm/s14/projectm-v1/` proof used the same
+canonical WAV and exact three S11 global ranges. Each silent provider result and
+captioned composition passed; all 360-frame clips matched built-in decoded audio
+per range. The first provider range repeated byte-for-byte. The 190-second range
+pre-rolled 5700 frames in 11.794 seconds on this Mac. Its checked comparison and
+technical QA remain outside Git. S14 advertises only the approved `mvt-wave`
+preset when the local pinned runtime is ready; subjective visual approval, other
+hosts and full-song projectM output were not established.

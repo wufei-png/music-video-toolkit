@@ -32,6 +32,8 @@ mvt plan resolve --project PROJECT --plan PROJECT/visual-plan.json
 mvt preview --project PROJECT --plan PROJECT/resolved-plan.json --ranges PROJECT/preview.json --output PREVIEW_DIR --review-reel
 # optional Astrofox visual variant from a prepared external pinned checkout:
 mvt provider astrofox --request PROVIDER_REQUEST.json --output PROVIDER_DIR --checkout ASTROFOX_CHECKOUT
+# or the single approved projectM preset from a prepared external pinned build:
+mvt provider projectm --request PROVIDER_REQUEST.json --output PROVIDER_DIR --checkout PROJECTM_CHECKOUT --build PROJECTM_BUILD
 mvt provider compose --project PROJECT --request PROVIDER_REQUEST.json --manifest PROVIDER_DIR/provider-manifest.json --timeline TIMELINE.json --output COMPOSITION_DIR --lyrics LYRICS.json --font FONT.ttf
 # repeat for each ordered global range, then:
 mvt provider bundle --composition COMPOSITION_1/provider-composition.json --composition COMPOSITION_2/provider-composition.json --output PROVIDER_PREVIEW_DIR
@@ -44,7 +46,7 @@ Lyrics commands are conditional. `render` is conditional on accepted sample feed
 
 Comparison is also conditional. Its request points only to distinct completed aggregate preview manifests and preserves variant order. Verify that variants intentionally share canonical audio, ranges, output dimensions/fps and H.264/yuv420p + AAC 48 kHz stereo CFR compatibility before running it. Compare landscape and portrait in separate requests; paired inspection can assess shared intent but is not an automatic-reframing claim. Save `comparison.json`, the range-major reel and labeled contact sheet alongside a separate feedback record; objective comparison success is not user approval.
 
-The Astrofox branch is optional and requires an actually ready pinned local checkout. Its provider request and manifest bind local project/plugin/asset hashes and a silent CFR result. `compose` revalidates that result and uses existing MVT composition for canonical audio and saved lyrics; omit both `--lyrics` and `--font` when captions are off. Bundle only ordered compositions from the same source/profile. Never treat a provider video alone as an S11 variant, or list projectM feasibility output as a supported production backend.
+External provider branches require a ready pinned local runtime. Astrofox binds local project/plugin/asset hashes. projectM accepts the hash-approved `mvt-wave` preset only, with `locked-single` policy, and replays the song from frame zero before each global range. Their manifests bind silent CFR results. `compose` revalidates those results and uses MVT composition for canonical audio and saved lyrics; omit both `--lyrics` and `--font` when captions are off. Bundle only ordered compositions from the same source/profile. A provider video alone is not an S11 variant. The old projectM feasibility output is historical; use the S14 adapter and approved preset for production.
 
 ## Feedback record
 

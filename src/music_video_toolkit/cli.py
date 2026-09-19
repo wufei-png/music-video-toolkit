@@ -46,6 +46,7 @@ AVAILABLE = [
     "compare",
     "render",
     "provider astrofox",
+    "provider projectm",
     "provider compose",
     "provider bundle",
 ]
@@ -167,8 +168,8 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "version": __version__,
                 "schema_version": "0.1",
-                "stage": "s13",
-                "production_stage": "s13",
+                "stage": "s14",
+                "production_stage": "s14",
                 "available": AVAILABLE,
                 "planned": PLANNED,
                 "can_render": True,
@@ -187,7 +188,14 @@ def main(argv: list[str] | None = None) -> int:
                         "result_contract": "provider_manifest",
                         "status": astrofox_doctor()["state"],
                         "command": "provider astrofox",
-                    }
+                    },
+                    "projectm": {
+                        "request_contract": "provider_request",
+                        "result_contract": "provider_manifest",
+                        "status": projectm_doctor()["state"],
+                        "command": "provider projectm",
+                        "approved_presets": ["mvt-wave"],
+                    },
                 },
                 "analysis_scope": (
                     "48 kHz mix features; optional htdemucs vocals/drums/bass/other; "

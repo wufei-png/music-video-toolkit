@@ -4,9 +4,9 @@
 
 通用检查：`uv sync --locked --group dev`、`uv run --locked pytest`、`uv run --locked ruff check .`、`git diff --check`。有 renderer 改动时执行 `pnpm --dir renderer check`。这些命令在 bootstrap 完成后可运行。
 
-**各切片中的阶段测试和新增 CLI 是对应切片的验收入口，当前已随 S01–S13 实现。** 安装的模型和外部提供器环境应单独锁定；CPU 模拟或 mock 不算真实模型/提供器验证。阶段测试生成可公开的 synthetic fixtures；本地歌曲验收证据保存在仓库外。
+**各切片中的阶段测试和新增 CLI 是对应切片的验收入口，当前已随 S01–S14 实现。** 安装的模型和外部提供器环境应单独锁定；CPU 模拟或 mock 不算真实模型/提供器验证。阶段测试生成可公开的 synthetic fixtures；本地歌曲验收证据保存在仓库外。
 
-S10 之后的工作、依赖顺序和后续选择门槛见 [backlog](TODO.md)。S11–S13 已完成；S14 已选定但尚未交付。Astrofox 仍需本地锁定 checkout，projectM 仍是可行性结果。
+S10 之后的工作、依赖顺序和后续选择门槛见 [backlog](TODO.md)。S11–S14 已完成。Astrofox 与 projectM 仍需各自的本地锁定运行环境；projectM 仅开放单个受检预设。
 
 | ID | Result | Dependencies |
 | --- | --- | --- |

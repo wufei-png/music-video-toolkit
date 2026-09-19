@@ -42,6 +42,17 @@ Comparison remains a same-profile operation. Use separate comparison requests fo
 
 S13 adds `provider-request` and `provider-manifest` schemas without changing existing source, timeline, plan, lyric or preview models. Old manual Astrofox exports and unbound videos are not provider results: create a current typed request, render with the pinned downstream CLI, and keep its completed manifest and video together. Do not fill missing hashes from guesses or rename an old video into a completed result. The conformance check rejects audio-bearing media, non-CFR or incorrect clocks, stale or tampered inputs, and incomplete results.
 
-For S11 comparison, first use `mvt provider compose` for each range to add the same canonical audio and optional saved lyrics through MVT. Use `mvt provider bundle` to construct a completed aggregate preview from ordered compositions, then point an ordinary comparison request at that manifest and a distinct built-in preview manifest. Prior S11/S12 artifacts remain valid if they already pass current comparison preflight. The projectM feasibility result does not migrate into an available provider; a production adapter needs a separate implementation and acceptance gate.
+For S11 comparison, first use `mvt provider compose` for each range to add the same canonical audio and optional saved lyrics through MVT. Use `mvt provider bundle` to construct a completed aggregate preview from ordered compositions, then point an ordinary comparison request at that manifest and a distinct built-in preview manifest. Prior S11/S12 artifacts remain valid if they already pass current comparison preflight. The S13 projectM feasibility result is historical and cannot be reused as an S14 production result.
 
 The post-review Astrofox patch stack has a new hash because output locking and the readiness timer were corrected. Earlier S13 provider videos remain historical evidence; the current adapter refuses requests carrying the old patch identity. Prepare and build a fresh external checkout, update the request backend patch hash from `integrations/astrofox/lock.json`, and rerender into a new output directory. Doctor also requires a current build hash record for `out/` and `node_modules`; run explicit `build` after changing either tree.
+
+## 2026-09-19 — S14 bounded projectM provider
+
+S14 uses the existing `provider-request` and `provider-manifest` schemas, so there is no protocol
+version migration. A production request must select the pinned projectM revision and current
+integration patch identity, contain only the approved `mvt-wave` preset with its hash, and use
+exactly `{"preset_id":"mvt-wave","policy":"locked-single"}` parameters. Recreate requests from
+the checked canonical WAV and current runtime; do not relabel S13 feasibility files or reuse an
+old result after changing the preset, patch or binary. Composition, bundle and comparison use
+the same S13 artifacts and paths. Existing Astrofox and built-in results remain valid if they
+pass their current checks.

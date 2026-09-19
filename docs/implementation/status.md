@@ -1,16 +1,17 @@
 # Implementation status
 
-## S14 selected — bounded projectM provider
+## S14 bounded projectM provider complete — 2026-09-19
 
 The user selected a limited, approved-preset production adapter after S13. Its
-[implementation contract](S14-projectm-provider.md) is recorded; projectM is still
-feasibility-only and remains unavailable until repeat, global-time, composition and
-same-audio gates pass. The pinned deterministic runtime and standalone offline
-provider CLI are implemented, with a repeatable six-frame synthetic export and
-input/output rejection checks. The MVT child-process adapter and doctor check are
-implemented and revalidate real synthetic output. The next action is
-the external same-audio song comparison, followed by capability and documentation
-handoff. S13 evidence below remains the current advertised capability.
+[implementation contract](S14-projectm-provider.md) was delivered in dependency order:
+`5c57e37` contract/diagnostic baseline, `a01326d` pinned seeded runtime,
+`c8687c5` offline provider CLI, `0b476b2` MVT child-process adapter, and
+`77dd722` synthetic global-time/composition acceptance. The final handoff enables
+only the hash-approved, self-authored `mvt-wave` preset with `locked-single` policy.
+The backend runs offline from a pinned external projectM 4.2.0 build, reads the
+canonical WAV from song frame zero, emits silent CFR video for one global range,
+and uses the existing MVT audio/caption/bundle/comparison path. A local checkout
+and build remain prerequisites; `mvt doctor` reports their current readiness.
 
 The real synthetic S14 acceptance under
 `/Users/wufei2/.cache/mvt/projectm/s14-synthetic-acceptance/` used one second of
@@ -24,6 +25,33 @@ composition byte-for-byte and completed an S11 comparison with a built-in abstra
 preview. Contact-sheet and portrait-frame inspection found the waveform and caption
 visible. This is a bounded technical result; the simple waveform's artistic value
 has not been approved.
+
+The external `../projects/soft-harm/s14/projectm-v1/` proof used canonical WAV
+SHA-256 `d03ba9b439bf204b60569e876746d6393daf21616e527fe081f054ef91231c34`
+and the exact S11 ranges 10–22, 39–51 and 190–202 seconds. All three projectM
+silent videos passed provider validation; the MVT compositions have 360 frames
+each and the same decoded 48 kHz stereo PCM hashes as the built-in control.
+First-range provider repeat MP4 bytes matched at
+`48169aeead734f309e0590e964cd7d58d34ca5e98709c502f61c33919369a970`.
+Pre-roll counts were 300, 1170 and 5700 frames, with provider elapsed times
+6.176, 6.793 and 11.794 seconds on this Mac. S11 comparison replayed from cache;
+`comparison/comparison.json` has SHA-256
+`a4e67bcb5edd700b95395070f3904d23c5b3f472ff50318d8e3f9dbbf574f945`.
+The external `qa.json` retains exact media hashes and technical inspection. The
+contact sheet shows visible waveform and captions in the lyric-bearing ranges;
+subjective style acceptance and full-song projectM output remain open song-level
+decisions. Other hosts and arbitrary preset packs were not tested. No song media,
+song request or generated video entered Git.
+
+Final S14 gates: `uv sync --locked --group dev` audited the Python lock;
+`uv run --locked pytest -q` passed **167 tests in 253.77 s**;
+`uv run --locked ruff check .`, `ruff format --check .` and
+`scripts/export_schemas.py --check` passed with unchanged generated schemas.
+`pnpm --dir renderer install --frozen-lockfile` and `pnpm --dir renderer check`
+passed **25 Node tests**. The pinned external projectM source/build passed
+`scripts/projectm_env.py check`, real synthetic acceptance, all three song jobs,
+comparison validation and cache replay. These checks establish the stated
+same-host bounded route, not cross-host or subjective-quality acceptance.
 
 ## S13 pinned Astrofox external visual provider complete — 2026-09-19
 
@@ -73,14 +101,13 @@ contact sheet are byte-identical to inspected v2 media, while the v3 manifests b
 patch-stack hash `e39e77ad1bb52748ce0bf780ef79837c6daff9ceb1f2374ac07847315b5b402f`.
 The prior v2 proof remains historical. No song media or raw provider metadata entered Git.
 
-projectM remains feasibility only. `integrations/projectm/lock.json` pins core
+At the S13 handoff, projectM remained feasibility only. `integrations/projectm/lock.json` pinned core
 `1e7ef7803b69024d1e0656705670adda2ffac817`, evaluation submodule, LGPL license, MIT synthetic
 preset/texture and provider source hashes. An isolated build fed canonical PCM and rendered six
 1920x1080/30 silent-CFR frames twice; both results conformed, with explicit 0–5/30 s frame times. The exact
 report and manifests are at `/Users/wufei2/.cache/mvt/projectm/feasibility-final/`. The output
-SHA-256s differ (`6f213fa…` and `5c5d8e…`), and nonzero global-range replay is unproven. projectM
-is deliberately absent from available capabilities. Further determinism and global-time work would
-need a separately authorized production-adapter slice.
+SHA-256s differed (`6f213fa…` and `5c5d8e…`), and nonzero global-range replay was unproven.
+S14 subsequently resolved the bounded determinism/global-time gates above.
 
 Final S13 gates: `uv sync --locked --group dev` audited the lock; `uv run --locked pytest -q`
 passed **163 tests in 233.74 s** after the delegated-review fixes; focused
@@ -382,14 +409,16 @@ Model installation/inference, browser/WebGL rendering, external media compositio
 | S11 same-audio variant comparison | Complete — `5fad921`, `827f629`, `2f7f667` plus handoff |
 | S12 portrait and repeated structure | Complete — five implementation commits plus final handoff |
 | S13 Astrofox automated backend | Complete — eight implementation commits plus final capability/validation handoff; projectM feasibility only |
+| S14 bounded projectM provider | Complete — five dependency-ordered commits plus final capability/validation handoff; one approved preset |
 
 ## Exact next action
 
-S13 is complete within the pinned Astrofox provider and projectM feasibility boundary. The exact
-next action is to choose a separate later slice based on the open evidence: projectM repeat/global
-time, wider host validation, or the P3 GUI/editor. Publication or push requires separate
-authorization; neither occurred in S13. External subjective selection among the Astrofox and
-built-in variants remains a song-workspace decision, not a toolkit acceptance claim.
+S14 is complete within the single approved projectM preset and pinned macOS runtime
+boundary. The exact next development action is to choose a separate later slice:
+broader host validation, the P3 GUI/editor, or additional projectM preset work after
+its own selection and licensing/quality gates. Subjective selection among built-in,
+Astrofox and projectM variants remains in the song workspace. No push or publication
+occurred in S14.
 
 On the original host the parent workspace has `projects/README.md`, `projects/soft-harm/case.json`
 and `projects/zhi-mai-yi-ren-fen/case.json`. These are updated local source inventories, not runtime

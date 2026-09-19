@@ -2,7 +2,7 @@
 
 面向 AI agent 的音乐视频制作工具包。Skill 做创作协作，文件协议保存决策，代码执行可复现制作。
 
-**当前状态：S01–S13 已完成。S13 增加了锁定版本的 Astrofox 离线无界面视觉提供器、严格的无声 CFR 输出验收，以及沿用 MVT 音频/歌词和 S11 同音频比较的制作路径。projectM 仅完成可行性探针，尚无生产适配器。** S10 的两首歌全曲验收、S11 比较和 S12 横竖屏/结构审阅仍有效。仓库 MIT 许可覆盖本项目代码与 Skill，不改变外部素材、模型和依赖的许可证；公开发布仍需单独授权。
+**当前状态：S01–S14 已完成。** S13 的 Astrofox 与 S14 的单一受检 `mvt-wave` projectM 预设均可离线输出无声 CFR 视频；MVT 继续合成 canonical 音频、保存的歌词并执行 S11 同音频比较。S14 已在真实歌曲三个区间通过技术验收，视觉取舍仍由制作审阅决定。S10 的两首歌全曲验收、S11 比较和 S12 横竖屏/结构审阅仍有效。仓库 MIT 许可覆盖本项目代码与 Skill，不改变外部素材、模型和依赖的许可证；公开发布仍需单独授权。
 
 ## 两个入口
 
@@ -20,7 +20,7 @@
 
 首次安装后可运行不含第三方媒体的 [public production demo](examples/production-demo/README.md)，从 brief、合成输入、analysis、素材预检和 plan resolve 一直走到样片；显式 autonomous 模式还会生成首版全片和独立重渲染脚本。S09/S10 已验证完整生产流程，真实歌曲及其制作资产仍保存在仓库外。
 
-`mvt capabilities` 中的 `stage` 表示 CLI 能力阶段；`production_stage` 表示包含真实歌曲验收的生产阶段。S13 的 Astrofox CLI、合成与外部 `soft-harm` 同音频比较已验证，所以两者当前都是 `s13`。`doctor` 的 Astrofox 状态仍取决于本机是否已有正确锁定的外部 checkout。
+`mvt capabilities` 中的 `stage` 表示 CLI 能力阶段；`production_stage` 表示包含真实歌曲验收的生产阶段。S14 的 projectM CLI、合成与外部 `soft-harm` 同音频比较已验证，所以两者当前都是 `s14`。`doctor` 的 Astrofox/projectM 状态取决于本机是否已有正确锁定的外部 checkout 和构建。
 
 ## 当前可运行能力
 
@@ -44,6 +44,7 @@ uv run --locked mvt lyrics apply-edits --project "/path/to/project" --edits "/pa
 uv run --locked mvt preview --project "/path/to/project" --plan "/path/to/resolved-plan.json" --ranges "/path/to/preview.json" --output "/path/to/preview-output" --review-reel
 uv run --locked mvt compare --request "/path/to/comparison-request.json" --output "/path/to/comparison-output"
 uv run --locked mvt provider astrofox --request "/path/to/provider-request.json" --output "/path/to/provider-output" --checkout "/path/to/external/astrofox"
+uv run --locked mvt provider projectm --request "/path/to/provider-request.json" --output "/path/to/provider-output" --checkout "/path/to/external/projectm/core" --build "/path/to/external/projectm/build"
 uv run --locked mvt provider compose --project "/path/to/project" --request "/path/to/provider-request.json" --manifest "/path/to/provider-output/provider-manifest.json" --timeline "/path/to/timeline.json" --lyrics "/path/to/lyrics.edited.json" --font "/path/to/font.ttf" --output "/path/to/composition"
 uv run --locked mvt provider bundle --composition "/path/to/composition-1/provider-composition.json" --composition "/path/to/composition-2/provider-composition.json" --output "/path/to/provider-bundle"
 uv run --locked mvt validate --kind source "/path/to/project/source/source.json"
@@ -78,9 +79,9 @@ plan 的输出只允许 `1920x1080/30` 或 `1080x1920/30`；旧 plan 省略 `out
 
 `compare` 只读取至少两个带 preview request/adapter 证据的已完成 aggregate preview manifest，不会运行分析、对齐、plan resolve、preview 或 render。它拒绝解析到同一 manifest 的路径别名，要求相同 canonical audio、原始来源、全局 ranges、H.264/yuv420p + AAC 48 kHz stereo CFR stream compatibility signature、尺寸/fps/帧数/音频存在性，并比较每个 range 的 decoded PCM hash；plan、assets、seed、renderer 和 environment 差异原样记录。输出目录在重新探测成片 profile 和总帧数后原子安装 `comparison.json`、按 range-major → variant-major 排列的 FFmpeg stream-copy reel，以及在每个 range 相同相对中点采样的 labeled contact sheet。相同请求可命中缓存，但会重新校验所有输入和输出哈希；主观反馈仍是外部记录。
 
-S13 的 `provider-request` 绑定 canonical WAV、封闭输出 profile、全局帧对齐区间、Astrofox 版本/补丁和本地工程、插件、素材与参数哈希。锁定外部 checkout 的 `astrofox-render` 在隐藏 Electron 中离线生成无声 H.264/yuv420p CFR 视频；`provider-manifest` 记录环境、实际探测和输出哈希。MVT 子进程适配器复核全部身份，拒绝含音轨、错时钟、缺失、过期或篡改结果。`provider compose` 把通过校验的视频作为已检查素材，使用 MVT 原有路径加 canonical 音频和可选已保存歌词；`provider bundle` 把多个相同来源/profile 的区间组成 S11 可比较样片。准备/构建需要显式网络安装，渲染不下载；详情见 [Astrofox 集成](integrations/astrofox/README.md)。projectM 仍不在可用提供器列表，MCP 未实现。
+S13 的 `provider-request` 绑定 canonical WAV、封闭输出 profile、全局帧对齐区间、后端版本/补丁和本地工程、素材与参数哈希。锁定外部 checkout 的 `astrofox-render` 在隐藏 Electron 中离线生成无声 H.264/yuv420p CFR 视频。S14 的 projectM 从歌曲第零帧预滚动，只接受本仓库 MIT `mvt-wave` 预设的哈希与单预设参数；同样生成受检的无声 CFR 视频。`provider-manifest` 记录环境、探测和输出哈希。MVT 子进程适配器复核全部身份；`provider compose` 加 canonical 音频和可选已保存歌词，`provider bundle` 组成 S11 可比较样片。准备/构建需要显式安装，渲染不下载；详情见 [Astrofox 集成](integrations/astrofox/README.md)和 [projectM 集成](integrations/projectm/README.md)。MCP 未实现。
 
-原始研究报告、两首歌及其制作资产留在父目录，公共工具仓库不依赖它们。新用户可以安装工具、检查协议、解码、分析/审阅结构、导入或自动对齐歌词、渲染自己的本地横屏或竖屏计划、制作多区间样片并比较同 profile 的已完成变体；S13 的 Astrofox 对比也用外部真实歌曲的相同 canonical 音频和区间验证。具体歌曲仍应在外部制作工作区完成。
+原始研究报告、两首歌及其制作资产留在父目录，公共工具仓库不依赖它们。新用户可以安装工具、检查协议、解码、分析/审阅结构、导入或自动对齐歌词、渲染自己的本地横屏或竖屏计划、制作多区间样片并比较同 profile 的已完成变体；S13 Astrofox 与 S14 projectM 都用外部真实歌曲的相同 canonical 音频和区间验证。具体歌曲仍应在外部制作工作区完成。
 
 渲染器目前提供时间映射实现和 Three.js 图层接口；构建与测试：
 

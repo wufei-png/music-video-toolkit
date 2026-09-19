@@ -65,10 +65,10 @@ Post-S10 development proceeds in three dependency-ordered slices:
    lyrics, comparison and final QA. Astrofox automation is the first full adapter: a pinned
    downstream `astrofox-render` CLI drives its hidden Electron renderer and deterministic export
    bridge without Playwright, AppleScript or UI clicks. Manual editor handoff is a diagnostic
-   fallback. projectM receives only a locked feasibility proof in this sequence; full adapter work
-   requires a later authorization.
+   fallback. In the S13 sequence, projectM received only a locked feasibility proof.
+   The separately authorized S14 slice added one hash-approved preset adapter.
 
-Linux + NVIDIA validation, 4K/60fps, complete projectM integration, pitch/downbeat analyzers and GUI
+Linux + NVIDIA validation, 4K/60fps, broader projectM preset support, pitch/downbeat analyzers and GUI
 editing remain later work. AI service orchestration is outside the core; extend the harness-facing
 workflow only when a concrete need appears.
 
