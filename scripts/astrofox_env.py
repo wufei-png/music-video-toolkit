@@ -29,6 +29,23 @@ def file_hash(path: Path) -> str:
     return value.hexdigest()
 
 
+def tree_hash(root: Path) -> str:
+    value = hashlib.sha256()
+    for entry in sorted(root.rglob("*")):
+        name = entry.relative_to(root).as_posix()
+        if entry.is_symlink():
+            identity = ["link", name, str(entry.readlink())]
+        elif entry.is_file():
+            identity = ["file", name, file_hash(entry)]
+        elif entry.is_dir():
+            identity = ["dir", name]
+        else:
+            raise ValueError(f"unsupported build entry: {entry}")
+        value.update(json.dumps(identity, ensure_ascii=False, separators=(",", ":")).encode())
+        value.update(b"\n")
+    return value.hexdigest()
+
+
 def patch_bytes() -> list[bytes]:
     patches = []
     for item in LOCK["patches"]:
@@ -46,6 +63,19 @@ def runtime_lock(checkout: Path) -> Path:
     return checkout / ".git/mvt-lock.json"
 
 
+def build_lock(checkout: Path) -> Path:
+    return checkout / ".git/mvt-build.json"
+
+
+def build_identity(checkout: Path) -> dict[str, str]:
+    return {
+        "commit": LOCK["commit"],
+        "patch_stack_sha256": LOCK["patch_stack_sha256"],
+        "out_sha256": tree_hash(checkout / "out"),
+        "node_modules_sha256": tree_hash(checkout / "node_modules"),
+    }
+
+
 def write_runtime_lock(checkout: Path) -> None:
     identity = {key: LOCK[key] for key in ("commit", "patch_stack_sha256", "applied_diff_sha256")}
     runtime_lock(checkout).write_text(
@@ -53,7 +83,7 @@ def write_runtime_lock(checkout: Path) -> None:
     )
 
 
-def check(checkout: Path) -> None:
+def check(checkout: Path, *, verify_build: bool = True) -> None:
     patches = patch_bytes()
     if not checkout.is_dir():
         raise ValueError(f"checkout missing: {checkout}")
@@ -86,6 +116,18 @@ def check(checkout: Path) -> None:
     }
     if json.loads(runtime_lock(checkout).read_text(encoding="utf-8")) != expected_runtime_lock:
         raise ValueError("runtime lock differs from repository lock")
+    if verify_build and any(
+        path.exists()
+        for path in (checkout / "out", checkout / "node_modules", build_lock(checkout))
+    ):
+        if not (
+            (checkout / "out/index.html").is_file()
+            and (checkout / "node_modules/.bin/electron").is_file()
+            and build_lock(checkout).is_file()
+        ):
+            raise ValueError("incomplete Astrofox build or missing build identity")
+        if json.loads(build_lock(checkout).read_text(encoding="utf-8")) != build_identity(checkout):
+            raise ValueError("Astrofox build differs from recorded output/dependency hashes")
     print(
         json.dumps(
             {
@@ -109,7 +151,7 @@ def prepare(checkout: Path) -> None:
     current = run("git", "diff", "--binary", "HEAD", cwd=checkout, capture=True)
     if digest(current) == LOCK["applied_diff_sha256"]:
         write_runtime_lock(checkout)
-        check(checkout)
+        check(checkout, verify_build=False)
         return
     if current:
         raise ValueError("checkout has unexpected edits; choose a fresh external path")
@@ -120,20 +162,23 @@ def prepare(checkout: Path) -> None:
     if LOCK["new_files"]:
         run("git", "add", "-N", "--", *LOCK["new_files"], cwd=checkout)
     write_runtime_lock(checkout)
-    check(checkout)
+    check(checkout, verify_build=False)
 
 
 def build(checkout: Path) -> None:
-    check(checkout)
+    check(checkout, verify_build=False)
     if shutil.which("pnpm") is None:
         raise ValueError("pnpm is required")
     run("pnpm", "install", "--frozen-lockfile", cwd=checkout)
     run("pnpm", "build:renderer", cwd=checkout)
     run("pnpm", "exec", "tsc", "--noEmit", cwd=checkout)
     run("pnpm", "lint", cwd=checkout)
-    check(checkout)
     if not (checkout / "out/index.html").is_file():
         raise ValueError("desktop static renderer missing out/index.html")
+    build_lock(checkout).write_text(
+        json.dumps(build_identity(checkout), sort_keys=True, indent=2) + "\n", encoding="utf-8"
+    )
+    check(checkout)
     print(json.dumps({"built": True, "entry": str(checkout / "out/index.html")}))
 
 

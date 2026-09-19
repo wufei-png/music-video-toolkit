@@ -10,7 +10,7 @@ wrong-clock, wrong-frame-count, stale, partial and tampered silent-video results
 contract is implemented in Python; Astrofox application internals remain across a process boundary.
 
 Astrofox upstream commit `126403958e5644a6fbb91d6623626474dd199205`, pnpm lock and MIT license
-are pinned in `integrations/astrofox/lock.json`. Two reviewable hash-bound downstream patches add an
+are pinned in `integrations/astrofox/lock.json`. Three reviewable hash-bound downstream patches add an
 `astrofox-render` CLI inside an isolated upstream checkout: hidden Electron renderer, narrow preload
 bridge, local hash-checked project/audio/assets/plugins, readiness barriers, offline network denial,
 deterministic global-frame `renderFrame(frame, fps)` through existing `VideoExporter`/FFmpeg with audio
@@ -24,17 +24,18 @@ preview accepted by S11 comparison. Manual Astrofox opening is a debugging fallb
 Local commits, one independently checked stage each: `83726dd` protocol/conformance; `02421b6`
 isolated pin/setup; `e66304f` hidden controller; `cbc5706` silent export; `25e3b3a` process adapter
 and doctor; `bdff762` canonical composition; `2c96f0a` projectM feasibility; `f6f231c` ordered
-provider bundle. The original eighth stage was split at its valid S11 bundle boundary so this
-handoff can independently update public capability and run the full acceptance gates.
+provider bundle; `9946032` capability/docs and full first-pass validation. The original eighth
+stage was split at its valid S11 bundle boundary. The tenth and final stage remedies the three
+accepted findings from the requested fresh read-only delegated review.
 
-The external `../projects/soft-harm/s13/v2/` proof uses the S10 canonical WAV (SHA-256
+The final external `../projects/soft-harm/s13/v3/` proof uses the S10 canonical WAV (SHA-256
 `d03ba9b439bf204b60569e876746d6393daf21616e527fe081f054ef91231c34`), saved edited lyrics,
 1920x1080/30 and the exact S11 ranges 10–22 s, 39–51 s and 190–202 s. Three real Astrofox silent
 clips each have 360 frames; MVT compositions include the same canonical audio and captions. Their
 aggregate preview compared successfully with the built-in S11 variant. The comparison at
-`../projects/soft-harm/s13/v2/comparison/comparison.json` has SHA-256
-`a4e2508db9f5c32cbabd5322310037f42ce57aafb0e836e9857cc959f0b11d51`; the reel and contact
-sheet hashes are in `../projects/soft-harm/s13/v2/qa.json`. All three decoded 48 kHz stereo PCM
+`../projects/soft-harm/s13/v3/comparison/comparison.json` has SHA-256
+`80dd8d161cb03a12c3591c434875a7a0ecebf492a19ae674c8cae2f9b7d5d452`; the reel and contact
+sheet hashes are in `../projects/soft-harm/s13/v3/qa.json`. All three decoded 48 kHz stereo PCM
 hashes match the built-in variant; stream-compatibility SHA-256 is
 `605557c1dbf1874b5feb0013a477fc50d0f1f5544e6f44e88fad1f30e8022f2f`. Objective QA found
 no black intervals and clip peaks of -2.5, -2.2 and -1.2 dB. Contact sheet inspection found readable
@@ -42,7 +43,10 @@ captions and distinct Astrofox bar-spectrum visuals. S11 cache replay and standa
 validation passed. The sparse Astrofox provider result repeated byte-identically on the same host
 (`ad84efab6f3bbfa248a8c57757eb0c2a25865681f9b559d812a8fde6d3e00be5`); clean synthetic
 plugin/asset repeat exports also matched byte-for-byte (`9c19c02f97e38958c33ea635094a9d9e767ce9e42bf34dd2c2a13cfb4d91078d`). The gate is same-environment output-byte identity, not
-cross-machine pixel identity or subjective approval. No song media or raw provider metadata entered Git.
+cross-machine pixel identity or subjective approval. The v3 provider/composed clips, reel and
+contact sheet are byte-identical to inspected v2 media, while the v3 manifests bind the final
+patch-stack hash `e39e77ad1bb52748ce0bf780ef79837c6daff9ceb1f2374ac07847315b5b402f`.
+The prior v2 proof remains historical. No song media or raw provider metadata entered Git.
 
 projectM remains feasibility only. `integrations/projectm/lock.json` pins core
 `1e7ef7803b69024d1e0656705670adda2ffac817`, evaluation submodule, LGPL license, MIT synthetic
@@ -54,18 +58,30 @@ is deliberately absent from available capabilities. Further determinism and glob
 need a separately authorized production-adapter slice.
 
 Final S13 gates: `uv sync --locked --group dev` audited the lock; `uv run --locked pytest -q`
-passed **163 tests in 234.23 s** (after updating the capability-stage assertion); focused
+passed **163 tests in 233.74 s** after the delegated-review fixes; focused
 CLI/S13 tests passed 25; `uv run --locked ruff check .`, `ruff format --check .` and
 `scripts/export_schemas.py --check` passed with 18 generated schemas; frozen-lock renderer install
 and `pnpm --dir renderer check` passed 25 Node tests. A fresh external checkout at
-`/Users/wufei2/.cache/mvt/astrofox/stage9-clean` passed prepare, build, lock/diff check, hidden
-smoke (including network and invalid-input denial), real silent-CFR plugin/asset export, failure
-cleanup, canonical-audio caption composition and byte-identical saved-artifact rerender. A retained
-public synthetic proof at `/Users/wufei2/.cache/mvt/astrofox/stage9-proof/` makes `mvt doctor`
-report `proven` for that checkout; the captioned clip and rerender both hash to
+`/Users/wufei2/.cache/mvt/astrofox/stage10-clean` passed prepare, build, lock/diff and build-tree
+checks, hidden smoke (including network and invalid-input denial), real silent-CFR plugin/asset export, active
+SIGINT cancellation and cleanup, canonical-audio caption composition and byte-identical
+saved-artifact rerender. A retained public synthetic proof is at
+`/Users/wufei2/.cache/mvt/astrofox/stage10-proof/`; after the v3 song repeat, `mvt doctor` reports
+`proven` against `../projects/soft-harm/s13/v3/sparse-provider-repeat/provider-manifest.json`.
+The synthetic captioned clip and rerender both hash to
 `a9bd102b50e9449815ddcfc53f62c7d3f6fc4779a9f195963b7374102c994e30`. This is a macOS
 same-environment proof. Other hosts, hardware rendering, and song-level artistic approval remain
 unproven. The exact next development action is stated below; no remote push or publication occurred.
+
+The delegated review found three actionable defects in the first nine commits; all were accepted
+after checking the code paths. Stage 10 prevents a failed concurrent adapter job from deleting a
+peer's completed result, locks direct CLI output destinations, clears the 60-second readiness timer
+before export, and hashes both ignored `out/` and installed `node_modules` after explicit build.
+A competing destination lock was rejected and released; deliberate one-file changes in each build
+tree failed `check`, then byte-for-byte restoration passed. A valid long export no longer inherits
+the readiness deadline. Abrupt process termination can leave an explicit stale lock directory for
+manual diagnosis; graceful cancel/failure cleanup was exercised. New requests must use the final
+patch hash; old results remain historical evidence.
 
 ## S12 portrait output and reviewed repeated structure complete — 2026-09-19
 

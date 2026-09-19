@@ -85,6 +85,19 @@ def test_adapter_accepts_checked_external_result(tmp_path, provider_fixture, mon
     assert error.value.code == "astrofox_invalid_result"
     assert not rejected.exists()
 
+    def losing_run(command, **_kwargs):
+        peer_output = Path(command[-1])
+        peer_output.mkdir()
+        (peer_output / "peer-result").write_text("completed by another job", encoding="utf-8")
+        return subprocess.CompletedProcess(command, 5, '{"status":"failed","code":"output_busy"}')
+
+    monkeypatch.setattr(astrofox.subprocess, "run", losing_run)
+    competing = tmp_path / "competing"
+    with pytest.raises(astrofox.AstrofoxError) as error:
+        astrofox.render_astrofox(request_path, competing, checkout=checkout)
+    assert error.value.code == "astrofox_render_failed"
+    assert (competing / "peer-result").read_text(encoding="utf-8") == "completed by another job"
+
 
 def test_adapter_rejects_backend_before_launch(tmp_path, provider_fixture):
     request_path, _, _, _, _ = provider_fixture

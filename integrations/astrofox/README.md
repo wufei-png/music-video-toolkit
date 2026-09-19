@@ -15,7 +15,10 @@ python scripts/astrofox_env.py check --checkout /absolute/external/astrofox-chec
 
 The checkout path must be outside the MVT Git tree. `prepare` refuses a checkout at another
 revision, unexpected edits, untracked source or a patch stack mismatch. It never resets a
-modified checkout. The first downstream patch adds the hidden Electron job route and local,
+modified checkout. The build writes a hash record under the external checkout's `.git/` for the
+generated `out/` renderer and installed `node_modules`; `check`, doctor and provider jobs reject
+missing or changed build content. Rebuild explicitly after legitimate dependency or output changes.
+The first downstream patch adds the hidden Electron job route and local,
 hash-checked project/audio/assets/plugin loading. Build it before running the public smoke check:
 
 ```sh
@@ -31,6 +34,8 @@ the prepared patch identity, uses a hidden window and prints one JSON result to 
 goes to stderr. It writes a silent H.264/yuv420p CFR video and provider manifest together by
 renaming a completed sibling directory. An existing destination is never overwritten. A failed or
 cancelled job removes its temporary output. No setup or download runs in the render command.
+The third patch clears the readiness deadline when a render begins and locks each destination
+against concurrent jobs. A failed job cannot replace or remove a peer's completed output.
 
 Run the real synthetic export checks after prepare/build:
 

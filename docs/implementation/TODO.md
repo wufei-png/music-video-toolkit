@@ -67,7 +67,7 @@ first would either encode the old fixed profile or need immediate migration.
 ### P2 / S13 — complete within the Astrofox boundary
 
 5. **Completed: Astrofox is the first automated external visual provider.** Upstream commit
-   `126403958e5644a6fbb91d6623626474dd199205`, lock and license are pinned with two tested
+   `126403958e5644a6fbb91d6623626474dd199205`, lock and license are pinned with three tested
    downstream patches. A hidden Electron renderer and programmatic bridge load the local project,
    audio, assets and hash-pinned plugins, then use Astrofox's deterministic per-frame renderer and
    FFmpeg pipe. The silent CFR result binds the upstream/patch, project, plugin, assets, parameters

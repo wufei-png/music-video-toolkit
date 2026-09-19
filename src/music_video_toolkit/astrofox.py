@@ -113,6 +113,7 @@ def render_astrofox(
         "--output",
         str(output),
     ]
+    completed_output_from_child = False
     try:
         process = subprocess.run(
             command, cwd=selected, text=True, stdout=subprocess.PIPE, stderr=None, check=False
@@ -123,21 +124,27 @@ def render_astrofox(
         report = json.loads(lines[0])
         if not isinstance(report, dict):
             raise AstrofoxError("astrofox_invalid_result", report, 5)
-        if process.returncode != 0 or report.get("status") != "completed":
-            raise AstrofoxError("astrofox_render_failed", report, 5)
         manifest_path = output / "provider-manifest.json"
         video_path = output / "video.mp4"
+        completed_output_from_child = (
+            process.returncode == 0
+            and report.get("status") == "completed"
+            and report.get("manifest") == str(manifest_path)
+            and report.get("video") == str(video_path)
+        )
+        if process.returncode != 0 or report.get("status") != "completed":
+            raise AstrofoxError("astrofox_render_failed", report, 5)
         if report.get("manifest") != str(manifest_path) or report.get("video") != str(video_path):
             raise AstrofoxError("astrofox_invalid_result", report, 5)
         manifest = validate_provider_result(request_path, manifest_path)
         if report.get("video_sha256") != manifest.video.sha256:
             raise AstrofoxError("astrofox_invalid_result", "reported video hash differs", 5)
     except (ValueError, OSError, ProviderError) as exc:
-        if output.is_dir():
+        if completed_output_from_child and output.is_dir():
             shutil.rmtree(output)
         raise AstrofoxError("astrofox_invalid_result", str(exc), 5) from exc
     except AstrofoxError:
-        if output.is_dir():
+        if completed_output_from_child and output.is_dir():
             shutil.rmtree(output)
         raise
     proof = {

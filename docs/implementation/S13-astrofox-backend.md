@@ -81,8 +81,9 @@ available backend in S13.
 
 Execution split the original eighth stage at its independently valid dependency boundary: commit
 `f6f231c` adds the checked multi-range provider bundle needed for S11; the external same-audio
-proof then ran outside Git. The ninth stage updates capability/docs and runs full locked and clean-checkout
-validation. A tenth stage is reserved only for independently reviewed corrections, if required.
+proof then ran outside Git. The ninth stage updated capability/docs and ran full locked and clean-checkout
+validation. The tenth stage fixes independently reviewed output concurrency, render timeout and
+ignored-build integrity defects, then repeats the final pinned integration and song comparison.
 
 Each stage is one independently valid local commit. If a sound implementation cannot fit within ten
 stages, stop and report the needed split rather than combining unrelated changes. Do not push.

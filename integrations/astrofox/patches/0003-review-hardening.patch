@@ -1,0 +1,44 @@
+diff --git a/electron/main.mjs b/electron/main.mjs
+index 3df0b5e..231790b 100644
+--- a/electron/main.mjs
++++ b/electron/main.mjs
+@@ -519,7 +519,10 @@ function createMvtJobWindow() {
+         },
+         0,
+       );
+-    else mvtJobWindow.webContents.send('mvt:render');
++    else {
++      clearTimeout(timeout);
++      mvtJobWindow.webContents.send('mvt:render');
++    }
+   });
+   ipcMain.on('mvt:progress', (event, progress) => {
+     if (event.sender.id !== mvtJobWindow?.webContents.id) return;
+diff --git a/electron/mvt-export.mjs b/electron/mvt-export.mjs
+index c232756..652fd15 100644
+--- a/electron/mvt-export.mjs
++++ b/electron/mvt-export.mjs
+@@ -29,12 +29,21 @@ export function prepareMvtOutput(directory) {
+   if (fs.existsSync(output)) throw new Error(`Output already exists: ${output}`);
+   const parent = path.dirname(output);
+   if (!fs.statSync(parent).isDirectory()) throw new Error(`Output parent missing: ${parent}`);
+-  const temporary = fs.mkdtempSync(path.join(parent, `.${path.basename(output)}.tmp-`));
+-  return { output, temporary, video: path.join(temporary, 'video.mp4') };
++  const lock = path.join(parent, `.${path.basename(output)}.mvt-lock`);
++  fs.mkdirSync(lock);
++  try {
++    if (fs.existsSync(output)) throw new Error(`Output already exists: ${output}`);
++    const temporary = fs.mkdtempSync(path.join(parent, `.${path.basename(output)}.tmp-`));
++    return { output, temporary, video: path.join(temporary, 'video.mp4'), lock };
++  } catch (error) {
++    fs.rmdirSync(lock);
++    throw error;
++  }
+ }
+ 
+ export function discardMvtOutput(job) {
+   if (job?.temporary) fs.rmSync(job.temporary, { recursive: true, force: true });
++  if (job?.lock) fs.rmdirSync(job.lock);
+ }
+ 
+ export function probeMvtOutput(videoFile, request, ffprobe) {

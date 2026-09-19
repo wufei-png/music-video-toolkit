@@ -15,6 +15,10 @@
     {
       "file": "0002-silent-export.patch",
       "sha256": "c1d04c41f42369bea0101a307a5cdadadf8dad96762e5119ca38529e162b0ad6"
+    },
+    {
+      "file": "0003-review-hardening.patch",
+      "sha256": "a6da1538d817cf40d44cffa3b42992eac17553663ec250e07e4df11d3b45f608"
     }
   ],
   "new_files": [
@@ -23,6 +27,6 @@
     "scripts/astrofox-render.mjs",
     "src/app/mvt-job.ts"
   ],
-  "patch_stack_sha256": "2a837810d385cb04411d903e7420848feef06fd43e920a168081b4e3c0888695",
-  "applied_diff_sha256": "ef43a07a648bcae33ec723581201ef7065793c9b7ed234a98ed7c97591f5401f"
+  "patch_stack_sha256": "e39e77ad1bb52748ce0bf780ef79837c6daff9ceb1f2374ac07847315b5b402f",
+  "applied_diff_sha256": "10878a2ad2a5d2c4bc2073f80783f865f642fdbd90ec51120f2a431f9839b610"
 }
