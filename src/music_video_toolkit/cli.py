@@ -22,6 +22,7 @@ from .documents import read_document
 from .lyrics import LyricsError, import_lyrics
 from .plan import PlanError, resolve_plan
 from .preview import PreviewError, render_preview
+from .provider_composition import CompositionError, compose_provider_preview
 from .render import RenderError, render_minimal, renderer_doctor
 from .structure import StructureError, analyze_structure, apply_structure
 
@@ -43,6 +44,7 @@ AVAILABLE = [
     "compare",
     "render",
     "provider astrofox",
+    "provider compose",
 ]
 PLANNED = []
 
@@ -135,6 +137,14 @@ def main(argv: list[str] | None = None) -> int:
     astrofox.add_argument("--request", type=Path, required=True)
     astrofox.add_argument("--output", type=Path, required=True)
     astrofox.add_argument("--checkout", type=Path)
+    compose = provider_commands.add_parser("compose", help="Compose checked provider video")
+    compose.add_argument("--project", type=Path, required=True)
+    compose.add_argument("--request", type=Path, required=True)
+    compose.add_argument("--manifest", type=Path, required=True)
+    compose.add_argument("--timeline", type=Path, required=True)
+    compose.add_argument("--output", type=Path, required=True)
+    compose.add_argument("--lyrics", type=Path)
+    compose.add_argument("--font", type=Path)
     validate = commands.add_parser("validate", help="Validate a single JSON artifact, not media")
     validate.add_argument("--kind", choices=CONTRACTS, required=True)
     validate.add_argument("file", type=Path)
@@ -383,6 +393,21 @@ def main(argv: list[str] | None = None) -> int:
         try:
             result = render_astrofox(args.request, args.output, checkout=args.checkout)
         except AstrofoxError as exc:
+            emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
+            return exc.exit_code
+        emit(result)
+    elif args.command == "provider" and args.provider_command == "compose":
+        try:
+            result = compose_provider_preview(
+                args.project,
+                args.request,
+                args.manifest,
+                args.timeline,
+                args.output,
+                lyrics_path=args.lyrics,
+                font_path=args.font,
+            )
+        except CompositionError as exc:
             emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
             return exc.exit_code
         emit(result)
