@@ -1,0 +1,14 @@
+{
+  "repository": "https://github.com/astrofox-io/astrofox.git",
+  "commit": "126403958e5644a6fbb91d6623626474dd199205",
+  "package_manager": "pnpm@11.25.0",
+  "package_lock": "pnpm-lock.yaml",
+  "package_lock_sha256": "bbd06c05a1f7fcd387c3168b59e29162a5bd7464c58d9c7e12a98dec1b75bd13",
+  "license": "MIT",
+  "license_file": "LICENSE",
+  "license_sha256": "2366e943e400fbf8d55651d8f29257f7a680ce6fcb428d0215e75362f8728e43",
+  "patches": [],
+  "new_files": [],
+  "patch_stack_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "applied_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}
