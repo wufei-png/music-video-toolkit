@@ -22,6 +22,7 @@ from .documents import read_document
 from .lyrics import LyricsError, import_lyrics
 from .plan import PlanError, resolve_plan
 from .preview import PreviewError, render_preview
+from .projectm import ProjectMAdapterError, projectm_doctor, run_projectm
 from .provider_bundle import BundleError, bundle_provider_previews
 from .provider_composition import CompositionError, compose_provider_preview
 from .render import RenderError, render_minimal, renderer_doctor
@@ -139,6 +140,11 @@ def main(argv: list[str] | None = None) -> int:
     astrofox.add_argument("--request", type=Path, required=True)
     astrofox.add_argument("--output", type=Path, required=True)
     astrofox.add_argument("--checkout", type=Path)
+    projectm = provider_commands.add_parser("projectm", help="Run approved offline projectM job")
+    projectm.add_argument("--request", type=Path, required=True)
+    projectm.add_argument("--output", type=Path, required=True)
+    projectm.add_argument("--checkout", type=Path)
+    projectm.add_argument("--build", type=Path)
     compose = provider_commands.add_parser("compose", help="Compose checked provider video")
     compose.add_argument("--project", type=Path, required=True)
     compose.add_argument("--request", type=Path, required=True)
@@ -257,6 +263,7 @@ def main(argv: list[str] | None = None) -> int:
                 "tools": tools,
                 "renderer": renderer,
                 "astrofox": astrofox_doctor(),
+                "projectm": projectm_doctor(),
                 "analysis_runtime": analysis_runtime,
                 "alignment_runtime": alignment_runtime,
                 "pipeline_ready": ready,
@@ -398,6 +405,15 @@ def main(argv: list[str] | None = None) -> int:
         try:
             result = render_astrofox(args.request, args.output, checkout=args.checkout)
         except AstrofoxError as exc:
+            emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
+            return exc.exit_code
+        emit(result)
+    elif args.command == "provider" and args.provider_command == "projectm":
+        try:
+            result = run_projectm(
+                args.request, args.output, checkout=args.checkout, build=args.build
+            )
+        except ProjectMAdapterError as exc:
             emit({"ok": False, "code": exc.code, "details": exc.details}, error=True)
             return exc.exit_code
         emit(result)

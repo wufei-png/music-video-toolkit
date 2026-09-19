@@ -7,9 +7,11 @@ The user selected a limited, approved-preset production adapter after S13. Its
 feasibility-only and remains unavailable until repeat, global-time, composition and
 same-audio gates pass. The pinned deterministic runtime and standalone offline
 provider CLI are implemented, with a repeatable six-frame synthetic export and
-input/output rejection checks. The next action is the MVT process adapter, followed
-by full-versus-excerpt, both-profile and song comparison gates. S13 evidence below
-remains the current delivered capability.
+input/output rejection checks. The MVT child-process adapter and doctor check are
+implemented and revalidate real synthetic output. The next action is
+full-versus-excerpt, both-profile and canonical composition verification, followed
+by the external same-audio song comparison. S13 evidence below remains the current
+advertised capability.
 
 ## S13 pinned Astrofox external visual provider complete — 2026-09-19
 

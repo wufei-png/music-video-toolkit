@@ -41,6 +41,32 @@ def invoke(checkout: Path, build: Path, request: Path, output: Path) -> dict:
     return report
 
 
+def invoke_mvt(checkout: Path, build: Path, request: Path, output: Path) -> dict:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "music_video_toolkit.cli",
+            "provider",
+            "projectm",
+            "--request",
+            str(request),
+            "--output",
+            str(output),
+            "--checkout",
+            str(checkout),
+            "--build",
+            str(build),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode:
+        raise AssertionError(f"MVT adapter failed: {result.stderr}")
+    return json.loads(result.stdout)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkout", type=Path, required=True)
@@ -54,9 +80,10 @@ def main() -> None:
         request = write_fixture(directory / "input")
         first = invoke(args.checkout, args.build, request, directory / "first")
         second = invoke(args.checkout, args.build, request, directory / "second")
-        for name in ("first", "second"):
+        adapter = invoke_mvt(args.checkout, args.build, request, directory / "adapter")
+        for name in ("first", "second", "adapter"):
             validate_provider_result(request, directory / name / "provider-manifest.json")
-        if first["video_sha256"] != second["video_sha256"]:
+        if len({first["video_sha256"], second["video_sha256"], adapter["video_sha256"]}) != 1:
             raise AssertionError("same-environment projectM output differs")
         code, conflict = run_job(args.checkout, args.build, request, directory / "first")
         if code == 0 or conflict.get("code") != "invalid_provider_output":

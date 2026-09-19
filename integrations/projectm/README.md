@@ -93,6 +93,18 @@ only requested global frames to FFmpeg. The wrapper checks the pinned runtime,
 approved preset, request, exact raw frame bytes, silent CFR video and completed
 manifest before atomically installing the result. Existing/contended destinations
 and damaged inputs fail without an installed result. The synthetic check runs two
-real exports and exercises output conflict, lock and hash rejection. The MVT
-`provider projectm` command and production capability are not enabled until later
-S14 gates pass.
+real exports and exercises output conflict, lock and hash rejection.
+
+The MVT process adapter is callable as:
+
+```sh
+mvt provider projectm --request FILE --output DIR --checkout DIR --build DIR
+```
+
+It invokes the offline wrapper in a child
+process and revalidates the request, result, media and reported video hash at its
+own boundary. `mvt doctor` reports `not_installed`, `installed` or `ready` for the
+configured runtime (`MVT_PROJECTM_CHECKOUT` and `MVT_PROJECTM_BUILD`); `ready`
+means the pinned binary is intact, not that the S14 production gates are complete.
+The command remains out of advertised production capabilities until those gates
+pass.
