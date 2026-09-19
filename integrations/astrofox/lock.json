@@ -7,8 +7,13 @@
   "license": "MIT",
   "license_file": "LICENSE",
   "license_sha256": "2366e943e400fbf8d55651d8f29257f7a680ce6fcb428d0215e75362f8728e43",
-  "patches": [],
-  "new_files": [],
-  "patch_stack_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "applied_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  "patches": [
+    {
+      "file": "0001-headless-controller.patch",
+      "sha256": "6d289a2e0d1da3a82ff94b543a14fc13a4dd56a049f59882dea650d2c00ab967"
+    }
+  ],
+  "new_files": ["electron/mvt-job.mjs", "src/app/mvt-job.ts"],
+  "patch_stack_sha256": "6d289a2e0d1da3a82ff94b543a14fc13a4dd56a049f59882dea650d2c00ab967",
+  "applied_diff_sha256": "6d289a2e0d1da3a82ff94b543a14fc13a4dd56a049f59882dea650d2c00ab967"
 }

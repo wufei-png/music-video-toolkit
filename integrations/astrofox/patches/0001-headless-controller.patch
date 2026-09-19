@@ -1,0 +1,602 @@
+diff --git a/electron/main.mjs b/electron/main.mjs
+index 1f3775c..9d4f90c 100644
+--- a/electron/main.mjs
++++ b/electron/main.mjs
+@@ -6,19 +6,32 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
+ import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, session, shell } from 'electron';
+ import { registerDialogIpc } from './dialogs-ipc.mjs';
+ import { isPathInside, killAllFfmpeg, registerFfmpegIpc } from './ffmpeg-ipc.mjs';
++import { readMvtJob } from './mvt-job.mjs';
+ import { PLUGIN_SANDBOX_HEADERS } from './plugin-sandbox-policy.mjs';
+ import { closeDatabase, isDatabasePersistent, openDatabase } from './storage/db.mjs';
+ import { registerStorageIpc } from './storage-ipc.mjs';
+ 
+ const __filename = fileURLToPath(import.meta.url);
+ const __dirname = path.dirname(__filename);
++const mvtArgIndex = process.argv.indexOf('--mvt-job');
++const mvtJobMode = mvtArgIndex !== -1;
++const mvtRequestPath = mvtJobMode ? process.argv[mvtArgIndex + 1] : null;
++const mvtSmoke = process.argv.includes('--mvt-smoke');
++let mvtInput = null;
++let mvtJobWindow = null;
++let mvtBlockedNetworkRequests = 0;
++if (mvtJobMode) {
++  const jobUserData = path.join(app.getPath('temp'), `astrofox-mvt-${process.pid}`);
++  fs.mkdirSync(jobUserData, { recursive: true });
++  app.setPath('userData', jobUserData);
++}
+ 
+ const isDev =
+   process.env.ELECTRON_DEV === '1' || process.env.NODE_ENV === 'development' || !app.isPackaged;
+ 
+ // Only one Astrofox instance may run: a second launch focuses the existing
+ // window instead (this also keeps ffmpeg temp files from colliding).
+-const hasSingleInstanceLock = app.requestSingleInstanceLock();
++const hasSingleInstanceLock = mvtJobMode || app.requestSingleInstanceLock();
+ if (!hasSingleInstanceLock) {
+   app.quit();
+ }
+@@ -64,6 +77,9 @@ function getRendererRoot() {
+ }
+ 
+ function getFfmpegBinaryPath() {
++  if (mvtJobMode && process.env.ASTROFOX_JOB_FFMPEG) {
++    return process.env.ASTROFOX_JOB_FFMPEG;
++  }
+   const binaryName = process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
+   if (app.isPackaged) {
+     return path.join(process.resourcesPath, 'bin', binaryName);
+@@ -165,6 +181,9 @@ function registerAppProtocol() {
+   protocol.handle('astrofox', async request => {
+     const url = new URL(request.url);
+     let pathname = decodeURIComponent(url.pathname);
++    if (mvtJobMode && pathname === '/plugin-libs/sandbox-net.js') {
++      return new Response('Forbidden', { status: 403 });
++    }
+ 
+     if (!pathname || pathname === '/') {
+       pathname = '/index.html';
+@@ -345,6 +364,9 @@ function registerMediaProtocol() {
+   protocol.handle('astrofox-media', async request => {
+     const url = new URL(request.url);
+     const targetPath = url.host === 'local' ? url.searchParams.get('path')?.trim() : '';
++    if (mvtJobMode && (!targetPath || !mvtInput?.allowedAssets.has(path.resolve(targetPath)))) {
++      return new Response('Forbidden', { status: 403 });
++    }
+     const extension = targetPath ? path.extname(targetPath).toLowerCase() : '';
+     const contentType = videoMimeTypes.get(extension);
+ 
+@@ -419,6 +441,18 @@ const ALLOWED_PERMISSIONS = new Set([
+ ]);
+ 
+ function hardenSession() {
++  if (mvtJobMode) {
++    session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) =>
++      callback(false),
++    );
++    session.defaultSession.setPermissionCheckHandler(() => false);
++    session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
++      const blocked = /^(?:https?|wss?):/i.test(details.url);
++      if (blocked) mvtBlockedNetworkRequests += 1;
++      callback({ cancel: blocked });
++    });
++    return;
++  }
+   session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+     callback(ALLOWED_PERMISSIONS.has(permission));
+   });
+@@ -429,6 +463,84 @@ function hardenSession() {
+   });
+ }
+ 
++function emitMvtResult(result, exitCode) {
++  process.stdout.write(`${JSON.stringify(result)}\n`);
++  process.exitCode = exitCode;
++  mvtJobWindow?.destroy();
++  app.once('quit', () => process.exit(exitCode));
++  app.quit();
++}
++
++function createMvtJobWindow() {
++  if (!mvtRequestPath) throw new Error('--mvt-job requires a request path');
++  mvtInput = readMvtJob(mvtRequestPath);
++  let finished = false;
++  const finish = (result, code) => {
++    if (finished) return;
++    finished = true;
++    clearTimeout(timeout);
++    emitMvtResult(result, code);
++  };
++  const timeout = setTimeout(
++    () => finish({ status: 'failed', code: 'timeout', message: 'Renderer readiness timed out' }, 5),
++    60000,
++  );
++  ipcMain.handle('mvt:get-input', event => {
++    if (event.sender.id !== mvtJobWindow?.webContents.id) throw new Error('Invalid job renderer');
++    return {
++      request: mvtInput.request,
++      payload: mvtInput.payload,
++      audio: mvtInput.audio,
++      plugins: mvtInput.plugins,
++    };
++  });
++  ipcMain.on('mvt:ready', event => {
++    if (event.sender.id !== mvtJobWindow?.webContents.id) return;
++    process.stderr.write('astrofox-render: renderer ready\n');
++    if (mvtSmoke)
++      finish(
++        {
++          status: 'ready',
++          request_sha256: mvtInput.requestSha256,
++          blocked_network_requests: mvtBlockedNetworkRequests,
++        },
++        0,
++      );
++  });
++  ipcMain.on('mvt:failed', (event, message) => {
++    if (event.sender.id !== mvtJobWindow?.webContents.id) return;
++    finish({ status: 'failed', code: 'renderer_failed', message: String(message) }, 5);
++  });
++  mvtJobWindow = new BrowserWindow({
++    width: mvtInput.request.profile.width,
++    height: mvtInput.request.profile.height,
++    show: false,
++    webPreferences: {
++      preload: path.join(__dirname, 'preload.mjs'),
++      additionalArguments: ['--mvt-job-window'],
++      contextIsolation: true,
++      nodeIntegration: false,
++      sandbox: false,
++      backgroundThrottling: false,
++      webgl: true,
++      devTools: false,
++    },
++  });
++  mvtJobWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
++  mvtJobWindow.webContents.on('will-navigate', (event, url) => {
++    if (url !== 'astrofox://app/') event.preventDefault();
++  });
++  mvtJobWindow.webContents.on('did-fail-load', (_event, code, message) => {
++    if (code !== -3) finish({ status: 'failed', code: 'load_failed', message }, 5);
++  });
++  mvtJobWindow.webContents.on('render-process-gone', (_event, details) => {
++    finish({ status: 'failed', code: 'render_process_gone', message: details.reason }, 5);
++  });
++  mvtJobWindow.loadURL('astrofox://app/').catch(error => {
++    finish({ status: 'failed', code: 'load_failed', message: String(error) }, 5);
++  });
++}
++
+ function createWindow() {
+   mainWindow = new BrowserWindow({
+     width: WINDOW_WIDTH,
+@@ -849,12 +961,35 @@ app.on('before-quit', () => {
+ 
+ app.on('will-quit', () => {
+   closeDatabase();
++  if (mvtJobMode) {
++    fs.rmSync(app.getPath('userData'), { recursive: true, force: true });
++  }
+ });
+ 
+ if (hasSingleInstanceLock) {
+   app
+     .whenReady()
+     .then(async () => {
++      if (mvtJobMode) {
++        await openDatabase(path.join(app.getPath('userData'), 'astrofox.db'));
++        registerIpc();
++        hardenSession();
++        try {
++          await session.defaultSession.fetch('http://127.0.0.1:9/mvt-network-check');
++          throw new Error('Job network guard allowed a remote request');
++        } catch (error) {
++          if (
++            error.message === 'Job network guard allowed a remote request' ||
++            mvtBlockedNetworkRequests < 1
++          ) {
++            throw new Error(`Job network guard was not exercised: ${error}`);
++          }
++        }
++        registerMediaProtocol();
++        registerAppProtocol();
++        createMvtJobWindow();
++        return;
++      }
+       void resetTempDir();
+ 
+       // Must be open before the renderer's preload requests its storage snapshot.
+@@ -883,6 +1018,10 @@ if (hasSingleInstanceLock) {
+       });
+     })
+     .catch(error => {
++      if (mvtJobMode) {
++        emitMvtResult({ status: 'failed', code: 'startup_failed', message: String(error) }, 5);
++        return;
++      }
+       reportFatal('Startup failed', error);
+       app.quit();
+     });
+diff --git a/electron/mvt-job.mjs b/electron/mvt-job.mjs
+new file mode 100644
+index 0000000..6e62ef6
+--- /dev/null
++++ b/electron/mvt-job.mjs
+@@ -0,0 +1,189 @@
++import { createHash } from 'node:crypto';
++import fs from 'node:fs';
++import path from 'node:path';
++import { fileURLToPath } from 'node:url';
++
++const UPSTREAM_COMMIT = '126403958e5644a6fbb91d6623626474dd199205';
++
++function sha256(bytes) {
++  return createHash('sha256').update(bytes).digest('hex');
++}
++
++function canonicalJson(value) {
++  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
++  if (value && typeof value === 'object') {
++    return `{${Object.keys(value)
++      .sort()
++      .map(key => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
++      .join(',')}}`;
++  }
++  return JSON.stringify(value);
++}
++
++function localPath(record, value) {
++  if (typeof value !== 'string' || /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(value)) {
++    throw new Error(`Remote or invalid path: ${value}`);
++  }
++  return path.resolve(path.dirname(record), value);
++}
++
++function checkedFile(record, ref) {
++  if (!ref || !/^[a-f0-9]{64}$/.test(ref.sha256)) throw new Error('Missing file hash');
++  const file = localPath(record, ref.path);
++  const bytes = fs.readFileSync(file);
++  if (sha256(bytes) !== ref.sha256) throw new Error(`Input hash mismatch: ${file}`);
++  return { file, bytes };
++}
++
++function mediaPath(projectFile, value) {
++  if (typeof value !== 'string' || !value) return null;
++  if (/^file:\/\//i.test(value)) return path.resolve(fileURLToPath(value));
++  return localPath(projectFile, value);
++}
++
++function validateProjectMedia(payload, projectFile, allowedAssets) {
++  const snapshot = payload.snapshot ?? payload.snapshotJson ?? payload.project?.snapshot ?? payload;
++  if (!snapshot || typeof snapshot !== 'object' || !Array.isArray(snapshot.scenes)) {
++    throw new Error('Project requires a JSON snapshot with scenes');
++  }
++  for (const scene of snapshot.scenes) {
++    for (const element of [...(scene.displays ?? []), ...(scene.effects ?? [])]) {
++      const props = element.properties ?? {};
++      for (const field of ['src', 'sourcePath']) {
++        const value = props[field];
++        if (!value || typeof value !== 'string') continue;
++        if (/^https?:|^\/\//i.test(value)) throw new Error(`Remote media forbidden: ${value}`);
++      }
++      if (element.plugin?.url && /^(?:https?:|\/\/)/i.test(element.plugin.url)) {
++        throw new Error(`Remote plugin forbidden: ${element.plugin.url}`);
++      }
++      const source =
++        props.sourcePath ||
++        (typeof props.src === 'string' && !/^(?:data:|blob:|astrofox:)/i.test(props.src)
++          ? props.src
++          : '');
++      if (source) {
++        const resolved = mediaPath(projectFile, source);
++        if (!allowedAssets.has(resolved)) throw new Error(`Unlisted project asset: ${resolved}`);
++        if (element.name === 'ImageDisplay') {
++          const bytes = fs.readFileSync(resolved);
++          const ext = path.extname(resolved).toLowerCase();
++          const mime =
++            ext === '.png' ? 'image/png' : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : null;
++          if (!mime) throw new Error(`Unsupported local image: ${resolved}`);
++          props.src = `data:${mime};base64,${bytes.toString('base64')}`;
++          props.sourcePath = '';
++        } else if (element.name === 'VideoDisplay') {
++          props.sourcePath = resolved;
++        }
++      }
++    }
++  }
++  return payload;
++}
++
++function checkedPlugin(record, ref) {
++  const { file, bytes } = checkedFile(record, ref);
++  const plugin = JSON.parse(bytes.toString('utf8'));
++  if (plugin.dev || !plugin.manifest?.name || !Array.isArray(plugin.manifest.permissions)) {
++    throw new Error(`Invalid pinned plugin: ${file}`);
++  }
++  if (plugin.manifest.permissions.includes('network')) throw new Error('Network plugin forbidden');
++  if (!plugin.sourceUrl?.startsWith('file://')) {
++    throw new Error('Plugin source URL must be local');
++  }
++  const files = plugin.files ?? {};
++  const integrity = plugin.integrity ?? {};
++  if (
++    !Object.keys(files).length ||
++    Object.keys(files).sort().join() !== Object.keys(integrity).sort().join()
++  ) {
++    throw new Error(`Plugin files lack integrity: ${file}`);
++  }
++  for (const [name, content] of Object.entries(files)) {
++    const actual = `sha384-${createHash('sha384').update(content, 'utf8').digest('base64')}`;
++    if (actual !== integrity[name]) throw new Error(`Plugin content hash mismatch: ${name}`);
++  }
++  return plugin;
++}
++
++export function readMvtJob(requestPath) {
++  const requestFile = path.resolve(requestPath);
++  const requestBytes = fs.readFileSync(requestFile);
++  const request = JSON.parse(requestBytes.toString('utf8'));
++  if (
++    request.schema_version !== '0.1' ||
++    request.backend?.name !== 'astrofox' ||
++    request.backend?.commit !== UPSTREAM_COMMIT
++  ) {
++    throw new Error('Unsupported provider request or Astrofox revision');
++  }
++  if (
++    request.profile?.fps_num !== 30 ||
++    request.profile?.fps_den !== 1 ||
++    ![
++      [1920, 1080],
++      [1080, 1920],
++    ].some(([w, h]) => w === request.profile.width && h === request.profile.height)
++  ) {
++    throw new Error('Unsupported output profile');
++  }
++  const { start_sample: start, end_sample: end } = request.range ?? {};
++  if (
++    !Number.isSafeInteger(start) ||
++    !Number.isSafeInteger(end) ||
++    start < 0 ||
++    end <= start ||
++    end > request.source?.duration_samples ||
++    start % 1600 ||
++    end % 1600
++  ) {
++    throw new Error('Invalid global frame range');
++  }
++  if (sha256(Buffer.from(canonicalJson(request.parameters ?? {}))) !== request.parameters_sha256) {
++    throw new Error('Parameter hash mismatch');
++  }
++  const audio = checkedFile(requestFile, request.canonical_audio);
++  if (
++    request.source?.sha256 !== request.canonical_audio.sha256 ||
++    localPath(requestFile, request.source.path) !== audio.file
++  ) {
++    throw new Error('Canonical source identity mismatch');
++  }
++  const project = checkedFile(requestFile, request.project);
++  const assets = (request.assets ?? []).map(ref => checkedFile(requestFile, ref).file);
++  if (new Set(assets).size !== assets.length) throw new Error('Duplicate asset paths');
++  const plugins = (request.plugins ?? []).map(ref => checkedPlugin(requestFile, ref));
++  if (new Set(plugins.map(item => item.manifest.name)).size !== plugins.length) {
++    throw new Error('Duplicate plugin names');
++  }
++  const payload = validateProjectMedia(
++    JSON.parse(project.bytes.toString('utf8')),
++    project.file,
++    new Set(assets),
++  );
++  const snapshot = payload.snapshot ?? payload.snapshotJson ?? payload.project?.snapshot ?? payload;
++  if (
++    snapshot.stage?.properties?.width !== request.profile.width ||
++    snapshot.stage?.properties?.height !== request.profile.height
++  ) {
++    throw new Error('Project canvas differs from requested profile');
++  }
++  const available = new Set(plugins.map(item => item.manifest.name));
++  for (const scene of snapshot.scenes) {
++    for (const item of [...(scene.displays ?? []), ...(scene.effects ?? [])]) {
++      if (typeof item.name === 'string' && item.name.startsWith('@') && !available.has(item.name)) {
++        throw new Error(`Project plugin not pinned: ${item.name}`);
++      }
++    }
++  }
++  return {
++    request,
++    requestFile,
++    requestSha256: sha256(requestBytes),
++    payload,
++    audio: new Uint8Array(audio.bytes),
++    plugins,
++    allowedAssets: new Set(assets),
++  };
++}
+diff --git a/electron/preload.mjs b/electron/preload.mjs
+index 11e78fb..25a1b1d 100644
+--- a/electron/preload.mjs
++++ b/electron/preload.mjs
+@@ -107,3 +107,11 @@ const api = {
+ };
+ 
+ contextBridge.exposeInMainWorld('__ASTROFOX__', api);
++
++if (process.argv.includes('--mvt-job-window')) {
++  contextBridge.exposeInMainWorld('__ASTROFOX_JOB__', {
++    getInput: () => ipcRenderer.invoke('mvt:get-input'),
++    ready: () => ipcRenderer.send('mvt:ready'),
++    fail: message => ipcRenderer.send('mvt:failed', String(message)),
++  });
++}
+diff --git a/src/app/actions/project.ts b/src/app/actions/project.ts
+index 93a828c..a7c5b6b 100644
+--- a/src/app/actions/project.ts
++++ b/src/app/actions/project.ts
+@@ -671,7 +671,11 @@ function notifyRemovedElements(removed: string[]) {
+   raiseError(message, unique.join('\n'), { logLevel: 'warn' });
+ }
+ 
+-async function loadProjectFromPayload(payload: unknown, fallbackName?: string) {
++export async function loadProjectFromPayload(
++  payload: unknown,
++  fallbackName?: string,
++  strictJob = false,
++) {
+   const { snapshot, projectName, mediaRefs } = parseProjectPayload(payload, fallbackName);
+   const version =
+     (payload as ProjectFilePayload).version ?? (snapshot as { version?: unknown }).version;
+@@ -680,11 +684,22 @@ async function loadProjectFromPayload(payload: unknown, fallbackName?: string) {
+     typeof version === 'string' ? version : undefined,
+     getMigrationRegistry(),
+   );
++  if (strictJob && removed.length) {
++    throw new Error(`Headless project migration removed elements: ${removed.join(', ')}`);
++  }
+   const { snapshot: resolvedSnapshot, unresolvedMediaRefs: detectedMissingMedia } =
+     await resolveSnapshotMediaOnLoad(migratedSnapshot, mediaRefs);
+   const unresolvedMediaRefs = mergeMediaRefs(detectedMissingMedia);
++  if (strictJob && unresolvedMediaRefs.length) {
++    throw new Error(
++      `Unresolved headless media: ${unresolvedMediaRefs.map(item => item.sourcePath).join(', ')}`,
++    );
++  }
+ 
+-  const { missing } = loadProject(resolvedSnapshot);
++  const { missing } = loadProject(resolvedSnapshot, strictJob);
++  if (strictJob && missing.length) {
++    throw new Error(`Missing headless elements: ${missing.join(', ')}`);
++  }
+   await loadScenes();
+   loadReactors();
+ 
+@@ -697,7 +712,7 @@ async function loadProjectFromPayload(payload: unknown, fallbackName?: string) {
+     unresolvedMediaRefs: unresolvedMediaRefs,
+   });
+ 
+-  if (unresolvedMediaRefs.length > 0) {
++  if (!strictJob && unresolvedMediaRefs.length > 0) {
+     const count = unresolvedMediaRefs.length;
+     openRelinkMediaDialog({
+       titleKey: 'relink-media.missing-title',
+@@ -728,7 +743,7 @@ export function resetProject() {
+   projectStore.setState({ ...initialState });
+ }
+ 
+-export function loadProject(data: ProjectSnapshot) {
++export function loadProject(data: ProjectSnapshot, strictJob = false) {
+   logger.log('Loaded project:', data);
+ 
+   const displays = library.get('displays') as Record<string, LibraryConstructor>;
+@@ -800,6 +815,9 @@ export function loadProject(data: ProjectSnapshot) {
+     }
+   }
+ 
++  if (strictJob && missingPlugins.size > 0) {
++    throw new Error(`Missing headless plugins: ${[...missingPlugins.keys()].join(', ')}`);
++  }
+   if (missingPlugins.size > 0) {
+     showModal(
+       'MissingPlugins',
+diff --git a/src/app/mvt-job.ts b/src/app/mvt-job.ts
+new file mode 100644
+index 0000000..62bae1b
+--- /dev/null
++++ b/src/app/mvt-job.ts
+@@ -0,0 +1,57 @@
++import { initApp } from '@/app/actions/app';
++import { loadProjectFromPayload } from '@/app/actions/project';
++import { analyzer, audioContext, player, renderBackend, renderer } from '@/app/global';
++import { loadAudioData } from '@/lib/utils/audio';
++
++async function waitForCanvas() {
++  for (let tries = 0; tries < 200; tries += 1) {
++    if ((renderBackend as unknown as { initialized: boolean }).initialized) {
++      await renderBackend.ensureRoot();
++      return;
++    }
++    await new Promise(resolve => setTimeout(resolve, 50));
++  }
++  throw new Error('Hidden renderer canvas did not become ready');
++}
++
++export async function runMvtJob() {
++  const bridge = window.__ASTROFOX_JOB__;
++  if (!bridge) return;
++  try {
++    const input = await bridge.getInput();
++    const storage = window.__ASTROFOX__?.storage;
++    if (!storage) throw new Error('Desktop storage bridge unavailable');
++    for (const plugin of input.plugins) {
++      storage.set(`astrofox:plugin:${plugin.manifest.name}`, JSON.stringify(plugin));
++    }
++    await storage.flush();
++    await initApp();
++    await loadProjectFromPayload(input.payload, 'MVT job', true);
++    const bytes = new Uint8Array(input.audio);
++    const data = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
++    const audio = await loadAudioData(data);
++    const expectedSamples = Math.round(
++      (input.request.source.duration_samples * audioContext.sampleRate) / 48000,
++    );
++    if (!audio.buffer || Math.abs(audio.buffer.length - expectedSamples) > 1) {
++      throw new Error(
++        `Decoded canonical audio duration differs from request: ${audio.buffer?.length} versus ${expectedSamples}`,
++      );
++    }
++    player.load(audio, 'canonical.wav');
++    audio.addNode(analyzer.analyzer);
++    const size = renderBackend.getSize();
++    if (
++      size.width !== input.request.profile.width ||
++      size.height !== input.request.profile.height
++    ) {
++      throw new Error('Loaded project canvas differs from request');
++    }
++    await waitForCanvas();
++    renderer.stop();
++    await renderer.renderFrame(0, 30);
++    bridge.ready();
++  } catch (error) {
++    bridge.fail(error instanceof Error ? error.stack || error.message : String(error));
++  }
++}
+diff --git a/src/components/App.tsx b/src/components/App.tsx
+index 0b7ec32..dd968b6 100644
+--- a/src/components/App.tsx
++++ b/src/components/App.tsx
+@@ -84,7 +84,13 @@ function App() {
+   const bottomPanel = useCollapsibleHeight<HTMLDivElement>(isBottomPanelVisible);
+ 
+   useEffect(() => {
+-    initApp();
++    if (window.__ASTROFOX_JOB__) {
++      void import('@/app/mvt-job')
++        .then(job => job.runMvtJob())
++        .catch(error => window.__ASTROFOX_JOB__?.fail(String(error)));
++    } else {
++      initApp();
++    }
+   }, []);
+ 
+   return (
+diff --git a/src/global.d.ts b/src/global.d.ts
+index 6cdcf64..ff716d5 100644
+--- a/src/global.d.ts
++++ b/src/global.d.ts
+@@ -63,6 +63,16 @@ interface AstrofoxDesktopBridge {
+ }
+ 
+ interface Window {
++  __ASTROFOX_JOB__?: {
++    getInput: () => Promise<{
++      request: { source: { duration_samples: number }; profile: { width: number; height: number } };
++      payload: Record<string, unknown>;
++      audio: Uint8Array;
++      plugins: Array<{ manifest: { name: string } }>;
++    }>;
++    ready: () => void;
++    fail: (message: string) => void;
++  };
+   _astrofox: unknown;
+   __astrofox?: Record<string, unknown>;
+   __ASTROFOX__?: AstrofoxDesktopBridge;

@@ -1,0 +1,2 @@
+# Unified patch context uses a leading space on blank source lines.
+integrations/astrofox/patches/*.patch whitespace=-blank-at-eol
