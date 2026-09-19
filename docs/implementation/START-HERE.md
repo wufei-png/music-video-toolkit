@@ -8,7 +8,7 @@
 4. [Slice index](README.md), then only the first dependency-ready unfinished slice.
 5. Current source, tests and relevant upstream documentation; [evidence](../architecture/evidence.md) identifies unproven paths.
 
-The bootstrap is complete only when status says so. **S01–S10 are later implementation, not this session's completed features.** Do not implement all slices just because they exist; follow the new user's scope. If asked to proceed through the plan, work in order and persist within that authorization.
+Use status and current code to identify the first dependency-ready unfinished slice. Do not implement slices merely because they are documented; follow the user's scope and the settled design decisions.
 
 ## Production inputs
 

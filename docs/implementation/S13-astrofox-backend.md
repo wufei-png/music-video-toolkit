@@ -79,6 +79,11 @@ available backend in S13.
    update Skill/capabilities/docs/status with exact scope, and run all locked Python/Node/schema plus
    Astrofox integration checks; depends on stages 1–7.
 
+Execution split the original eighth stage at its independently valid dependency boundary: commit
+`f6f231c` adds the checked multi-range provider bundle needed for S11; the external same-audio
+proof then ran outside Git. The ninth stage updates capability/docs and runs full locked and clean-checkout
+validation. A tenth stage is reserved only for independently reviewed corrections, if required.
+
 Each stage is one independently valid local commit. If a sound implementation cannot fit within ten
 stages, stop and report the needed split rather than combining unrelated changes. Do not push.
 

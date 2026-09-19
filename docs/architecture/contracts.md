@@ -79,9 +79,15 @@ Every variant must share the canonical-audio hash, original-source hash, ordered
 
 `comparison.json` binds the request, input manifest/clip hashes and probes, tool versions, ordered variants and generated artifact hashes. The review reel is an FFmpeg stream copy in range-major then variant-major order; it is decoded/probed after concatenation and must retain the shared compatibility signature and summed frame count before installation. The labeled contact sheet uses the same relative midpoint frame for every variant within a range. Subjective feedback and winner selection remain separate external records. The output directory is installed atomically; identical intact work may be reused only after all input and output hashes are revalidated, while stale, partial or damaged directories fail without overwrite.
 
+## External visual providers
+
+S13 adds renderer-neutral `provider-request` and `provider-manifest` artifacts. The request binds a checked canonical 48 kHz PCM source, one closed output profile, a frame-aligned global range, backend revision/patch, project, local plugins/assets and parameters by SHA-256. A completed result binds those identities again, the execution environment and a hashed silent H.264/yuv420p CFR video. Conformance rehashes files and probes the media; audio streams, incorrect frame clocks or counts, stale bindings, missing files and altered output fail. Failed results cannot masquerade as completed media.
+
+The pinned Astrofox checkout runs outside this repository and exports through its patched hidden Electron job controller and existing frame/FFmpeg path. `mvt provider astrofox` invokes that executable as a child process and validates its result. `mvt provider compose` revalidates it, makes a checked local video asset, then uses the existing MVT plan/preview path for canonical audio and optional saved lyrics. Each composition retains its provider and resolved-plan hashes. `mvt provider bundle` revalidates ordered compositions and creates an aggregate preview for S11 comparison; ranges must share source/profile and remain ordered without overlap. Composition and comparison output directories install atomically and never replace stale results. Rendering is offline; setup/build are explicit separate operations. projectM has a pinned feasibility probe only and no CLI adapter or advertised production capability.
+
 ## Command contract
 
-Bootstrap commands are `--help`, `--version`, `capabilities`, `doctor`, `validate` and `schema`. S01 implements `decode`; S02–S05 extend `render`; S03 implements `analyze`; S04 implements `plan resolve`; S05 implements `assets check`; S06 implements `lyrics import`; S07 implements `lyrics align` and `lyrics apply-edits`; S08 implements `preview`; S11 implements `compare`; S12 implements `structure analyze` and `structure apply`:
+Bootstrap commands are `--help`, `--version`, `capabilities`, `doctor`, `validate` and `schema`. S01 implements `decode`; S02–S05 extend `render`; S03 implements `analyze`; S04 implements `plan resolve`; S05 implements `assets check`; S06 implements `lyrics import`; S07 implements `lyrics align` and `lyrics apply-edits`; S08 implements `preview`; S11 implements `compare`; S12 implements `structure analyze` and `structure apply`; S13 implements the Astrofox provider boundary:
 
 ```text
 mvt decode INPUT --project DIR
@@ -96,6 +102,9 @@ mvt lyrics apply-edits --project DIR --edits FILE
 mvt render --project DIR --plan FILE --output FILE
 mvt preview --project DIR --plan FILE --ranges FILE --output DIR
 mvt compare --request FILE --output DIR
+mvt provider astrofox --request FILE --output DIR [--checkout DIR]
+mvt provider compose --project DIR --request FILE --manifest FILE --timeline FILE --output DIR [--lyrics FILE --font FILE]
+mvt provider bundle --composition FILE [--composition FILE ...] --output DIR
 ```
 
 All tools expose machine-readable results, nonzero failures, stable error codes and actionable missing-dependency messages as their slices implement them. Commands and layer kinds become supported only after their slice tests pass. Rendering and preview use saved artifacts; feature analysis, generation, model download and user decisions remain distinct operations.

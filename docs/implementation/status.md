@@ -1,5 +1,72 @@
 # Implementation status
 
+## S13 pinned Astrofox external visual provider complete — 2026-09-19
+
+S11 and S12 were verified before S13 from their committed code, status, synthetic tests (21
+focused tests passed together) and external acceptance artifacts. S13 adds typed, generated-schema
+`provider-request`/`provider-manifest` contracts and a conformance harness that rehashes source,
+project, plugin, asset, parameter, environment and output bindings. It rejects audio-bearing,
+wrong-clock, wrong-frame-count, stale, partial and tampered silent-video results. The renderer-neutral
+contract is implemented in Python; Astrofox application internals remain across a process boundary.
+
+Astrofox upstream commit `126403958e5644a6fbb91d6623626474dd199205`, pnpm lock and MIT license
+are pinned in `integrations/astrofox/lock.json`. Two reviewable hash-bound downstream patches add an
+`astrofox-render` CLI inside an isolated upstream checkout: hidden Electron renderer, narrow preload
+bridge, local hash-checked project/audio/assets/plugins, readiness barriers, offline network denial,
+deterministic global-frame `renderFrame(frame, fps)` through existing `VideoExporter`/FFmpeg with audio
+disabled, JSON result, separate progress, cancellation/child cleanup and atomic output. Explicit
+prepare/build/check scripts never vendor upstream files or build outputs into Git. `mvt doctor`
+distinguishes not-installed, installed, ready and proven checkouts. `mvt provider astrofox` invokes
+the CLI externally and revalidates its result; `provider compose` adds canonical audio and optional
+saved lyrics using MVT's checked-asset/preview path; `provider bundle` creates an ordered aggregate
+preview accepted by S11 comparison. Manual Astrofox opening is a debugging fallback; MCP is absent.
+
+Local commits, one independently checked stage each: `83726dd` protocol/conformance; `02421b6`
+isolated pin/setup; `e66304f` hidden controller; `cbc5706` silent export; `25e3b3a` process adapter
+and doctor; `bdff762` canonical composition; `2c96f0a` projectM feasibility; `f6f231c` ordered
+provider bundle. The original eighth stage was split at its valid S11 bundle boundary so this
+handoff can independently update public capability and run the full acceptance gates.
+
+The external `../projects/soft-harm/s13/v2/` proof uses the S10 canonical WAV (SHA-256
+`d03ba9b439bf204b60569e876746d6393daf21616e527fe081f054ef91231c34`), saved edited lyrics,
+1920x1080/30 and the exact S11 ranges 10–22 s, 39–51 s and 190–202 s. Three real Astrofox silent
+clips each have 360 frames; MVT compositions include the same canonical audio and captions. Their
+aggregate preview compared successfully with the built-in S11 variant. The comparison at
+`../projects/soft-harm/s13/v2/comparison/comparison.json` has SHA-256
+`a4e2508db9f5c32cbabd5322310037f42ce57aafb0e836e9857cc959f0b11d51`; the reel and contact
+sheet hashes are in `../projects/soft-harm/s13/v2/qa.json`. All three decoded 48 kHz stereo PCM
+hashes match the built-in variant; stream-compatibility SHA-256 is
+`605557c1dbf1874b5feb0013a477fc50d0f1f5544e6f44e88fad1f30e8022f2f`. Objective QA found
+no black intervals and clip peaks of -2.5, -2.2 and -1.2 dB. Contact sheet inspection found readable
+captions and distinct Astrofox bar-spectrum visuals. S11 cache replay and standalone comparison
+validation passed. The sparse Astrofox provider result repeated byte-identically on the same host
+(`ad84efab6f3bbfa248a8c57757eb0c2a25865681f9b559d812a8fde6d3e00be5`); clean synthetic
+plugin/asset repeat exports also matched byte-for-byte (`9c19c02f97e38958c33ea635094a9d9e767ce9e42bf34dd2c2a13cfb4d91078d`). The gate is same-environment output-byte identity, not
+cross-machine pixel identity or subjective approval. No song media or raw provider metadata entered Git.
+
+projectM remains feasibility only. `integrations/projectm/lock.json` pins core
+`1e7ef7803b69024d1e0656705670adda2ffac817`, evaluation submodule, LGPL license, MIT synthetic
+preset/texture and provider source hashes. An isolated build fed canonical PCM and rendered six
+1920x1080/30 silent-CFR frames twice; both results conformed, with explicit 0–5/30 s frame times. The exact
+report and manifests are at `/Users/wufei2/.cache/mvt/projectm/feasibility-final/`. The output
+SHA-256s differ (`6f213fa…` and `5c5d8e…`), and nonzero global-range replay is unproven. projectM
+is deliberately absent from available capabilities. Further determinism and global-time work would
+need a separately authorized production-adapter slice.
+
+Final S13 gates: `uv sync --locked --group dev` audited the lock; `uv run --locked pytest -q`
+passed **163 tests in 234.23 s** (after updating the capability-stage assertion); focused
+CLI/S13 tests passed 25; `uv run --locked ruff check .`, `ruff format --check .` and
+`scripts/export_schemas.py --check` passed with 18 generated schemas; frozen-lock renderer install
+and `pnpm --dir renderer check` passed 25 Node tests. A fresh external checkout at
+`/Users/wufei2/.cache/mvt/astrofox/stage9-clean` passed prepare, build, lock/diff check, hidden
+smoke (including network and invalid-input denial), real silent-CFR plugin/asset export, failure
+cleanup, canonical-audio caption composition and byte-identical saved-artifact rerender. A retained
+public synthetic proof at `/Users/wufei2/.cache/mvt/astrofox/stage9-proof/` makes `mvt doctor`
+report `proven` for that checkout; the captioned clip and rerender both hash to
+`a9bd102b50e9449815ddcfc53f62c7d3f6fc4779a9f195963b7374102c994e30`. This is a macOS
+same-environment proof. Other hosts, hardware rendering, and song-level artistic approval remain
+unproven. The exact next development action is stated below; no remote push or publication occurred.
+
 ## S12 portrait output and reviewed repeated structure complete — 2026-09-19
 
 Plans now select exactly one closed output tuple: legacy/default `1920x1080/30` or new
@@ -226,7 +293,7 @@ Commits: `8f1e4f6` (source contract/preflight), `77426ca` (decode/CLI/integratio
 | Python skeleton | Installable CLI, five strict file contracts, schema exporter, synthetic examples, 41 tests | `be08bd7` |
 | Renderer and final handoff | Typed Three.js layer/frame interfaces, exact frame/sample mapping, cross-language vectors, final local-case handoff | Commit containing this status update |
 
-Current commands: `mvt --help`, `--version`, `capabilities`, `doctor`, `decode`, `analyze`, `assets check`, `lyrics import`, `lyrics align`, `lyrics apply-edits`, `plan resolve`, `preview`, `compare`, `render`, `validate`, `schema`. Single-artifact validation includes structure and local semantic invariants. Decode, analyze, asset/lyric checking, plan resolution, preview, compare and render perform the cross-file/media preflight they need. `can_render` is true for the S02 fixture plus S04–S10 A/B/C, saved-lyric, multi-range preview and public production-demo scope; compare is available for completed same-audio previews.
+Current commands include `mvt --help`, `--version`, `capabilities`, `doctor`, `decode`, `analyze`, `structure analyze`, `structure apply`, `assets check`, `lyrics import`, `lyrics align`, `lyrics apply-edits`, `plan resolve`, `preview`, `compare`, `render`, `provider astrofox`, `provider compose`, `provider bundle`, `validate` and `schema`. Single-artifact validation includes provider and structure schemas plus local semantics. Decode, analyze, asset/lyric checking, plan resolution, preview, compare, provider composition and render perform the cross-file/media preflight they need. `can_render` is true for the built-in S02–S10 scope; Astrofox availability is separately gated by its local pinned checkout and doctor result.
 
 Current analyzer: isolated locked librosa/audio-separator environment, explicit feature window/padding/normalization policy, real four-file verification and exact canonical sample alignment. Current renderer: integer clock, Playwright/Three.js WebGL host, bounded abstract/media layers, deterministic FFmpeg video-frame extraction, embedded checked fonts, sample-clock lyric motion with a subdivided 3D bulge surface, PNG frame pipe and FFmpeg MP4 encoder. Repository JSON examples still contain synthetic hashes and absent media; they are protocol examples rather than render results.
 
@@ -273,14 +340,15 @@ Model installation/inference, browser/WebGL rendering, external media compositio
 | S10 songs/release readiness | Complete — final full-song renders and objective QA recorded |
 | S11 same-audio variant comparison | Complete — `5fad921`, `827f629`, `2f7f667` plus handoff |
 | S12 portrait and repeated structure | Complete — five implementation commits plus final handoff |
-| S13 Astrofox automated backend | Designed and authorized — depends on S12, not implemented |
+| S13 Astrofox automated backend | Complete — eight implementation commits plus final capability/validation handoff; projectM feasibility only |
 
 ## Exact next action
 
-S12 is complete. The exact next development action is S13
-([automated Astrofox backend](S13-astrofox-backend.md)). User viewing or separately authorized
-publication of local final or comparison media remains optional and is not required to validate the
-repository.
+S13 is complete within the pinned Astrofox provider and projectM feasibility boundary. The exact
+next action is to choose a separate later slice based on the open evidence: projectM repeat/global
+time, wider host validation, or the P3 GUI/editor. Publication or push requires separate
+authorization; neither occurred in S13. External subjective selection among the Astrofox and
+built-in variants remains a song-workspace decision, not a toolkit acceptance claim.
 
 On the original host the parent workspace has `projects/README.md`, `projects/soft-harm/case.json`
 and `projects/zhi-mai-yi-ren-fen/case.json`. These are updated local source inventories, not runtime

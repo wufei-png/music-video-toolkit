@@ -161,8 +161,8 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "version": __version__,
                 "schema_version": "0.1",
-                "stage": "s12",
-                "production_stage": "s12",
+                "stage": "s13",
+                "production_stage": "s13",
                 "available": AVAILABLE,
                 "planned": PLANNED,
                 "can_render": True,

@@ -36,4 +36,20 @@ Run the real synthetic export checks after prepare/build:
 
 ```sh
 uv run --locked python scripts/astrofox_render_check.py --checkout /absolute/external/astrofox-checkout
+uv run --locked python scripts/astrofox_compose_check.py --checkout /absolute/external/astrofox-checkout
 ```
+
+Set `MVT_ASTROFOX_CHECKOUT` to the prepared checkout or pass `--checkout` to
+`mvt provider astrofox`. `mvt doctor` distinguishes `not_installed`, `installed`, `ready` and
+`proven` from actual local evidence. Render a typed `provider-request.json` with
+`mvt provider astrofox --request FILE --output DIR`; use its `provider-manifest.json` only after
+the command succeeds. `mvt provider compose` rechecks the request and result, adds the project's
+canonical audio and optional saved lyrics through the normal MVT preview path, and writes
+`provider-composition.json`. For multiple ordered global ranges, pass each composition to
+`mvt provider bundle --composition FILE ... --output DIR`, then compare that aggregate preview
+with a distinct built-in preview through `mvt compare`. See the generated schemas and
+`docs/architecture/contracts.md` for exact artifact fields.
+
+The checkout and its plugins/assets must stay local and hash-pinned. Manual opening of Astrofox is
+only a debugging or failure-recovery fallback; it is not the production route or acceptance proof.
+There is no MCP provider in this slice.

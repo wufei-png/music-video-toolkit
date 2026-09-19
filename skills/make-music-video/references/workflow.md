@@ -30,6 +30,11 @@ mvt lyrics import FILE --project PROJECT --language TAG
 # and after review: mvt lyrics apply-edits --project PROJECT --edits FILE
 mvt plan resolve --project PROJECT --plan PROJECT/visual-plan.json
 mvt preview --project PROJECT --plan PROJECT/resolved-plan.json --ranges PROJECT/preview.json --output PREVIEW_DIR --review-reel
+# optional Astrofox visual variant from a prepared external pinned checkout:
+mvt provider astrofox --request PROVIDER_REQUEST.json --output PROVIDER_DIR --checkout ASTROFOX_CHECKOUT
+mvt provider compose --project PROJECT --request PROVIDER_REQUEST.json --manifest PROVIDER_DIR/provider-manifest.json --timeline TIMELINE.json --output COMPOSITION_DIR --lyrics LYRICS.json --font FONT.ttf
+# repeat for each ordered global range, then:
+mvt provider bundle --composition COMPOSITION_1/provider-composition.json --composition COMPOSITION_2/provider-composition.json --output PROVIDER_PREVIEW_DIR
 # after separately completing two or more variants with identical ranges:
 mvt compare --request COMPARISON_REQUEST.json --output COMPARISON_DIR
 mvt render --project PROJECT --plan PROJECT/resolved-plan.json --output OUTPUT.mp4
@@ -38,6 +43,8 @@ mvt render --project PROJECT --plan PROJECT/resolved-plan.json --output OUTPUT.m
 Lyrics commands are conditional. `render` is conditional on accepted sample feedback unless the recorded mode is autonomous. After analysis, alignment and material creation are complete, reproducible preview/full commands use only the saved project, plan, ranges and local assets; they do not run models or contact generation services.
 
 Comparison is also conditional. Its request points only to distinct completed aggregate preview manifests and preserves variant order. Verify that variants intentionally share canonical audio, ranges, output dimensions/fps and H.264/yuv420p + AAC 48 kHz stereo CFR compatibility before running it. Compare landscape and portrait in separate requests; paired inspection can assess shared intent but is not an automatic-reframing claim. Save `comparison.json`, the range-major reel and labeled contact sheet alongside a separate feedback record; objective comparison success is not user approval.
+
+The Astrofox branch is optional and requires an actually ready pinned local checkout. Its provider request and manifest bind local project/plugin/asset hashes and a silent CFR result. `compose` revalidates that result and uses existing MVT composition for canonical audio and saved lyrics; omit both `--lyrics` and `--font` when captions are off. Bundle only ordered compositions from the same source/profile. Never treat a provider video alone as an S11 variant, or list projectM feasibility output as a supported production backend.
 
 ## Feedback record
 

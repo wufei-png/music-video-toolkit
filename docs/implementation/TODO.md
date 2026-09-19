@@ -1,15 +1,14 @@
-# Post-S10 backlog — 2026-09-19
+# Post-S13 backlog — 2026-09-19
 
-This is the local, evidence-ordered backlog after S01–S10. On 2026-09-19 the user selected P0, P1
-and P2 in order; their confirmed implementation contracts are S11, S12 and S13. S11 and S12 are
-now complete; selection alone still does not make S13 an implemented capability. Work on only
-the first dependency-ready unfinished slice.
+This is the local, evidence-ordered backlog after S01–S13. On 2026-09-19 the user selected P0, P1
+and P2 in order; their confirmed implementation contracts are S11, S12 and S13. Those slices are
+complete within the proven scope below. Later work requires its own selection and acceptance gate.
 
 ## Current baseline
 
-- This audit began from clean `main` at `ea614da`; S01–S12 are complete. `mvt capabilities` reports CLI and
-  production stage `s12`, with closed 1920x1080/30 and 1080x1920/30 rendering, completed-preview
-  comparison and explicit review/apply structure analysis.
+- This audit began from clean `main` at `ea614da`; S01–S13 are complete. `mvt capabilities` reports CLI and
+  production stage `s13`, including the pinned external Astrofox provider route, composition and
+  completed-preview comparison. Astrofox readiness still depends on the local pinned checkout.
 - The two external production finals and their QA evidence exist under
   `../projects/soft-harm/s10/final-v1-bulge/` and
   `../projects/zhi-mai-yi-ren-fen/s10/final-v1-bulge/`. Both have exact expected frame counts,
@@ -65,22 +64,21 @@ ordered review reel and a feedback record make the comparison auditable.
 Why these precede GUI work: they change authoritative artifacts and renderer behavior. A GUI built
 first would either encode the old fixed profile or need immediate migration.
 
-### P2 / S13 — automated Astrofox backend first
+### P2 / S13 — complete within the Astrofox boundary
 
-5. **Implement Astrofox as the first automated external visual provider.** Pin Astrofox commit
-   `126403958e5644a6fbb91d6623626474dd199205` and add a tested downstream `astrofox-render`
-   headless CLI. A hidden Electron renderer and programmatic bridge load the project, audio, assets
-   and local hash-pinned plugins, then call Astrofox's deterministic per-frame renderer and FFmpeg
-   pipe directly. Playwright, AppleScript and UI clicking are forbidden. The result is a silent CFR
-   video plus a manifest binding the upstream/patch, project, plugin, assets, render parameters and
-   output. The MVT adapter then adds canonical audio, lyrics, comparison records and final QA.
-   Manual editor handoff remains a debugging/failure fallback; MCP waits until the CLI is stable.
-6. **Limit projectM to a locked feasibility proof in S13.** Pin the core/provider/preset identities,
-   feed canonical PCM and attempt a short silent-CFR result against the same provider contract.
-   Record licensing, determinism and environment evidence. Do not advertise projectM as available;
-   complete production integration is a separately authorized later slice.
+5. **Completed: Astrofox is the first automated external visual provider.** Upstream commit
+   `126403958e5644a6fbb91d6623626474dd199205`, lock and license are pinned with two tested
+   downstream patches. A hidden Electron renderer and programmatic bridge load the local project,
+   audio, assets and hash-pinned plugins, then use Astrofox's deterministic per-frame renderer and
+   FFmpeg pipe. The silent CFR result binds the upstream/patch, project, plugin, assets, parameters
+   and output. MVT adds canonical audio, saved lyrics and S11 comparison evidence. Manual editor
+   opening remains a debugging/failure fallback; MCP is absent.
+6. **Completed feasibility only: projectM remains unavailable.** Core/provider/preset identities and
+   licenses are pinned; an isolated provider fed canonical PCM and produced two conforming short
+   silent-CFR results. Repeat output bytes differed and nonzero global-time replay is unproven.
+   Complete production integration needs a separately authorized later slice.
 
-Upstream evidence to refresh when either slice is selected:
+Pinned upstream references:
 
 - <https://github.com/projectM-visualizer/projectm>
 - <https://github.com/projectM-visualizer/gst-projectm>
@@ -101,5 +99,6 @@ Upstream evidence to refresh when either slice is selected:
 
 ## Confirmed sequence
 
-S12 is complete. Implement [S13](S13-astrofox-backend.md) next. Each slice has its own acceptance
-evidence and commits. GUI, complete projectM integration and MCP remain outside these three sessions.
+S13 is complete with the evidence in [status](status.md). The next development choice is a separate
+slice: projectM determinism/global-time investigation, broader host validation, or the P3 product
+surface. GUI, complete projectM integration and MCP remain outside S13.

@@ -4,9 +4,9 @@
 
 通用检查：`uv sync --locked --group dev`、`uv run --locked pytest`、`uv run --locked ruff check .`、`git diff --check`。有 renderer 改动时执行 `pnpm --dir renderer check`。这些命令在 bootstrap 完成后可运行。
 
-**各切片中的 `tests/stages/test_sNN.py` 和新增 CLI 是对应切片的验收入口，当前已随 S01–S12 实现。** 安装的模型环境应单独锁定；CPU 模拟或 mock 不算真实模型验证。阶段测试生成可公开的 synthetic fixtures；本地歌曲验收证据保存在仓库外。
+**各切片中的阶段测试和新增 CLI 是对应切片的验收入口，当前已随 S01–S13 实现。** 安装的模型和外部提供器环境应单独锁定；CPU 模拟或 mock 不算真实模型/提供器验证。阶段测试生成可公开的 synthetic fixtures；本地歌曲验收证据保存在仓库外。
 
-S10 之后的候选工作、依赖顺序和选择门槛见 [post-S10 backlog](TODO.md)。S11–S12 已实现并进入当前 capabilities；S13 已完成设计确认但尚未实现，必须在 S12 之后单独实施。
+S10 之后的工作、依赖顺序和后续选择门槛见 [backlog](TODO.md)。S11–S13 已完成；Astrofox 仍需本地锁定 checkout，projectM 仍是可行性结果。
 
 | ID | Result | Dependencies |
 | --- | --- | --- |
@@ -22,4 +22,4 @@ S10 之后的候选工作、依赖顺序和选择门槛见 [post-S10 backlog](TO
 | [S10 两首歌成片与开源使用就绪](S10-songs-quality.md) | 两首 C 全曲成片与反馈驱动改进 | S09 |
 | [S11 同音频方案比较基线](S11-variant-comparison.md) | comparison 协议、审阅产物与外部状态修复 | S10 |
 | [S12 竖屏与重复结构分析](S12-portrait-structure.md) | 1080x1920 输出与显式应用的结构候选 | S11 |
-| [S13 Astrofox 自动化后端](S13-astrofox-backend.md) | headless Astrofox 全流程与 projectM 可行性证明 | S12 |
+| [S13 Astrofox 自动化后端](S13-astrofox-backend.md) | 无界面 Astrofox 提供器、MVT 合成/比较与 projectM 可行性证明 | S12 |
