@@ -34,8 +34,7 @@ from .documents import read_document
 from .project import resolve_record_path, sha256_file
 
 SAMPLE_RATE = 48000
-CONTACT_WIDTH = 480
-CONTACT_FRAME_HEIGHT = 270
+CONTACT_MAX_DIMENSION = 480
 CONTACT_LABEL_HEIGHT = 30
 PREVIEW_INPUT_KEYS = {"preview_request", "preview_adapter"}
 
@@ -653,7 +652,20 @@ FONT_5X7 = {
 }
 
 
-def _extract_contact_frame(ffmpeg: str, path: Path, frame_index: int) -> bytes:
+def _contact_frame_size(profile: ComparisonProfile) -> tuple[int, int]:
+    if profile.width >= profile.height:
+        return CONTACT_MAX_DIMENSION, max(
+            1, round(CONTACT_MAX_DIMENSION * profile.height / profile.width)
+        )
+    return (
+        max(1, round(CONTACT_MAX_DIMENSION * profile.width / profile.height)),
+        CONTACT_MAX_DIMENSION,
+    )
+
+
+def _extract_contact_frame(
+    ffmpeg: str, path: Path, frame_index: int, width: int, height: int
+) -> bytes:
     command = [
         ffmpeg,
         "-nostdin",
@@ -662,10 +674,7 @@ def _extract_contact_frame(ffmpeg: str, path: Path, frame_index: int) -> bytes:
         "-i",
         str(path),
         "-vf",
-        (
-            f"select=eq(n\\,{frame_index}),"
-            f"scale={CONTACT_WIDTH}:{CONTACT_FRAME_HEIGHT}:flags=lanczos,format=rgb24"
-        ),
+        (f"select=eq(n\\,{frame_index}),scale={width}:{height}:flags=lanczos,format=rgb24"),
         "-frames:v",
         "1",
         "-f",
@@ -678,7 +687,7 @@ def _extract_contact_frame(ffmpeg: str, path: Path, frame_index: int) -> bytes:
         result = subprocess.run(command, capture_output=True, check=False)
     except OSError as exc:
         raise ComparisonError("comparison_contact_sheet_failed", str(exc), 3) from exc
-    expected = CONTACT_WIDTH * CONTACT_FRAME_HEIGHT * 3
+    expected = width * height * 3
     if result.returncode != 0 or len(result.stdout) != expected:
         raise ComparisonError(
             "comparison_contact_sheet_failed",
@@ -728,8 +737,9 @@ def _write_rgb_png(path: Path, width: int, height: int, pixels: bytes) -> None:
 def _build_contact_sheet(ffmpeg: str, job_dir: Path, prepared: PreparedComparison) -> Path:
     columns = len(prepared.variants)
     rows = len(prepared.ranges)
-    cell_height = CONTACT_LABEL_HEIGHT + CONTACT_FRAME_HEIGHT
-    width = columns * CONTACT_WIDTH
+    frame_width, frame_height = _contact_frame_size(prepared.profile)
+    cell_height = CONTACT_LABEL_HEIGHT + frame_height
+    width = columns * frame_width
     height = rows * cell_height
     if width > 16384 or height > 16384:
         raise ComparisonError(
@@ -740,15 +750,19 @@ def _build_contact_sheet(ffmpeg: str, job_dir: Path, prepared: PreparedCompariso
         for variant_index, variant in enumerate(prepared.variants):
             clip = variant.record.clips[range_index]
             frame = _extract_contact_frame(
-                ffmpeg, variant.clip_paths[range_index], clip.probe.frame_count // 2
+                ffmpeg,
+                variant.clip_paths[range_index],
+                clip.probe.frame_count // 2,
+                frame_width,
+                frame_height,
             )
-            cell_x = variant_index * CONTACT_WIDTH
+            cell_x = variant_index * frame_width
             cell_y = range_index * cell_height
-            for frame_row in range(CONTACT_FRAME_HEIGHT):
-                source_start = frame_row * CONTACT_WIDTH * 3
+            for frame_row in range(frame_height):
+                source_start = frame_row * frame_width * 3
                 target_start = ((cell_y + CONTACT_LABEL_HEIGHT + frame_row) * width + cell_x) * 3
-                pixels[target_start : target_start + CONTACT_WIDTH * 3] = frame[
-                    source_start : source_start + CONTACT_WIDTH * 3
+                pixels[target_start : target_start + frame_width * 3] = frame[
+                    source_start : source_start + frame_width * 3
                 ]
             label = f"R{range_index + 1:02d} {variant.record.id}"[:25]
             _draw_label(pixels, width, cell_x + 9, cell_y + 5, label)

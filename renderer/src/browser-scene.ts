@@ -6,6 +6,7 @@ import {
   type LyricCue,
 } from "./lyrics.js";
 import {
+  fitCaptionLayout,
   layoutForOutput,
   mediaScale,
   normalizedX,
@@ -185,16 +186,15 @@ function captionTexture(text: string): THREE.CanvasTexture {
   canvas.height = lyricLayout.textureHeight;
   const context = canvas.getContext("2d", {willReadFrequently: true});
   if (context === null) throw new Error("2D canvas is unavailable");
-  let fontSize = lyricLayout.initialFontSize;
   let lines: string[] = [];
-  while (fontSize >= lyricLayout.minimumFontSize) {
+  const fit = fitCaptionLayout(lyricLayout, (fontSize) => {
     context.font = `${fontSize}px "MVT Subtitle"`;
     lines = text
       .split("\n")
       .flatMap((line) => wrapCharacters(context, line, lyricLayout.maximumTextWidth));
-    if (lines.length <= lyricLayout.maximumLines) break;
-    fontSize -= lyricLayout.fontStep;
-  }
+    return lines.length;
+  });
+  const fontSize = fit.fontSize;
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.textAlign = "center";
   context.textBaseline = "middle";
@@ -226,6 +226,7 @@ const lyricVertexShader = `
 uniform float uBulgeStrength;
 uniform vec2 uBulgeCenter;
 uniform float uBulgeRadius;
+uniform vec2 uMeshSize;
 varying vec2 vUv;
 varying vec3 vViewNormal;
 varying vec3 vViewPosition;
@@ -243,8 +244,8 @@ void main() {
   float slopeX = bulgeHeight(uv + vec2(epsilon, 0.0)) - bulgeHeight(uv - vec2(epsilon, 0.0));
   float slopeY = bulgeHeight(uv + vec2(0.0, epsilon)) - bulgeHeight(uv - vec2(0.0, epsilon));
   vec3 curvedNormal = normalize(vec3(
-    -slopeX / (2.0 * epsilon * 1.82),
-    -slopeY / (2.0 * epsilon * 0.52),
+    -slopeX / (2.0 * epsilon * uMeshSize.x),
+    -slopeY / (2.0 * epsilon * uMeshSize.y),
     1.0
   ));
   vec3 displaced = position + vec3(0.0, 0.0, height);
@@ -295,6 +296,12 @@ function createLyricMesh(tint: number, trailMix: number): LyricMesh {
       uBulgeStrength: {value: 0.15},
       uBulgeCenter: {value: new THREE.Vector2(0.24, 0.5)},
       uBulgeRadius: {value: 0.43},
+      uMeshSize: {
+        value: new THREE.Vector2(
+          outputLayout.lyrics.meshWidth,
+          outputLayout.lyrics.meshHeight,
+        ),
+      },
       uTint: {value: new THREE.Color(tint)},
       uTrailMix: {value: trailMix},
     },

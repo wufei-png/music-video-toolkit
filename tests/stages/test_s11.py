@@ -8,8 +8,16 @@ from types import SimpleNamespace
 import pytest
 
 from music_video_toolkit.cli import main
-from music_video_toolkit.comparison import ComparisonError, compare_previews
-from music_video_toolkit.contracts import ComparisonManifest, ComparisonMediaProbe
+from music_video_toolkit.comparison import (
+    ComparisonError,
+    _contact_frame_size,
+    compare_previews,
+)
+from music_video_toolkit.contracts import (
+    ComparisonManifest,
+    ComparisonMediaProbe,
+    ComparisonProfile,
+)
 from music_video_toolkit.project import sha256_file
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -355,6 +363,26 @@ def assert_color(actual: bytes, expected: tuple[int, int, int]) -> None:
     assert all(
         abs(channel - target) <= 20 for channel, target in zip(actual, expected, strict=True)
     )
+
+
+@pytest.mark.parametrize(
+    ("width", "height", "expected"),
+    [(1920, 1080, (480, 270)), (1080, 1920, (270, 480))],
+)
+def test_contact_sheet_tiles_preserve_supported_profile_aspect(width, height, expected):
+    profile = ComparisonProfile(
+        video_codec="h264",
+        video_pixel_format="yuv420p",
+        width=width,
+        height=height,
+        fps_num=30,
+        fps_den=1,
+        stream_compatibility_sha256="0" * 64,
+        has_audio=True,
+        range_count=1,
+    )
+
+    assert _contact_frame_size(profile) == expected
 
 
 @pytest.mark.skipif(

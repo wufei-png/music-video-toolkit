@@ -9,6 +9,7 @@ import pytest
 from music_video_toolkit.cli import main
 from music_video_toolkit.contracts import Structure
 from music_video_toolkit.plan import resolve_plan
+from music_video_toolkit.project import resolve_record_path
 from music_video_toolkit.structure import StructureError, analyze_structure, apply_structure
 
 PITCHES = ("c", "c_sharp", "d", "d_sharp", "e", "f", "f_sharp", "g", "g_sharp", "a", "a_sharp", "b")
@@ -197,7 +198,7 @@ def test_structure_analyze_handles_silence_and_sparse_beats(tmp_path, silence, s
 
 
 @pytest.mark.skipif(not shutil.which("uv"), reason="locked librosa runtime requires uv")
-@pytest.mark.parametrize("tamper", ["artifact", "timeline"])
+@pytest.mark.parametrize("tamper", ["artifact", "candidates", "timeline"])
 def test_structure_analyze_rejects_tampered_cache_inputs(tmp_path, tamper):
     project = source_project(tmp_path)
     timeline_path = write_timeline(project)
@@ -205,6 +206,11 @@ def test_structure_analyze_rejects_tampered_cache_inputs(tmp_path, tamper):
     if tamper == "artifact":
         document = json.loads(result.output_path.read_text())
         document["cache_key"] = "f" * 64
+        result.output_path.write_text(json.dumps(document), encoding="utf-8")
+    elif tamper == "candidates":
+        document = json.loads(result.output_path.read_text())
+        document["boundaries"] = []
+        document["repeated_groups"] = []
         result.output_path.write_text(json.dumps(document), encoding="utf-8")
     else:
         timeline = json.loads(timeline_path.read_text())
@@ -290,6 +296,23 @@ def test_structure_apply_marks_adjustments_manual_and_rejects_base_alias(tmp_pat
     with pytest.raises(StructureError) as caught:
         apply_structure(project, selection, timeline)
     assert caught.value.code == "structure_output_alias"
+
+
+@pytest.mark.skipif(not shutil.which("uv"), reason="locked librosa runtime requires uv")
+def test_structure_apply_rebases_source_for_a_separate_output_directory(tmp_path):
+    project = source_project(tmp_path / "project")
+    timeline = write_timeline(project)
+    structure = analyze_structure(project).structure
+    selection = write_selection(project, structure)
+    output = tmp_path / "review" / "timeline.enriched.json"
+
+    result = apply_structure(project, selection, output)
+
+    assert (
+        resolve_record_path(output, result.timeline.source.path)
+        == (project / "source/canonical.wav").resolve()
+    )
+    assert timeline.read_bytes() != output.read_bytes()
 
 
 @pytest.mark.skipif(not shutil.which("uv"), reason="locked librosa runtime requires uv")

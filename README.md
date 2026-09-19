@@ -2,7 +2,7 @@
 
 面向 AI agent 的音乐视频制作工具包。Skill 做创作协作，文件协议保存决策，代码执行可复现制作。
 
-**当前状态：S01–S11 已完成。S10 的两首歌全曲验收和客观媒体 QA 已通过；S11 增加了对已完成同音频样片的严格比较，可生成 range-major review reel 和 labeled contact sheet。工具可统一解码音频、提取 mix/四轨特征、自动对齐或导入逐句歌词、保存人工修正，并用抽象/本地媒体图层生成带字幕的 1080p30 视频和可复现的多区间样片；公开合成制作演练覆盖 sample-approval 与 autonomous 两种流程。** 本仓库的 MIT 许可覆盖代码与 Skill，不改变外部素材、模型和依赖的许可证；公开发布仍需单独授权。
+**当前状态：S01–S12 已完成。S10 的两首歌全曲验收和客观媒体 QA 已通过；S11 增加了对已完成同音频样片的严格比较；S12 增加了严格封闭的 1920x1080/30 与 1080x1920/30 输出、响应式构图，以及需要显式审阅应用的无语义结构候选。工具可统一解码音频、提取 mix/四轨特征、自动对齐或导入逐句歌词、保存人工修正，并用抽象/本地媒体图层生成带字幕的横屏或竖屏视频和可复现的多区间样片；公开合成制作演练覆盖 sample-approval 与 autonomous 两种流程。** 本仓库的 MIT 许可覆盖代码与 Skill，不改变外部素材、模型和依赖的许可证；公开发布仍需单独授权。
 
 ## 两个入口
 
@@ -20,7 +20,7 @@
 
 首次安装后可运行不含第三方媒体的 [public production demo](examples/production-demo/README.md)，从 brief、合成输入、analysis、素材预检和 plan resolve 一直走到样片；显式 autonomous 模式还会生成首版全片和独立重渲染脚本。S09/S10 已验证完整生产流程，真实歌曲及其制作资产仍保存在仓库外。
 
-`mvt capabilities` 中的 `stage` 表示 CLI 能力阶段；`production_stage` 表示包含真实歌曲验收的生产阶段。S11 的命令和外部 `soft-harm` 比较均已验证，所以两者当前都是 `s11`。
+`mvt capabilities` 中的 `stage` 表示 CLI 能力阶段；`production_stage` 表示包含真实歌曲验收的生产阶段。S12 的命令、两种输出 tuple 和外部 `soft-harm` 结构/样片比较均已验证，所以两者当前都是 `s12`。
 
 ## 当前可运行能力
 
@@ -34,6 +34,8 @@ uv run --locked mvt doctor
 uv run --locked mvt decode "/path/to/input.mp3" --project "/path/to/project"
 uv run --locked mvt analyze --project "/path/to/project" --stems none
 uv run --locked mvt analyze --project "/path/to/project" --stems four
+uv run --locked mvt structure analyze --project "/path/to/project" --timeline "/path/to/timeline.json" --output "/path/to/structure.json"
+uv run --locked mvt structure apply --project "/path/to/project" --selection "/path/to/structure-selection.json" --output "/path/to/timeline.enriched.json"
 uv run --locked mvt plan resolve --project "/path/to/project" --plan "/path/to/plan.json"
 uv run --locked mvt assets check --project "/path/to/project"
 uv run --locked mvt lyrics import "/path/to/captions.srt" --project "/path/to/project" --language zh+en
@@ -59,9 +61,13 @@ pnpm --dir renderer exec playwright install chromium
 
 `analyze --stems none` 只产生 mix RMS、beat 和 12 维 chroma，不伪造 stem 信号。`--stems four` 在独立锁环境中运行 audio-separator 0.44.2 的 `htdemucs.yaml`，验证 vocals/drums/bass/other 四个实际文件，把 44.1kHz 模型输出显式对齐到项目 48kHz 时钟，再增加 stem RMS、drums onset 和 bass low-frequency energy。timeline、stem manifest 和 run manifest 保存源、模型、配置、哈希、对齐和耗时；缓存同时校验这些身份。模型默认下载到用户缓存，可用 `MVT_MODEL_DIR` 改写；预训练权重的许可证尚未由上游确认，不要分发。
 
+`structure analyze` 在锁定的 librosa 环境中复用已保存的 mix RMS、12 维 chroma 和 beat 估计，通过 beat-synchronous self-similarity 计算独立 `structure.json` 中的 novelty boundary 和带置信度/来源的重复区间组，但不声称段落语义、downbeat、bar、pitch 或 melody。它不修改 timeline。`structure apply` 只接受 `reviewed: true` 且绑定 structure/base timeline 哈希的显式 selection；遇到已有 sections 必须选择 `require-empty` 或 `replace`，并写入另一个 enriched timeline，绝不覆盖 base。
+
 `doctor` 报告工具、锁定分析环境和浏览器是否可发现；模型未下载不等于 mix-only 分析不可用。`validate` 是单文件结构与部分语义校验；项目 preflight 由需要实际文件的命令执行。示例均为合成协议示例，不是实际成片；详见 [示例说明](examples/README.md)。
 
 `assets check` 验证本地图片、恒定帧率视频和字体的实际类型、哈希与元数据；不会下载远程素材。`plan resolve` 对 orb/ribbon/particles、image/video 及 linear/threshold/smooth 做参数白名单和范围校验，把整曲默认值、手工或自动候选段落、gap 回退和段落过渡解析成覆盖全曲的 `resolved-plan.json`。route 缺少信号、未知参数/目标、未知素材、素材身份变化或任一 span 禁用模式必需图层都会硬失败。`render` 可执行 A/B/C resolved plan，按样本时钟确定性选择预解码视频帧并强制丢弃媒体音轨；S02 验收计划仍兼容。
+
+plan 的输出只允许 `1920x1080/30` 或 `1080x1920/30`；旧 plan 省略 `output` 时仍为横屏。profile 贯穿 resolver、构图/裁切/运动/粒子/字幕安全区、FFmpeg、probe、cache、manifest、preview 和 comparison。横竖屏是共享意图的独立 plan variant，不代表工具会自动完成艺术重构；4K、60 fps 和任意尺寸仍不支持。
 
 `lyrics import` 将 UTF-8 LRC/SRT 转成绑定 canonical audio 的逐句 `lyrics.json`。`lyrics align` 在独立锁定的 WhisperX CPU 环境中把分离人声的识别时序单调映射回用户原文，保留重复副歌并显式列出未匹配行；它不会用识别文本替换歌词。`lyrics apply-edits` 接受完整人工行首并生成 `lyrics.edited.json`，无需再次运行模型。启用字幕的 plan 指定已预检字体，渲染器按半开样本范围显示、淡入淡出并在安全区内处理中文、英文、显式多行和长句。`off` 不读取歌词文件，`render` 不会隐式运行对齐。
 
@@ -69,7 +75,7 @@ pnpm --dir renderer exec playwright install chromium
 
 `compare` 只读取至少两个带 preview request/adapter 证据的已完成 aggregate preview manifest，不会运行分析、对齐、plan resolve、preview 或 render。它拒绝解析到同一 manifest 的路径别名，要求相同 canonical audio、原始来源、全局 ranges、H.264/yuv420p + AAC 48 kHz stereo CFR stream compatibility signature、尺寸/fps/帧数/音频存在性，并比较每个 range 的 decoded PCM hash；plan、assets、seed、renderer 和 environment 差异原样记录。输出目录在重新探测成片 profile 和总帧数后原子安装 `comparison.json`、按 range-major → variant-major 排列的 FFmpeg stream-copy reel，以及在每个 range 相同相对中点采样的 labeled contact sheet。相同请求可命中缓存，但会重新校验所有输入和输出哈希；主观反馈仍是外部记录。
 
-原始研究报告、两首歌及其制作资产留在父目录，公共工具仓库不依赖它们。新用户可以安装工具、检查协议、解码、分析、导入或自动对齐歌词、渲染自己的本地计划、制作多区间样片并比较已完成变体；完整生产工作流已由 S09/S10 验证，S11 比较已用外部真实歌曲证据验证，具体歌曲仍应在外部制作工作区完成。
+原始研究报告、两首歌及其制作资产留在父目录，公共工具仓库不依赖它们。新用户可以安装工具、检查协议、解码、分析/审阅结构、导入或自动对齐歌词、渲染自己的本地横屏或竖屏计划、制作多区间样片并比较同 profile 的已完成变体；完整生产工作流已由 S09/S10 验证，S11 比较与 S12 portrait/structure 已用外部真实歌曲证据验证，具体歌曲仍应在外部制作工作区完成。
 
 渲染器目前提供时间映射实现和 Three.js 图层接口；构建与测试：
 

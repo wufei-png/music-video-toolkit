@@ -31,8 +31,8 @@ For every release candidate made from a real song:
 
 - Review 30–60 seconds total across sparse, transition and climax ranges before rendering the full
   song. Record the reviewed plan, asset and preview hashes with the feedback.
-- Confirm the final video is H.264, 1920×1080, 30 fps with the expected exact frame count; confirm
-  AAC, 48 kHz and two audio channels.
+- Confirm the final video is H.264 and exactly the declared supported profile (1920×1080/30 or
+  1080×1920/30) with the expected exact frame count; confirm AAC, 48 kHz and two audio channels.
 - Confirm the video and canonical-audio endpoints differ by no more than one frame, with any AAC
   padding recorded.
 - Scan for unexpected black intervals, missing assets, dropped or duplicated frames and audible

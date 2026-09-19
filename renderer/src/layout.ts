@@ -37,6 +37,11 @@ export interface NormalizedBounds {
   readonly bottom: number;
 }
 
+export interface CaptionFit {
+  readonly fontSize: number;
+  readonly lineCount: number;
+}
+
 export function layoutForOutput(width: number, height: number): OutputLayout {
   const landscape = width === 1920 && height === 1080;
   const portrait = width === 1080 && height === 1920;
@@ -83,6 +88,26 @@ export function layoutForOutput(width: number, height: number): OutputLayout {
           safeBottom: 0.95,
         },
   } as OutputLayout;
+}
+
+export function fitCaptionLayout(
+  layout: LyricLayout,
+  lineCountAtFontSize: (fontSize: number) => number,
+): CaptionFit {
+  let fontSize = layout.initialFontSize;
+  while (true) {
+    const lineCount = lineCountAtFontSize(fontSize);
+    if (!Number.isInteger(lineCount) || lineCount < 0) {
+      throw new RangeError("caption line count must be a non-negative integer");
+    }
+    if (lineCount <= layout.maximumLines) return {fontSize, lineCount};
+    if (fontSize === layout.minimumFontSize) {
+      throw new RangeError(
+        `caption exceeds ${layout.maximumLines} lines at minimum font size ${fontSize}`,
+      );
+    }
+    fontSize = Math.max(layout.minimumFontSize, fontSize - layout.fontStep);
+  }
 }
 
 export function normalizedX(layout: OutputLayout, value: number): number {

@@ -19,6 +19,10 @@ Understand the provided audio, lyrics and metadata; label metadata-only musical 
 
 Choose A abstract, B media mood scenes, or C layered A+B. Start from whole-song defaults, then override sections where the musical arrangement warrants it. Reuse registered layers and parameters; do not place executable code into plans. For C, compose existing A/B layers through alpha, masks and timing. Keep fonts, media provenance, hashes and explicit duration/loop choices in the production artifacts.
 
+Choose exactly one supported output tuple per plan: landscape `1920x1080/30` or portrait `1080x1920/30`. Treat them as separate plan variants that may share intent; inspect crop, hierarchy and lyrics in each, and never describe a mechanical portrait layout as automatic artistic reframing. Do not invent arbitrary dimensions, 4K or 60 fps support.
+
+When repeated-form evidence is useful, run `mvt structure analyze` against the saved timeline and review the separate `structure.json`. It proposes unlabeled novelty boundaries and repeated spans only. Create an explicit reviewed selection, choose the existing-section replacement policy deliberately, and apply it to a new enriched timeline. Never infer semantic section names, downbeats, bars, pitch or melody from this artifact, and never overwrite the base timeline.
+
 Lyrics can be off, imported, or automatically aligned to the supplied text. Preserve repeated lines and language; check alignment around chorus repetitions and long notes, and surface unmatched spans. Save edits so future alignment does not overwrite them. Both enabled modes feed the same stored cue format to rendering.
 
 ## Review and iteration
@@ -29,7 +33,7 @@ Determine and record the review mode before rendering. Default is **sample appro
 
 Preview ranges use global 48 kHz sample positions and must align to the 30 fps frame grid: each endpoint is a multiple of 1600. Use a new output directory for changed plans or ranges; the command preserves an existing stale/different directory instead of overwriting it. Reusing the same directory is a cache request and succeeds only when its manifest and every output hash still match.
 
-When the user wants to compare two or more completed variants, create an ordered comparison request whose stable IDs and labels point to distinct completed aggregate preview manifests, then run `mvt compare --request FILE --output DIR`. The variants must use the same canonical audio, exact ranges and stream-compatible H.264/yuv420p + AAC 48 kHz stereo CFR media. Compare only audits saved previews and creates a range-major reel plus labeled contact sheet; it must not be used as a shortcut that silently renders, resolves, analyzes or aligns a variant. Keep winner selection and subjective feedback in the external production record.
+When the user wants to compare two or more completed variants, create an ordered comparison request whose stable IDs and labels point to distinct completed aggregate preview manifests, then run `mvt compare --request FILE --output DIR`. The variants must use the same canonical audio, exact ranges and same output profile with stream-compatible H.264/yuv420p + AAC 48 kHz stereo CFR media. Use separate comparison requests for landscape and portrait. Compare only audits saved previews and creates a range-major reel plus labeled contact sheet; it must not be used as a shortcut that silently renders, resolves, analyzes or aligns a variant. Keep winner selection and subjective feedback in the external production record.
 
 Evaluate separate musical responses, visual hierarchy, lyric legibility, transitions and whole-song pacing. Fix taste decisions in the plan; record reusable capability gaps as development feedback. Preserve the approved versions and re-render only affected material where supported. Changed sample content needs corresponding review in sample-approval mode.
 

@@ -1,5 +1,57 @@
 # Implementation status
 
+## S12 portrait output and reviewed repeated structure complete — 2026-09-19
+
+Plans now select exactly one closed output tuple: legacy/default `1920x1080/30` or new
+`1080x1920/30`. The validated profile is preserved through plan resolution, aspect-aware Three.js
+camera/framing, media cover/contain and normalized motion, particles, responsive lyric safe areas,
+FFmpeg encoding, output probing, cache identity, render/preview manifests and same-profile
+comparison. Arbitrary dimensions, 4K and 60 fps are rejected. Landscape and portrait remain
+separate plan variants that may share intent; no automatic artistic reframing is claimed.
+
+`mvt structure analyze` now writes a separately typed/schema-generated `structure.json` through the
+locked librosa 0.10.2.post1 environment. It consumes the saved mix RMS, 12-bin chroma and mix beat
+evidence, computes beat-synchronous cosine self-similarity, and records deterministic novelty
+boundaries plus repeated-span groups with confidence, anchors, runtime/analyzer/adapter hashes and
+cache identity binding both input configuration and completed candidate content. It does not infer semantic names, downbeats, bars, pitch or melody and does not
+mutate the base timeline. `mvt structure apply` requires a hash-bound `reviewed: true` selection, a
+complete contiguous section set and explicit `require-empty|replace` policy, then writes a separate
+source-rebased enriched timeline. Exact candidate edges retain automatic confidence; labels or
+adjusted/unreferenced edges are manual and drop that confidence.
+
+The implementation commits are `0f76361` (closed profile contracts/schemas), `37e9ba3` (profile
+propagation through render/probe/cache/manifest), `60eb533` (aspect-aware scene/media/lyrics),
+`ecc7eb0` (deterministic structure analysis) and `4156a88` (reviewed selection/application). The
+final handoff commit includes acceptance-discovered cross-directory source rebasing, portrait
+contact-sheet aspect preservation, delegated-review fixes for candidate cache integrity, bounded
+caption fitting and profile-specific shader normals, capabilities, migrations, Skill/README/status
+and final tests.
+
+External acceptance is under `../projects/soft-harm/s12/`; song audio, plans, generated media and
+review artifacts remain outside Git. The current structure run binds base timeline
+`18f4311738752b412abca00613f1cf468e038068fbc2f4aed570b74b1546f59b` and produced 619 beat
+anchors, 88 boundaries and 8 overlapping repeated groups. Technical review selected only the
+strongest shifted match, `repeat-006` at confidence `0.9806526859123117`, with spans
+`3110912–3388416` and `6460416–6737920`; the selection adds no semantic labels and uses
+`require-empty`. The enriched timeline has five automatic spans and resolves from its sibling
+review directory without changing the base timeline.
+
+Six real five-range previews compare the same seed, audio, assets, lyrics and inspection ranges for
+manual, legacy RMS novelty and reviewed repetition routing in both profiles. Ranges cover the
+opening, dense lyrics, a repeated lyric phrase, a reviewed transition and the tail. Two additional
+same-profile S11 comparisons inspect 65–69 s and 135–139 s inside the selected repeated spans, so
+old RMS and new repetition routing are compared where the new evidence applies. Each clip is
+H.264/yuv420p at 30/1 with AAC 48 kHz stereo and exact frame count; same-profile comparisons verify
+decoded audio identity. The five-range comparison reels have 1800 frames. Contact sheets are
+1440x1500 landscape and 810x2550 portrait; visual inspection confirmed preserved aspect, central
+intent, visible profile-specific crops, readable safe-area lyrics, clean opening/transition/tail
+frames and the expected routing differences. This is objective/self-review evidence, not user
+artistic approval. The final four comparisons, structure artifact and enriched timeline replayed
+from cache and passed standalone schema validation. One parallel preview encountered a transient
+Chromium startup failure; isolated retry completed without changing code or installing a partial
+manifest. SwiftShader remains the observed renderer and full-song portrait export was not required
+by this slice.
+
 ## S11 same-audio variant comparison complete — 2026-09-19
 
 `mvt compare --request FILE --output DIR` now consumes two or more completed preview manifests and
@@ -181,12 +233,12 @@ Current analyzer: isolated locked librosa/audio-separator environment, explicit 
 ## Verified
 
 - `uv sync --locked --group dev`: succeeded with Python 3.12.13.
-- `uv run --locked pytest -q`: **119 passed in 221.88s** (including actual browser/FFmpeg production rehearsals through S10 and real FFmpeg S11 A/B/C comparison artifacts).
+- `uv run --locked pytest -q`: **149 passed in 232.06s** (including actual browser/FFmpeg production rehearsals through S10, S11 comparison artifacts and S12 profile/structure paths).
 - `uv run --locked pytest tests/stages/test_s01.py -q`: **12 passed** with real FFmpeg/ffprobe 8.1. A generated 11,025-frame mono 44.1kHz WAV was encoded to MP3, decoded from a different cwd through Chinese/space-bearing paths, and verified as 48kHz stereo 24-bit PCM with its actual decoded frame count. Cache reuse, different-input conflict, missing tools, corrupt input, partial output and cleanup paths passed.
 - `uv run --locked ruff check .` and `ruff format --check .`: passed.
-- `uv run --locked python scripts/export_schemas.py --check`: fourteen schemas match models; tests also validate JSON Schema structure and examples.
+- `uv run --locked python scripts/export_schemas.py --check`: sixteen schemas match models; tests also validate JSON Schema structure and examples.
 - `pnpm --dir renderer install --frozen-lockfile`: passed.
-- `pnpm --dir renderer check`: TypeScript build plus **21 tests passed**; also explicitly verified with Node 24.15.0 on PATH.
+- `pnpm --dir renderer check`: TypeScript build plus **25 tests passed**; also explicitly verified with Node 24.15.0 on PATH.
 - `pnpm --dir renderer install --frozen-lockfile` and `pnpm --dir renderer exec playwright install chromium`: Playwright 1.63.0 / Chromium revision 1243 installed; browser version 153.0.8010.12.
 - `uv run --locked pytest tests/stages/test_s02.py -q`: **2 passed** with actual Chromium and FFmpeg; no browser skip.
 - `uv sync --project environments/separation --locked`: Python 3.12 environment resolved with audio-separator 0.44.2, librosa 0.10.2.post1, torch 2.14.0 and ONNX Runtime 1.30.0. `audio-separator --env_info` selected MPS/CoreML.
@@ -196,7 +248,8 @@ Current analyzer: isolated locked librosa/audio-separator environment, explicit 
 - `uv run --locked pytest tests/stages/test_s07.py -q`: **5 passed**. Known-text mapping, repeated lyrics, unmatched lines, fixed reference metrics, complete edit application, cache/conflict handling, missing runtime and CLI output passed.
 - `uv run --locked pytest tests/stages/test_s08.py -q`: **5 passed in 29.26s**. Actual full/excerpt rendering, global frame equivalence, start-audio alignment, independent reproduction, cache reuse and stale/missing-output rejection passed.
 - `uv run --locked pytest tests/stages/test_s09.py -q`: **2 passed in 84.37s**. Capability/doctor preflight, sample feedback gating, autonomous first cut, complete artifact bundles, mode-specific scripts, no-model rerenders and byte-identical full reproduction passed.
-- `uv run --locked pytest tests/stages/test_s11.py -q`: **9 passed**. Contract/preflight/cache/tamper/conflict paths, unsupported-codec/CFR rejection, aggregate-preview identity, resolved-path uniqueness, optional preview-reel hash validation, actual FFmpeg A/B/C order, final-reel re-probe, labeled midpoint contact sheet and upstream-pipeline isolation passed.
+- `uv run --locked pytest tests/stages/test_s11.py -q`: **11 passed**. Contract/preflight/cache/tamper/conflict paths, unsupported-codec/CFR rejection, aggregate-preview identity, resolved-path uniqueness, optional preview-reel hash validation, actual FFmpeg A/B/C order, final-reel re-probe, aspect-preserving landscape/portrait contact sheets and upstream-pipeline isolation passed.
+- `uv run --locked pytest tests/stages/test_s12.py -q`: **10 passed**. Deterministic repetition/silence/sparse-beat analysis, cache/candidate-tamper handling, reviewed apply/reapply, explicit existing-section replacement, manual provenance, output alias protection, cross-directory source rebasing and enriched-plan resolution passed.
 - Two external 20-second excerpts completed the formal `mvt analyze --stems four` path, artifact/schema validation and a second cached run. Reports and generated media remain outside Git in each case's `s03/` directory.
 - `uv build`: wheel and source archive built; isolated wheel-installed `mvt capabilities` worked. Archive inspection found no original songs, local production workspace or generated media.
 - skill-creator `quick_validate.py`: passed using PyYAML in the project environment. Markdown local links checked.
@@ -219,15 +272,15 @@ Model installation/inference, browser/WebGL rendering, external media compositio
 | S09 production workflow | Complete — commit containing this handoff |
 | S10 songs/release readiness | Complete — final full-song renders and objective QA recorded |
 | S11 same-audio variant comparison | Complete — `5fad921`, `827f629`, `2f7f667` plus handoff |
-| S12 portrait and repeated structure | Designed and authorized — depends on S11, not implemented |
+| S12 portrait and repeated structure | Complete — five implementation commits plus final handoff |
 | S13 Astrofox automated backend | Designed and authorized — depends on S12, not implemented |
 
 ## Exact next action
 
-S11 is complete. The exact next development action is S12
-([portrait output and repeated structure](S12-portrait-structure.md)); S13 must wait for S12's
-committed acceptance evidence. User viewing or separately authorized publication of local final or
-comparison media remains optional and is not required to validate the repository.
+S12 is complete. The exact next development action is S13
+([automated Astrofox backend](S13-astrofox-backend.md)). User viewing or separately authorized
+publication of local final or comparison media remains optional and is not required to validate the
+repository.
 
 On the original host the parent workspace has `projects/README.md`, `projects/soft-harm/case.json`
 and `projects/zhi-mai-yi-ren-fen/case.json`. These are updated local source inventories, not runtime

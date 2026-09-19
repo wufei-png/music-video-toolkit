@@ -133,16 +133,42 @@ def _identity(runtime: Path, timeline_path: Path) -> tuple[str, dict[str, str]]:
     return _json_hash({"parameters": STRUCTURE_PARAMETERS, **identities}), identities
 
 
+def _completed_cache_key(input_cache_key: str, structure: Structure) -> str:
+    return _json_hash(
+        {
+            "input_cache_key": input_cache_key,
+            "analyzer_version": structure.analyzer.version,
+            "beat_samples": structure.beat_samples,
+            "boundaries": [item.model_dump(mode="json") for item in structure.boundaries],
+            "repeated_groups": [item.model_dump(mode="json") for item in structure.repeated_groups],
+        }
+    )
+
+
 def _validated_cache(
     output: Path,
-    cache_key: str,
+    input_cache_key: str,
+    identities: dict[str, str],
     timeline_path: Path,
     source_hash: str,
     source_path: Path,
 ) -> Structure | None:
     try:
         structure = Structure.model_validate(read_document(output))
-        if structure.cache_key != cache_key or structure.source.sha256 != source_hash:
+        completed_cache_key = _completed_cache_key(input_cache_key, structure)
+        expected_parameters = {
+            **STRUCTURE_PARAMETERS,
+            **identities,
+            "input_cache_key": input_cache_key,
+            "cache_key": completed_cache_key,
+            "mvt_version": __version__,
+        }
+        if (
+            structure.cache_key != completed_cache_key
+            or structure.analyzer.tool != "librosa-structure"
+            or structure.analyzer.parameters != expected_parameters
+            or structure.source.sha256 != source_hash
+        ):
             return None
         recorded_timeline = resolve_record_path(output, structure.timeline.path)
         if (
@@ -204,11 +230,12 @@ def analyze_structure(
         runtime = _runtime_project()
     except AnalysisError as exc:
         raise StructureError(exc.code, exc.details, exc.exit_code) from exc
-    cache_key, identities = _identity(runtime, timeline_path)
+    input_cache_key, identities = _identity(runtime, timeline_path)
     if output_path.exists():
         cached = _validated_cache(
             output_path,
-            cache_key,
+            input_cache_key,
+            identities,
             timeline_path,
             source.record.canonical.sha256,
             source.canonical_path,
@@ -260,14 +287,8 @@ def analyze_structure(
             {"expected": STRUCTURE_PARAMETERS, "actual": raw.get("parameters")},
             5,
         )
-    parameters = {
-        **STRUCTURE_PARAMETERS,
-        **identities,
-        "cache_key": cache_key,
-        "mvt_version": __version__,
-    }
     try:
-        structure = Structure(
+        draft = Structure(
             schema_version="0.1",
             source=Source(
                 path=os.path.relpath(source.canonical_path, output_path.parent),
@@ -279,15 +300,35 @@ def analyze_structure(
                 path=os.path.relpath(timeline_path, output_path.parent),
                 sha256=identities["timeline_sha256"],
             ),
-            cache_key=cache_key,
+            cache_key=input_cache_key,
             analyzer=Provenance(
                 tool="librosa-structure",
                 version=str(raw["librosa_version"]),
-                parameters=parameters,
+                parameters={},
             ),
             beat_samples=raw["beat_samples"],
             boundaries=raw["boundaries"],
             repeated_groups=raw["repeated_groups"],
+        )
+        completed_cache_key = _completed_cache_key(input_cache_key, draft)
+        parameters = {
+            **STRUCTURE_PARAMETERS,
+            **identities,
+            "input_cache_key": input_cache_key,
+            "cache_key": completed_cache_key,
+            "mvt_version": __version__,
+        }
+        structure = Structure.model_validate(
+            draft.model_copy(
+                update={
+                    "cache_key": completed_cache_key,
+                    "analyzer": Provenance(
+                        tool="librosa-structure",
+                        version=draft.analyzer.version,
+                        parameters=parameters,
+                    ),
+                }
+            ).model_dump(mode="json")
         )
     except (KeyError, TypeError, ValidationError) as exc:
         details = exc.errors(include_url=False) if isinstance(exc, ValidationError) else str(exc)
@@ -415,8 +456,12 @@ def apply_structure(
         )
     sections = _selected_sections(selection, structure, timeline.source.duration_samples)
     selection_hash = sha256_file(selection_path)
+    output_source = timeline.source.model_copy(
+        update={"path": Path(os.path.relpath(source.canonical_path, output_path.parent)).as_posix()}
+    )
     enriched = timeline.model_copy(
         update={
+            "source": output_source,
             "analysis": [
                 *timeline.analysis,
                 Provenance(

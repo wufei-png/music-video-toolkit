@@ -1,14 +1,15 @@
 # Post-S10 backlog — 2026-09-19
 
 This is the local, evidence-ordered backlog after S01–S10. On 2026-09-19 the user selected P0, P1
-and P2 in order; their confirmed implementation contracts are S11, S12 and S13. S11 is now
-complete; selection alone still does not make S12 or S13 an implemented capability. Work on only
+and P2 in order; their confirmed implementation contracts are S11, S12 and S13. S11 and S12 are
+now complete; selection alone still does not make S13 an implemented capability. Work on only
 the first dependency-ready unfinished slice.
 
 ## Current baseline
 
-- This audit began from clean `main` at `ea614da`; S01–S11 are complete. `mvt capabilities` reports CLI and
-  production stage `s11`, with fixed 1920x1080/30 fps rendering plus completed-preview comparison.
+- This audit began from clean `main` at `ea614da`; S01–S12 are complete. `mvt capabilities` reports CLI and
+  production stage `s12`, with closed 1920x1080/30 and 1080x1920/30 rendering, completed-preview
+  comparison and explicit review/apply structure analysis.
 - The two external production finals and their QA evidence exist under
   `../projects/soft-harm/s10/final-v1-bulge/` and
   `../projects/zhi-mai-yi-ren-fen/s10/final-v1-bulge/`. Both have exact expected frame counts,
@@ -19,14 +20,16 @@ the first dependency-ready unfinished slice.
   and installs an auditable manifest, range-major reel and labeled contact sheet without running
   upstream pipeline commands.
 - Output contracts, renderer configuration, probing, preview frame alignment, schemas, and tests
-  are fixed to 1920x1080 at 30 fps. Portrait is not a parameter switch today.
-- Current analysis provides mix/stem RMS, drum onset, bass low energy, beat estimates, and chroma.
-  It does not claim downbeats, bars, pitch tracks, semantic labels, or robust repeated-section
-  structure.
+  accept only the two S12 30 fps tuples. Portrait remains a separate plan variant rather than an
+  automatic artistic reframe.
+- Current analysis provides mix/stem RMS, drum onset, bass low energy, beat estimates, chroma and
+  deterministic beat-synchronous novelty/repetition candidates. It does not claim downbeats, bars,
+  pitch tracks, melody or semantic labels; applying candidates requires an explicit reviewed selection.
 - Chromium rendering is ready on this Mac but the measured backend is SwiftShader. The optional
   separation/alignment environments are installed; their model caches are currently absent.
 - `../projects/README.md`, both case READMEs, and both `case.json` status blocks were refreshed from
-  S10 evidence. The external `soft-harm/s11/` record contains the S11 A/B/C acceptance evidence.
+  S10 evidence. External `soft-harm/s11/` and `soft-harm/s12/` records contain the S11 and S12
+  acceptance evidence.
 
 ## Priority order
 
@@ -44,15 +47,15 @@ Acceptance: two variants of one song use the same canonical audio and preview ra
 overwrites the other; manifests identify all differing inputs; a side-by-side/contact-sheet or
 ordered review reel and a feedback record make the comparison auditable.
 
-### P1 / S12 — highest-value core extensions
+### P1 / S12 — complete
 
-3. **Generalize output profiles, delivering portrait first.** Add a strictly validated
+3. **Completed: generalize output profiles, delivering portrait first.** Added a strictly validated
    1080x1920/30 profile while retaining 1920x1080/30. Make abstract framing, media fit/crop,
    particles, lyric safe areas, font sizing, transitions, preview alignment, output probing, cache
    identity, schemas, migrations, examples, capabilities, and tests profile-aware. Validate on the
    same audio/plan intent as a landscape control; do not claim automatic artistic reframing from a
    mechanical crop.
-4. **Improve repeated-section structure before adding heavier models.** Extend the existing locked
+4. **Completed: improve repeated-section structure before adding heavier models.** Extended the locked
    librosa path with beat-synchronous chroma/energy self-similarity and unlabeled repeated-section or
    boundary candidates, retaining confidence/provenance and manual overrides. Compare current
    energy-novelty routing with the new candidates on the same song and ranges. Only pursue downbeat,
@@ -98,6 +101,5 @@ Upstream evidence to refresh when either slice is selected:
 
 ## Confirmed sequence
 
-S11 is complete. Implement [S12](S12-portrait-structure.md), then
-[S13](S13-astrofox-backend.md). Each slice has its own acceptance evidence and commits. GUI,
-complete projectM integration and MCP remain outside these three sessions.
+S12 is complete. Implement [S13](S13-astrofox-backend.md) next. Each slice has its own acceptance
+evidence and commits. GUI, complete projectM integration and MCP remain outside these three sessions.

@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {layoutForOutput, lyricBounds, mediaScale, normalizedX} from "../dist/index.js";
+import {
+  fitCaptionLayout,
+  layoutForOutput,
+  lyricBounds,
+  mediaScale,
+  normalizedX,
+} from "../dist/index.js";
 
 test("only the closed landscape and portrait dimensions have layouts", () => {
   const landscape = layoutForOutput(1920, 1080);
@@ -38,4 +44,25 @@ test("portrait lyric mesh stays inside its explicit safe area through motion", (
     assert.ok(bounds.bottom <= layout.lyrics.safeBottom);
   }
   assert.equal(layout.lyrics.maximumLines, 5);
+  assert.deepEqual(
+    [layout.lyrics.meshWidth, layout.lyrics.meshHeight],
+    [(2 * 9 * 0.82) / 16, 0.62],
+  );
+});
+
+test("caption fitting tests the minimum font and rejects remaining overflow", () => {
+  const lyrics = layoutForOutput(1080, 1920).lyrics;
+  const visited = [];
+  const fit = fitCaptionLayout(lyrics, (fontSize) => {
+    visited.push(fontSize);
+    return fontSize === lyrics.minimumFontSize ? lyrics.maximumLines : lyrics.maximumLines + 1;
+  });
+  assert.deepEqual(fit, {fontSize: 52, lineCount: 5});
+  assert.equal(visited.at(-1), lyrics.minimumFontSize);
+  assert.ok(!visited.includes(lyrics.minimumFontSize - lyrics.fontStep));
+
+  assert.throws(
+    () => fitCaptionLayout(lyrics, () => lyrics.maximumLines + 1),
+    /caption exceeds 5 lines at minimum font size 52/,
+  );
 });

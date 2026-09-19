@@ -29,11 +29,17 @@ S03 emits one value every 1024 canonical samples and zero-pads only the final an
 
 ## Visual plan
 
-Contains seed, a fixed 1080p30 output profile, mode `abstract|mood|hybrid`, whole-song layers, routes, section overrides and lyrics mode/reference. Layers have stable IDs, registered `kind`, category `abstract|media|text`, enabled flag, opacity, typed-at-adapter-boundary parameters and optional asset ID. Generic JSON parameters are a bootstrap envelope: backend allowlists and bounds are mandatory before execution in S04/S05.
+Contains seed, one closed output profile, mode `abstract|mood|hybrid`, whole-song layers, routes, section overrides and lyrics mode/reference. The only accepted tuples are landscape `1920x1080/30` and portrait `1080x1920/30`; an omitted profile remains the legacy landscape default. Arbitrary sizes, 4K and 60 fps are rejected. Layers have stable IDs, registered `kind`, category `abstract|media|text`, enabled flag, opacity, typed-at-adapter-boundary parameters and optional asset ID. Generic JSON parameters are a bootstrap envelope: backend allowlists and bounds are mandatory before execution in S04/S05.
 
 Routes target `layer_id` + a parameter and consume a named signal/event with an explicit transform. Overrides address existing section/layer IDs. Baseline modes require at least one enabled abstract layer for A, media layer for B, and both for C; text overlays are permitted in all. Disabling the required layer through overrides is checked during plan resolution in S04/S05.
 
 S04 resolves editable abstract plans into `resolved-plan.json`. Its contiguous spans cover `[0, duration_samples)` exactly; named timeline sections use half-open ownership, gaps retain whole-song defaults, and manual label/origin are preserved. When no sections exist, novelty may create unlabeled `automatic` candidate spans only. Orb, ribbon and particles have closed parameter allowlists and numeric bounds. Linear interpolation holds the final sampled signal value; `smooth` records independent attack/release seconds. A missing routed signal is an error rather than zero.
+
+## Structure analysis and reviewed application
+
+S12 `structure.json` is separate from the timeline. It binds the canonical source, exact base timeline hash, locked librosa runtime, analyzer/adapter hashes, configuration and cache identity derived from both the input configuration and completed candidate content. A schema-valid edit to boundaries or groups is not a cache hit. Beat-synchronized cells combine existing normalized `mix.rms` and 12-bin `mix.chroma.*`; cosine self-similarity produces deterministic novelty boundaries and unlabeled repeated-span groups with confidence and anchor provenance. It does not infer semantic section names, downbeats, bars, pitch or melody.
+
+`mvt structure analyze` never changes the base timeline. `mvt structure apply` requires a separate typed selection with `reviewed: true`, exact structure/timeline hashes, a complete contiguous set of selected ranges, and an explicit `require-empty|replace` policy for pre-existing sections. Exact candidate edges remain automatic with propagated confidence; labels or adjusted/unreferenced edges become manual without automatic confidence. Application writes a separate timeline, rebases its source reference to that output record, and never overwrites the base, structure or selection.
 
 ## Assets
 
@@ -51,7 +57,7 @@ S06 imports UTF-8 LRC/SRT only. LRC cues end at the next retained timestamp or c
 
 S07 aligns known UTF-8 text with isolated WhisperX CPU timing evidence. The ASR transcript is never emitted as lyric content. Exact-character matches map monotonically across the supplied text so repeated choruses retain source order; low-coverage lines remain explicit unmatched report entries. Optional independent reference points use fixed 250 ms median and 500 ms nearest-rank P90 limits. A complete reviewed onset document, including previously unmatched lines, produces a separate `edited` artifact whose cue ends are the next reviewed start or song end and does not rerun a model.
 
-Enabled lyrics require a checked local font asset and the resolved plan binds the lyrics artifact hash. The renderer embeds that font, wraps up to five centered lines inside a fixed safe-area panel and applies a 100 ms sample-clock fade capped to half the cue. Interludes have no caption. `off` carries no lyric path/font/hash and does not open a lyric artifact.
+Enabled lyrics require a checked local font asset and the resolved plan binds the lyrics artifact hash. The renderer embeds that font, wraps centered lines inside profile-specific safe-area geometry and font bounds, and applies a 100 ms sample-clock fade capped to half the cue. It tests the declared minimum font exactly and fails explicitly if a cue still exceeds the profile line limit; it does not silently shrink below the bound or clip extra lines. Portrait and landscape have separate responsive limits; this is deterministic layout, not automatic artistic reframing. Interludes have no caption. `off` carries no lyric path/font/hash and does not open a lyric artifact.
 
 ## Render manifest
 
@@ -61,23 +67,27 @@ S08 adds a `preview` request containing uniquely named, ordered and non-overlapp
 
 Every completed render manifest now requires a cache key. Preview cache identity covers the source record, timeline/analysis provenance, editable and resolved plans, asset manifests and material files including fonts, renderer source and dependency lock, seed, fps, range request and review-reel choice. A cache hit revalidates every declared output hash. Existing stale, incomplete or differently keyed output directories fail without overwrite; failed temporary jobs are removed before any completed aggregate manifest is installed.
 
+S12 carries the validated plan profile through renderer configuration, aspect-aware camera/media fit and crop, normalized motion, particles, lyrics, FFmpeg, output probing, cache identity, manifests and previews. Output probes must match the declared tuple exactly. Landscape and portrait are separate plan variants that may share intent; one is not implicitly derived or artistically reframed from the other.
+
 S11 render/preview manifests additionally record `canonical_audio_sha256`. The field remains optional so older S08–S10 evidence still validates, but comparison requires it and rejects legacy manifests without canonical identity.
 
 ## Comparison
 
 A comparison request contains at least two ordered variants with stable IDs, human labels and paths to distinct completed aggregate preview manifests. Aggregate identity requires the recorded preview request and adapter inputs; resolved aliases or symlinks to the same manifest are rejected. Reordering variants changes comparison identity and output order. Comparison never renders or invokes analysis, alignment or plan resolution.
 
-Every variant must share the canonical-audio hash, original-source hash, ordered global sample ranges, range count and actual probed stream profile. Comparison requires H.264/yuv420p video at a constant rational frame rate plus AAC 48 kHz stereo audio; codec parameters, time bases, pixel/sample formats and codec extradata are bound by an exact compatibility signature so stream-copy inputs cannot silently disagree. Every clip must have the exact frame count implied by its range and probed rational fps, including during standalone `comparison` validation. For each range, decoded stereo 48 kHz `s24le` PCM hashes must match across variants. Preview manifests, all referenced clips and optional per-preview review reels are hash-checked before output installation. Plan, assets, seed, input graph, renderer and environment hashes are recorded per variant and may intentionally differ.
+Every variant must share the canonical-audio hash, original-source hash, ordered global sample ranges, range count and actual probed stream profile. Comparison requires H.264/yuv420p video at a constant rational frame rate plus AAC 48 kHz stereo audio; codec parameters, dimensions, time bases, pixel/sample formats and codec extradata are bound by an exact compatibility signature so stream-copy inputs cannot silently disagree. Landscape and portrait therefore require separate comparison requests. Every clip must have the exact frame count implied by its range and probed rational fps, including during standalone `comparison` validation. For each range, decoded stereo 48 kHz `s24le` PCM hashes must match across variants. Preview manifests, all referenced clips and optional per-preview review reels are hash-checked before output installation. Plan, assets, seed, input graph, renderer and environment hashes are recorded per variant and may intentionally differ.
 
 `comparison.json` binds the request, input manifest/clip hashes and probes, tool versions, ordered variants and generated artifact hashes. The review reel is an FFmpeg stream copy in range-major then variant-major order; it is decoded/probed after concatenation and must retain the shared compatibility signature and summed frame count before installation. The labeled contact sheet uses the same relative midpoint frame for every variant within a range. Subjective feedback and winner selection remain separate external records. The output directory is installed atomically; identical intact work may be reused only after all input and output hashes are revalidated, while stale, partial or damaged directories fail without overwrite.
 
 ## Command contract
 
-Bootstrap commands are `--help`, `--version`, `capabilities`, `doctor`, `validate` and `schema`. S01 implements `decode`; S02–S05 extend `render`; S03 implements `analyze`; S04 implements `plan resolve`; S05 implements `assets check`; S06 implements `lyrics import`; S07 implements `lyrics align` and `lyrics apply-edits`; S08 implements `preview`; S11 implements `compare`:
+Bootstrap commands are `--help`, `--version`, `capabilities`, `doctor`, `validate` and `schema`. S01 implements `decode`; S02–S05 extend `render`; S03 implements `analyze`; S04 implements `plan resolve`; S05 implements `assets check`; S06 implements `lyrics import`; S07 implements `lyrics align` and `lyrics apply-edits`; S08 implements `preview`; S11 implements `compare`; S12 implements `structure analyze` and `structure apply`:
 
 ```text
 mvt decode INPUT --project DIR
 mvt analyze --project DIR --stems four|none
+mvt structure analyze --project DIR --timeline FILE --output FILE
+mvt structure apply --project DIR --selection FILE --output FILE
 mvt plan resolve --project DIR --plan FILE
 mvt assets check --project DIR
 mvt lyrics import FILE --project DIR
