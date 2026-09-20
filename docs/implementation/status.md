@@ -1,12 +1,62 @@
 # Implementation status
 
+## S15 projectM preset catalog — 2026-09-21
+
+Implementation commit: `6497399`; this status handoff is the following local
+documentation commit. No push or publication was requested.
+
+The user accepted both original visual studies for the toolkit catalog and
+prefers `study-soft-flow` for `soft-harm`; `study-beat-petals` may suit another
+song but has no such song-level proof. S15 adds both to the same hash-approved
+single-preset production path as `mvt-wave`, exposes all three in capabilities,
+and binds the approved catalog into the backend integration identity. Prior S14
+projectM requests/results remain historical and must be recreated. Provider
+schemas did not change. The production petal file drops the low-opacity border
+from `study-v1`; that border's smoothed line caused repeated synthetic MP4
+bytes to differ. The filled petal visual remains, and both old and new contact
+sheets were inspected.
+
+The pinned macOS checkout/build passed `scripts/projectm_env.py check`.
+Real synthetic acceptance under `/Users/wufei2/.cache/mvt/projectm/` passed for
+both new presets: repeated excerpt MP4 bytes, silent CFR provider manifests,
+landscape and portrait composition, saved-artifact rerender, and S11 comparison.
+Soft-flow and petals had decoded full/excerpt PSNR 60.53 dB and 63.00 dB.
+Raw RGBA full/excerpt comparisons were not byte-identical: respectively 20 and
+783 of 41,472,000 8-bit channels differed, with maximum change 2 levels.
+The acceptance bound is at most 0.01% changed channels and two levels; the S14
+`mvt-wave` exact-raw gate remains in place.
+
+External `../projects/soft-harm/projectm-exploration-20260920/approved-v1/`
+has six current production-adapter provider jobs on the three accepted C ranges,
+six checked audio-preserving overlay clips, and a completed three-way comparison.
+The checked comparison SHA-256 is
+`1b826a7ccb3ad2a823bbdfd953f8c5643e121cced83666e5d334accf33c87d92`.
+`approved-v1/repeat-check/qa.json` records byte-identical real-song first-range
+provider repeats for both production presets. `approved-v1/blackdetect.json`
+found no interval of at least 0.1 seconds in the six overlays; the comparison
+artifact also passed single-artifact validation.
+Its range-major reel/contact sheet show the retained visual distinction and
+readable lyrics; this is a short same-song review, not a full-song result or
+proof of another song's fit. The user's subjective preference is in the external
+song README; generated media and private inputs remain outside Git.
+
+Checks: `uv sync --locked --group dev`, `uv run --locked pytest -q`
+(**173 passed in 292.84 s**), Ruff lint/format, schema export check,
+`pnpm --dir renderer install --frozen-lockfile`, `pnpm --dir renderer check`
+(**25 passed**), skill-creator `quick_validate.py`, pinned runtime check,
+synthetic acceptance for both new presets, `projectm_render_check.py` for
+`mvt-wave`, all six real song jobs, both real first-range repeats, S11
+comparison, copied-audio checks, six-clip blackdetect, contact-sheet visual
+inspection and `git diff --check` passed. These are same-host technical and
+song-specific short-sample checks, not cross-host pixel or full-song proof.
+
 ## Two review-only projectM visual studies — 2026-09-21
 
 Local commit `07c9aea` adds two original MIT projectM preset candidates,
 `study-soft-flow` and `study-beat-petals`, plus an external-output-only visual
-study script. The production `mvt provider projectm` allowlist, S14 lock,
-capabilities and schemas remain at the sole `mvt-wave` preset. The new presets
-are not production-approved.
+study script. At that commit, the production `mvt provider projectm` allowlist,
+S14 lock, capabilities and schemas still listed only `mvt-wave`; the new presets
+were not yet production-approved. S15 above supersedes that capability state.
 
 External `../projects/soft-harm/projectm-exploration-20260920/study-v1/` holds
 the review-only result. The pinned S14 checkout/build passed its exact source,
@@ -25,8 +75,8 @@ overlays. The checked comparison SHA-256 is
 `edc001df71753de88d6ce9036ed009bd029aadb1ba8dc5854a489cd509455e41`;
 `qa.json`, `repeat-check/qa.json`, `blackdetect.json`, and `review-notes.md` keep
 the detailed outside-Git evidence. Contact-sheet inspection found distinct
-visuals and readable captions; motion, musical fit and subjective style await
-the user's review. No full-song projectM result was made.
+visuals and readable captions; motion, musical fit and subjective style awaited
+the user's review at that time. No full-song projectM result was made.
 
 Checks: `uv sync --locked --group dev`, `uv run --locked pytest -q` (**167 passed
 in 264.88 s**), focused S14 tests (**4 passed**), Ruff lint and format,
@@ -504,21 +554,21 @@ Model installation/inference, browser/WebGL rendering, external media compositio
 | S11 same-audio variant comparison | Complete — `5fad921`, `827f629`, `2f7f667` plus handoff |
 | S12 portrait and repeated structure | Complete — five implementation commits plus final handoff |
 | S13 Astrofox automated backend | Complete — eight implementation commits plus final capability/validation handoff; projectM feasibility only |
-| S14 bounded projectM provider | Complete — five dependency-ordered commits plus final capability/validation handoff; one approved preset |
+| S14 bounded projectM provider | Complete — five dependency-ordered commits plus final capability/validation handoff; one approved preset at S14 |
+| S15 projectM preset catalog | Complete — `6497399` plus status handoff; three hash-approved presets, current adapter, synthetic and `soft-harm` three-range evidence |
 
 ## Exact next action
 
-Review the nine-clip, range-major reel and contact sheet under
-`../projects/soft-harm/projectm-exploration-20260920/study-v1/comparison/`.
-The user should choose soft flow, beat petals, revisions, or neither based on
-the actual motion and song fit. If a candidate is selected, run a separate
-production preset allowlist/capability gate before a full-song render. The
-previous `mvt-wave` line visual remains rejected for this song.
+For a later `soft-harm` projectM full-song request, start from the accepted
+`study-soft-flow` preference, complete the song plan and ordinary production
+approval record, then create current catalog-bound provider requests and
+render into a new external output. Do not reuse historical `study-v1` or S14
+provider requests. The previous `mvt-wave` line visual remains rejected for
+this song. For a different song, review samples before choosing petals.
 
-S14 is complete within the single approved projectM preset and pinned macOS runtime
+S15 is complete within three approved presets and the pinned macOS runtime
 boundary. Broader host validation and the P3 GUI/editor remain later slices.
-Subjective selection among built-in, Astrofox and projectM variants remains in
-the song workspace. No toolkit push or publication was requested for this study.
+No toolkit push or publication was requested.
 
 On the original host the parent workspace has `projects/README.md`, `projects/soft-harm/case.json`
 and `projects/zhi-mai-yi-ren-fen/case.json`. These are updated local source inventories, not runtime
