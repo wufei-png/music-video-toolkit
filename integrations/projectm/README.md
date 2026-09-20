@@ -149,3 +149,33 @@ Pre-roll frame counts were 300, 1170 and 5700; provider elapsed times were 6.176
 Its contact sheet shows the waveform in all three ranges and saved captions where
 lyrics are present. This proves a technical same-audio route, not subjective style
 approval or full-song rendering. Other hosts and preset packs remain untested.
+
+## Review-only visual study after S14
+
+`presets/study-soft-flow.milk` and `presets/study-beat-petals.milk` are original MIT
+candidate visuals. They are **not** in the production preset allowlist. The former
+uses translucent filled shapes for slow warm/cool light, while the latter uses eight
+beat-reactive filled petals. Both disable projectM's default line waveform. The
+separate `scripts/projectm_visual_study.py` tool copies these fixed candidates into
+an external output, renders the global-time ranges with the checked pinned runtime,
+validates each silent provider result, overlays it on the same accepted C preview
+with copied AAC, and creates a three-variant S11 comparison. It does not change
+`mvt provider projectm`, `mvt capabilities`, the S14 lock, or the release boundary.
+
+For the original local `soft-harm` case, after explicit external setup:
+
+```sh
+uv run --locked python scripts/projectm_visual_study.py \
+  --project ../projects/soft-harm/s10/mvt-project \
+  --control-preview ../projects/soft-harm/s11/preview-c/preview.render.json \
+  --checkout /absolute/external/projectm/core \
+  --build /absolute/external/projectm/build \
+  --output ../projects/soft-harm/projectm-exploration-20260920/new-study
+```
+
+The output directory must be new and outside this repository. The script requires
+the exact 10–22, 39–51 and 190–202 second S11 ranges, a matching canonical song,
+and a ready locked runtime. The provider request and manifest bind the candidate
+preset and study-script hashes. Technical comparison and repeated-output checks
+do not establish aesthetic approval; review the short samples before any new preset
+is added to the production allowlist or rendered for a full song.
