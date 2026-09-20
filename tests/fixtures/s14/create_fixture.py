@@ -14,7 +14,12 @@ from music_video_toolkit.projectm_provider import INTEGRATION, LOCK, integration
 
 
 def write_fixture(
-    directory: Path, *, start_frame: int = 0, end_frame: int = 6, portrait: bool = False
+    directory: Path,
+    *,
+    start_frame: int = 0,
+    end_frame: int = 6,
+    portrait: bool = False,
+    preset_id: str = "mvt-wave",
 ) -> Path:
     directory.mkdir(parents=True)
     canonical = directory / "canonical.wav"
@@ -27,14 +32,16 @@ def write_fixture(
             value = int(0.25 * (2**23 - 1) * math.sin(2 * math.pi * 440 * sample / 48000))
             samples.extend(struct.pack("<i", value)[:3] * 2)
         stream.writeframes(samples)
-    preset = directory / "mvt-wave.milk"
-    shutil.copyfile(INTEGRATION / "presets/mvt-wave.milk", preset)
+    if preset_id not in LOCK["approved_presets"]:
+        raise ValueError(f"unknown fixture preset: {preset_id}")
+    preset = directory / f"{preset_id}.milk"
+    shutil.copyfile(INTEGRATION / "presets" / preset.name, preset)
     project = directory / "project.json"
     project.write_text(
         json.dumps({"preset": {"path": preset.name, "sha256": sha256_file(preset)}}) + "\n",
         encoding="utf-8",
     )
-    parameters = {"preset_id": "mvt-wave", "policy": "locked-single"}
+    parameters = {"preset_id": preset_id, "policy": "locked-single"}
     parameter_hash = hashlib.sha256(
         json.dumps(parameters, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()

@@ -1,6 +1,6 @@
 # projectM integration
 
-The S13 feasibility probe below is historical; the bounded S14 production route is described later. The upstream [libprojectM source](https://github.com/projectM-visualizer/projectm)
+The S13 feasibility probe below is historical; the bounded production route is described later. The upstream [libprojectM source](https://github.com/projectM-visualizer/projectm)
 is pinned in `lock.json` at `1e7ef7803b69024d1e0656705670adda2ffac817`; its
 `projectm-eval` submodule is pinned at `22fb0cfd8f2dfbcd2b68f2443e7f44e19b32c09a`. The core
 license file is LGPL 2.1, and its API headers permit LGPL 2.1 or later. This probe's C++ provider
@@ -68,16 +68,21 @@ the same encoded SHA-256 twice:
 This intermediate probe proved only the short self-authored feasibility preset on this Mac.
 S14's later full/excerpt and song-range evidence appears below.
 
-## S14 approved-preset offline provider CLI
+## Approved-preset offline provider CLI
 
 `build` also compiles the repository's `provider.cpp` into
 `/absolute/external/build/mvt-projectm-render`, and records its hash. The CLI
 accepts the existing `provider-request` schema. Its project JSON contains only a
 `preset` reference with path and SHA-256; that file is the request's sole asset.
-For the current approved `mvt-wave` preset, parameters are exactly
-`{"preset_id":"mvt-wave","policy":"locked-single"}`. The backend's
-`integration_patch_sha256` is the SHA-256 of the locked patch digest bytes followed
-by `provider.cpp` bytes. No plugin, additional texture or preset transition is
+Choose exactly one catalog ID from `lock.json`: `mvt-wave` (original line
+waveform), `study-soft-flow` (filled light haze), or `study-beat-petals`
+(beat-reactive filled petals). The matching MIT `.milk` files are in `presets/`.
+Parameters are exactly `{"preset_id":"ID","policy":"locked-single"}`. The
+project JSON and sole request asset must name that preset and its approved SHA-256.
+The backend's `integration_patch_sha256` hashes the locked patch digest bytes,
+`provider.cpp` bytes, and canonical sorted JSON of the approved preset catalog.
+S14 requests carry the former identity and must be recreated; see
+`docs/architecture/migrations.md`. No plugin, additional texture or preset transition is
 accepted. The source WAV must be the checked canonical 48 kHz stereo 24-bit PCM.
 
 After explicit setup, run an offline job:
@@ -104,10 +109,10 @@ It invokes the offline wrapper in a child
 process and revalidates the request, result, media and reported video hash at its
 own boundary. `mvt doctor` reports `not_installed`, `installed` or `ready` for the
 configured runtime (`MVT_PROJECTM_CHECKOUT` and `MVT_PROJECTM_BUILD`); `ready`
-means the pinned binary is intact. `mvt capabilities` advertises the bounded
-S14 route independently of local runtime readiness.
+means the pinned binary is intact. `mvt capabilities` advertises the approved
+preset IDs independently of local runtime readiness.
 
-The synthetic S14 acceptance command also checks the full 30-frame run against a
+The synthetic acceptance command also checks the full 30-frame run against a
 nonzero 15–20-frame excerpt at the raw RGBA boundary, repeats the encoded excerpt,
 exercises both closed profiles, composes canonical audio and saved captions,
 re-renders from saved artifacts, and compares a projectM preview with a built-in
@@ -115,6 +120,7 @@ abstract preview:
 
 ```sh
 uv run --locked python scripts/projectm_acceptance_check.py --checkout /absolute/external/core --build /absolute/external/build
+# Select either new preset with --preset-id study-soft-flow or --preset-id study-beat-petals.
 ```
 
 The retained run under `/Users/wufei2/.cache/mvt/projectm/s14-synthetic-acceptance/`
@@ -135,6 +141,12 @@ and runs S11 comparison. Use a new output directory outside Git:
 uv run --locked python scripts/projectm_song_check.py --project /absolute/song/project --timeline /absolute/song/timeline.json --lyrics /absolute/song/lyrics.edited.json --font /absolute/font.ttf --control-preview /absolute/song/built-in/preview.render.json --checkout /absolute/external/core --build /absolute/external/build --output /absolute/song/new-projectm-acceptance
 ```
 
+Choose a catalog entry with `--preset-id study-soft-flow` or
+`--preset-id study-beat-petals`; omission retains `mvt-wave` for existing helper
+usage. The helper writes current typed requests and keeps all results in the
+external output directory. A song-specific preference is a production plan
+choice, not an automatic preset selector.
+
 The retained `soft-harm` run is at `../projects/soft-harm/s14/projectm-v1/`. Its
 canonical WAV SHA-256 is `d03ba9b439bf204b60569e876746d6393daf21616e527fe081f054ef91231c34`.
 The exact S11 control ranges are 10–22, 39–51 and 190–202 seconds. Each projectM
@@ -150,17 +162,22 @@ Its contact sheet shows the waveform in all three ranges and saved captions wher
 lyrics are present. This proves a technical same-audio route, not subjective style
 approval or full-song rendering. Other hosts and preset packs remain untested.
 
-## Review-only visual study after S14
+## S15 approved visual presets and bounded overlay review
 
 `presets/study-soft-flow.milk` and `presets/study-beat-petals.milk` are original MIT
-candidate visuals. They are **not** in the production preset allowlist. The former
+visuals in the production preset catalog. The former
 uses translucent filled shapes for slow warm/cool light, while the latter uses eight
-beat-reactive filled petals. Both disable projectM's default line waveform. The
-separate `scripts/projectm_visual_study.py` tool copies these fixed candidates into
-an external output, renders the global-time ranges with the checked pinned runtime,
+beat-reactive filled petals. The approved petal file removes the low-opacity
+outline present in the historical study sample; line smoothing caused repeat
+drift. Both disable projectM's default line waveform. The current
+`scripts/projectm_visual_study.py` tool copies these fixed presets into
+an external output, renders the global-time ranges through the production
+`mvt provider projectm` adapter with the checked pinned runtime,
 validates each silent provider result, overlays it on the same accepted C preview
 with copied AAC, and creates a three-variant S11 comparison. It does not change
-`mvt provider projectm`, `mvt capabilities`, the S14 lock, or the release boundary.
+the full-song release boundary. The `study-v1` outputs remain a historical
+review-only run with their original hashes and do not pass the current backend
+identity; recreate current requests instead of rewriting them.
 
 For the original local `soft-harm` case, after explicit external setup:
 
@@ -175,7 +192,8 @@ uv run --locked python scripts/projectm_visual_study.py \
 
 The output directory must be new and outside this repository. The script requires
 the exact 10–22, 39–51 and 190–202 second S11 ranges, a matching canonical song,
-and a ready locked runtime. The provider request and manifest bind the candidate
-preset and study-script hashes. Technical comparison and repeated-output checks
-do not establish aesthetic approval; review the short samples before any new preset
-is added to the production allowlist or rendered for a full song.
+and a ready locked runtime. The provider request and manifest bind the approved
+catalog identity and preset hashes; the overlay manifest binds the script hash.
+The user accepted both visuals for the catalog and prefers soft flow on this song.
+Another song's petal suitability has not been established. Full-song output
+requires a separate production request and plan review.

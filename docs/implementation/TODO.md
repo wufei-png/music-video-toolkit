@@ -89,18 +89,20 @@ user subsequently rejected that line waveform for `soft-harm`; its technical
 evidence remains historical. Arbitrary presets, preset switching, other hosts
 and full-song projectM output remain outside the proven boundary.
 
-### Post-S14 projectM visual study — samples ready, selection pending
+### Post-S14 projectM visual study — completed, followed by S15
 
-Two self-authored, review-only candidates now exist: soft filled-light flow and
+Two self-authored candidates were reviewed: soft filled-light flow and
 beat-reactive filled petals. Their `soft-harm` overlays use the same accepted C
 preview, canonical audio and three S11 ranges. The external study under
 `../projects/soft-harm/projectm-exploration-20260920/study-v1/` has a three-way
 reel, contact sheet, provider/request manifests, repeat evidence and objective
 media checks. The existing `mvt-wave` line effect was rejected for this song;
-the two new candidates await user viewing and feedback. They are **not** in the
-production preset allowlist. Promote a selected visual only through a separate
-hash, repeat/global-time, licensing, same-audio and song-review gate; do not
-infer full-song approval from technically valid short samples.
+the user accepted both for the project catalog and prefers soft flow for this
+song. S15 added the two checked IDs to the production preset allowlist and ran
+separate hash, repeat/global-time, licensing, same-audio and song-review gates.
+The production petal preset drops the low-opacity outline that caused repeated
+raw/encoded drift; the `study-v1` review remains historical. No full-song
+projectM output was inferred from short-sample approval.
 
 Pinned upstream references:
 

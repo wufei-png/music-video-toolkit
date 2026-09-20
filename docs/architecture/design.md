@@ -68,7 +68,12 @@ Post-S10 development proceeds in three dependency-ordered slices:
    fallback. In the S13 sequence, projectM received only a locked feasibility proof.
    The separately authorized S14 slice added one hash-approved preset adapter.
 
-Linux + NVIDIA validation, 4K/60fps, broader projectM preset support, pitch/downbeat analyzers and GUI
+The later S15 user review admitted exactly two additional self-authored hash-bound
+projectM presets; it did not authorize arbitrary preset packs or automatic style
+selection. For `soft-harm`, the selected preference is soft flow; suitability for
+other songs remains a per-song review.
+
+Linux + NVIDIA validation, 4K/60fps, arbitrary projectM preset packs, pitch/downbeat analyzers and GUI
 editing remain later work. AI service orchestration is outside the core; extend the harness-facing
 workflow only when a concrete need appears.
 

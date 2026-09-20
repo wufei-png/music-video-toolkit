@@ -21,7 +21,7 @@ shapecode_0_a2=0.01
 shapecode_0_border_r=0.78
 shapecode_0_border_g=0.54
 shapecode_0_border_b=0.35
-shapecode_0_border_a=0.12
+shapecode_0_border_a=0
 shape_0_per_frame1=ang=6.2831853*instance/8+0.12*sin(time*0.24);
 shape_0_per_frame2=x=0.50+(0.115+0.018*bass_att)*cos(ang);
 shape_0_per_frame3=y=0.37+(0.095+0.014*bass_att)*sin(ang);

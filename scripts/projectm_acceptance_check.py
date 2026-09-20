@@ -1,4 +1,4 @@
-"""Real synthetic S14 full/excerpt, profile, composition and comparison proof."""
+"""Real synthetic projectM full/excerpt, profile, composition and comparison proof."""
 
 import argparse
 import hashlib
@@ -16,6 +16,7 @@ from music_video_toolkit.plan import resolve_plan
 from music_video_toolkit.preview import render_preview
 from music_video_toolkit.project import sha256_file
 from music_video_toolkit.projectm import run_projectm
+from music_video_toolkit.projectm_provider import approved_preset_ids
 from music_video_toolkit.provider import validate_provider_result
 from music_video_toolkit.provider_bundle import bundle_provider_previews
 from music_video_toolkit.provider_composition import compose_provider_preview
@@ -32,7 +33,9 @@ def write_request(base: dict, path: Path, start: int, end: int, *, portrait: boo
     return path
 
 
-def raw_frame_hashes(binary: Path, pcm: Path, preset: Path, start: int, end: int) -> list[str]:
+def raw_frames(
+    binary: Path, pcm: Path, preset: Path, start: int, end: int, *, keep: range
+) -> tuple[list[str], list[bytes]]:
     frame_bytes = 1920 * 1080 * 4
     command = [
         str(binary),
@@ -47,14 +50,36 @@ def raw_frame_hashes(binary: Path, pcm: Path, preset: Path, start: int, end: int
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     assert process.stdout is not None and process.stderr is not None
     hashes = []
-    for _ in range(end - start):
+    retained = []
+    for frame_number in range(start, end):
         frame = process.stdout.read(frame_bytes)
         if len(frame) != frame_bytes:
             raise AssertionError("native renderer wrote an incomplete frame")
         hashes.append(hashlib.sha256(frame).hexdigest())
+        if frame_number in keep:
+            retained.append(frame)
     if process.stdout.read(1) or process.wait() or process.stderr.read():
         raise AssertionError("native renderer failed or wrote extra frame bytes")
-    return hashes
+    return hashes, retained
+
+
+def raw_frame_delta(full: list[bytes], excerpt: list[bytes]) -> dict[str, int]:
+    if len(full) != len(excerpt):
+        raise AssertionError("raw frame count differs")
+    changed = 0
+    max_delta = 0
+    for left, right in zip(full, excerpt, strict=True):
+        for a, b in zip(left, right, strict=True):
+            difference = abs(a - b)
+            if difference:
+                changed += 1
+                max_delta = max(max_delta, difference)
+    total = sum(len(frame) for frame in full)
+    if max_delta > 2 or changed > total // 10000:
+        raise AssertionError(
+            f"nonzero global excerpt raw drift exceeds two levels or 0.01%: {changed}, {max_delta}"
+        )
+    return {"changed_channels": changed, "max_channel_delta": max_delta, "total_channels": total}
 
 
 def decoded_excerpt_psnr(full: Path, excerpt: Path) -> float:
@@ -91,6 +116,7 @@ def main() -> None:
     parser.add_argument("--checkout", type=Path, required=True)
     parser.add_argument("--build", type=Path, required=True)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--preset-id", choices=approved_preset_ids(), default="mvt-wave")
     args = parser.parse_args()
     font = Path("/System/Library/Fonts/SFNSMono.ttf")
     if not font.is_file():
@@ -106,7 +132,7 @@ def main() -> None:
         write_fixture = runpy.run_path(str(ROOT / "tests/fixtures/s14/create_fixture.py"))[
             "write_fixture"
         ]
-        input_request = write_fixture(directory / "provider-input")
+        input_request = write_fixture(directory / "provider-input", preset_id=args.preset_id)
         project = directory / "mvt-project"
         decoded = decode_audio(input_request.parent / "canonical.wav", project)
         timeline_path = project / "timeline.json"
@@ -187,11 +213,12 @@ def main() -> None:
             check=True,
         )
         binary = args.build.resolve() / "mvt-projectm-render"
-        preset = input_request.parent / "mvt-wave.milk"
-        full_frames = raw_frame_hashes(binary, pcm, preset, 0, 30)
-        excerpt_frames = raw_frame_hashes(binary, pcm, preset, 15, 20)
-        if full_frames[15:20] != excerpt_frames:
-            raise AssertionError("nonzero global excerpt differs from full-run raw frames")
+        preset = input_request.parent / f"{args.preset_id}.milk"
+        full_frames, full_raw = raw_frames(binary, pcm, preset, 0, 30, keep=range(15, 20))
+        excerpt_frames, excerpt_raw = raw_frames(binary, pcm, preset, 15, 20, keep=range(15, 20))
+        raw_delta = raw_frame_delta(full_raw, excerpt_raw)
+        if args.preset_id == "mvt-wave" and full_frames[15:20] != excerpt_frames:
+            raise AssertionError("mvt-wave no longer has exact raw full/excerpt frames")
         psnr = decoded_excerpt_psnr(directory / "full/video.mp4", directory / "excerpt/video.mp4")
 
         composed = compose_provider_preview(
@@ -294,10 +321,13 @@ def main() -> None:
             json.dumps(
                 {
                     "ok": True,
+                    "preset_id": args.preset_id,
                     "full_sha256": full["video_sha256"],
                     "excerpt_sha256": excerpt["video_sha256"],
                     "portrait_sha256": portrait["video_sha256"],
                     "raw_global_frames_sha256": excerpt_frames,
+                    "raw_full_excerpt_equal": full_frames[15:20] == excerpt_frames,
+                    "raw_full_excerpt_delta": raw_delta,
                     "decoded_full_excerpt_psnr_db": psnr,
                     "composed_clip_sha256": sha256_file(Path(composed["clip"])),
                     "portrait_composed_clip_sha256": sha256_file(Path(portrait_composed["clip"])),

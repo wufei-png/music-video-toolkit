@@ -56,3 +56,17 @@ the checked canonical WAV and current runtime; do not relabel S13 feasibility fi
 old result after changing the preset, patch or binary. Composition, bundle and comparison use
 the same S13 artifacts and paths. Existing Astrofox and built-in results remain valid if they
 pass their current checks.
+
+## 2026-09-21 — S15 projectM preset catalog
+
+S15 retains the `0.1` provider schemas and `locked-single` request shape. The
+approved ID-to-SHA-256 catalog now includes `mvt-wave`, `study-soft-flow`, and
+`study-beat-petals`. The integration identity additionally binds canonical
+sorted JSON of the catalog, so pre-S15 projectM requests and provider results
+remain historical even for `mvt-wave`. Recreate each request from the checked
+canonical WAV, current `integration_identity()`, one matching preset project
+and asset, and exact `{"preset_id":"ID","policy":"locked-single"}` parameters.
+Render to a fresh directory, then recompute composition, bundle and comparison
+artifacts. Preserve older visual reviews as dated evidence; do not edit their
+identity fields or treat them as current production results. Astrofox and
+built-in requests are unaffected.

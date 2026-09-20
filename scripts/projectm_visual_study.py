@@ -1,7 +1,6 @@
-"""Make two review-only projectM overlays from one checked soft-harm C preview.
+"""Make two checked projectM preset overlays from one soft-harm C preview.
 
-The production projectM allowlist remains locked to mvt-wave. Song media and
-review artifacts must be written outside the toolkit repository.
+Song media and review artifacts must be written outside the toolkit repository.
 """
 
 from __future__ import annotations
@@ -9,7 +8,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import shutil
 import subprocess
 import time
@@ -18,25 +16,21 @@ from pathlib import Path
 from music_video_toolkit.comparison import compare_previews
 from music_video_toolkit.contracts import (
     LandscapeOutputProfile,
-    ProviderManifest,
     ProviderRequest,
     RenderManifest,
 )
 from music_video_toolkit.documents import read_document
 from music_video_toolkit.project import preflight_source, resolve_record_path, sha256_file
+from music_video_toolkit.projectm import run_projectm
 from music_video_toolkit.projectm_provider import (
     INTEGRATION,
     LOCK,
     ROOT,
     _checked_runtime,
-    _encode_frames,
+    approved_preset_ids,
     integration_identity,
 )
-from music_video_toolkit.provider import (
-    probe_silent_video,
-    validate_provider_request,
-    validate_provider_result,
-)
+from music_video_toolkit.provider import validate_provider_request, validate_provider_result
 
 PRESETS = ("study-soft-flow", "study-beat-petals")
 RANGES = ((480000, 1056000), (1872000, 2448000), (9120000, 9696000))
@@ -52,13 +46,6 @@ def _hash_json(value: object) -> str:
     return hashlib.sha256(
         json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
     ).hexdigest()
-
-
-def _adapter_identity() -> str:
-    digest = hashlib.sha256()
-    digest.update(bytes.fromhex(integration_identity()))
-    digest.update(Path(__file__).read_bytes())
-    return digest.hexdigest()
 
 
 def _checked_control(project: Path, control_path: Path):
@@ -83,7 +70,7 @@ def _checked_control(project: Path, control_path: Path):
 
 
 def _request(job: Path, source, profile, span, preset: Path, preset_project: Path) -> Path:
-    parameters = {"preset_id": preset.stem, "policy": "visual-study-locked-single"}
+    parameters = {"preset_id": preset.stem, "policy": "locked-single"}
     request = ProviderRequest.model_validate(
         {
             "schema_version": "0.1",
@@ -103,7 +90,7 @@ def _request(job: Path, source, profile, span, preset: Path, preset_project: Pat
                 "name": "projectm",
                 "version": LOCK["version"],
                 "commit": LOCK["commit"],
-                "integration_patch_sha256": _adapter_identity(),
+                "integration_patch_sha256": integration_identity(),
             },
             "project": {"path": str(preset_project), "sha256": sha256_file(preset_project)},
             "assets": [{"path": str(preset), "sha256": sha256_file(preset)}],
@@ -114,54 +101,6 @@ def _request(job: Path, source, profile, span, preset: Path, preset_project: Pat
     path = job / "request.json"
     _write(path, request)
     validate_provider_request(path)
-    return path
-
-
-def _provider(
-    job: Path, *, request_path: Path, pcm: Path, preset: Path, build: Path, runtime: dict
-) -> Path:
-    request = validate_provider_request(request_path)
-    directory = job / "provider"
-    directory.mkdir()
-    video = directory / "video.mp4"
-    _encode_frames(
-        binary=build / "mvt-projectm-render",
-        pcm=pcm,
-        preset=preset,
-        request=request,
-        output=video,
-        log_dir=directory,
-    )
-    manifest = ProviderManifest(
-        schema_version="0.1",
-        status="completed",
-        request={
-            "path": os.path.relpath(request_path, directory),
-            "sha256": sha256_file(request_path),
-        },
-        source_sha256=request.source.sha256,
-        profile=request.profile,
-        range=request.range,
-        backend=request.backend,
-        project_sha256=request.project.sha256,
-        plugin_sha256=[],
-        asset_sha256=[sha256_file(preset)],
-        parameters_sha256=request.parameters_sha256,
-        environment={
-            "provider_binary_sha256": sha256_file(build / "mvt-projectm-render"),
-            "core_library_sha256": runtime["library_sha256"],
-            "study_script_sha256": sha256_file(Path(__file__)),
-            "global_time_policy": "preroll-from-zero",
-            "scope": "visual-study-only",
-        },
-        video={"path": "video.mp4", "sha256": sha256_file(video)},
-        probe=probe_silent_video(video),
-    )
-    path = directory / "provider-manifest.json"
-    _write(path, manifest)
-    validate_provider_result(request_path, path)
-    for log in directory.glob("*.stderr"):
-        log.unlink()
     return path
 
 
@@ -286,116 +225,89 @@ def run(project: Path, control_path: Path, checkout: Path, build: Path, output: 
         raise ValueError("choose a new output directory outside the toolkit repository")
     source, control, profile, clips = _checked_control(project, control_path)
     runtime = _checked_runtime(checkout, build)
+    if not set(PRESETS).issubset(approved_preset_ids()):
+        raise ValueError("study candidates are not in the approved preset catalog")
     output.mkdir()
-    pcm = output / "canonical.f32le"
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-nostdin",
-            "-v",
-            "error",
-            "-i",
-            str(source.canonical_path),
-            "-map",
-            "0:a:0",
-            "-f",
-            "f32le",
-            "-ac",
-            "2",
-            "-ar",
-            "48000",
-            str(pcm),
-        ],
-        check=True,
-    )
     report = {
         "schema_version": "0.1",
         "status": "partial",
-        "scope": "review-only; production projectM preset allowlist unchanged",
+        "scope": "checked approved presets; three-range song preview only",
         "canonical_audio_sha256": source.record.canonical.sha256,
         "control_preview_sha256": sha256_file(control_path),
         "runtime": runtime,
         "variants": [],
     }
     previews = []
-    try:
-        for preset_id in PRESETS:
-            started = time.monotonic()
-            variant = output / preset_id
-            variant.mkdir()
-            preset = variant / f"{preset_id}.milk"
-            shutil.copyfile(INTEGRATION / "presets" / preset.name, preset)
-            preset_project = variant / "project.json"
-            _write(preset_project, {"preset": {"path": preset.name, "sha256": sha256_file(preset)}})
-            _write(
-                variant / "study-config.json",
-                {
-                    "schema_version": "0.1",
-                    "preset_id": preset_id,
-                    "mix": MIX,
-                    "control_preview_sha256": sha256_file(control_path),
-                },
-            )
-            manifests = []
-            jobs = []
-            for index, span in enumerate(control.ranges, 1):
-                job = variant / f"range-{index:02d}"
-                job.mkdir()
-                request_path = _request(job, source, profile, span, preset, preset_project)
-                provider_path = _provider(
-                    job,
-                    request_path=request_path,
-                    pcm=pcm,
-                    preset=preset,
-                    build=build,
-                    runtime=runtime,
-                )
-                manifests.append(provider_path)
-                jobs.append(
-                    {
-                        "range": span.model_dump(mode="json"),
-                        "provider_manifest_sha256": sha256_file(provider_path),
-                    }
-                )
-                print(f"{preset_id}: provider range {index}/3", flush=True)
-            preview = _preview(variant, control_path, control, manifests, clips)
-            previews.append(preview)
-            report["variants"].append(
-                {
-                    "id": preset_id,
-                    "preset_sha256": sha256_file(preset),
-                    "preview_manifest_sha256": sha256_file(preview),
-                    "elapsed_seconds": round(time.monotonic() - started, 3),
-                    "ranges": jobs,
-                }
-            )
-            _write(output / "qa.partial.json", report)
-        comparison_request = output / "comparison-request.json"
+    for preset_id in PRESETS:
+        started = time.monotonic()
+        variant = output / preset_id
+        variant.mkdir()
+        preset = variant / f"{preset_id}.milk"
+        shutil.copyfile(INTEGRATION / "presets" / preset.name, preset)
+        preset_project = variant / "project.json"
+        _write(preset_project, {"preset": {"path": preset.name, "sha256": sha256_file(preset)}})
         _write(
-            comparison_request,
+            variant / "study-config.json",
             {
                 "schema_version": "0.1",
-                "variants": [
-                    {
-                        "id": "soft-harm-c",
-                        "label": "Accepted C control",
-                        "preview_manifest_path": str(control_path),
-                    },
-                    *(
-                        {"id": preset_id, "label": preset_id, "preview_manifest_path": str(preview)}
-                        for preset_id, preview in zip(PRESETS, previews, strict=True)
-                    ),
-                ],
+                "preset_id": preset_id,
+                "mix": MIX,
+                "control_preview_sha256": sha256_file(control_path),
             },
         )
-        comparison = compare_previews(comparison_request, output / "comparison")
-        report["status"] = "completed-technical-review"
-        report["comparison_sha256"] = sha256_file(comparison.manifest_path)
-        _write(output / "qa.json", report)
-        (output / "qa.partial.json").unlink(missing_ok=True)
-        return comparison.manifest_path
-    finally:
-        pcm.unlink(missing_ok=True)
+        manifests = []
+        jobs = []
+        for index, span in enumerate(control.ranges, 1):
+            job = variant / f"range-{index:02d}"
+            job.mkdir()
+            request_path = _request(job, source, profile, span, preset, preset_project)
+            result = run_projectm(request_path, job / "provider", checkout=checkout, build=build)
+            provider_path = Path(result["manifest"])
+            validate_provider_result(request_path, provider_path)
+            manifests.append(provider_path)
+            jobs.append(
+                {
+                    "range": span.model_dump(mode="json"),
+                    "provider_manifest_sha256": sha256_file(provider_path),
+                }
+            )
+            print(f"{preset_id}: provider range {index}/3", flush=True)
+        preview = _preview(variant, control_path, control, manifests, clips)
+        previews.append(preview)
+        report["variants"].append(
+            {
+                "id": preset_id,
+                "preset_sha256": sha256_file(preset),
+                "preview_manifest_sha256": sha256_file(preview),
+                "elapsed_seconds": round(time.monotonic() - started, 3),
+                "ranges": jobs,
+            }
+        )
+        _write(output / "qa.partial.json", report)
+    comparison_request = output / "comparison-request.json"
+    _write(
+        comparison_request,
+        {
+            "schema_version": "0.1",
+            "variants": [
+                {
+                    "id": "soft-harm-c",
+                    "label": "Accepted C control",
+                    "preview_manifest_path": str(control_path),
+                },
+                *(
+                    {"id": preset_id, "label": preset_id, "preview_manifest_path": str(preview)}
+                    for preset_id, preview in zip(PRESETS, previews, strict=True)
+                ),
+            ],
+        },
+    )
+    comparison = compare_previews(comparison_request, output / "comparison")
+    report["status"] = "completed-technical-review"
+    report["comparison_sha256"] = sha256_file(comparison.manifest_path)
+    _write(output / "qa.json", report)
+    (output / "qa.partial.json").unlink(missing_ok=True)
+    return comparison.manifest_path
 
 
 def main() -> None:

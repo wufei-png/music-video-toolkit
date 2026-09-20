@@ -35,7 +35,14 @@ def integration_identity() -> str:
     digest = hashlib.sha256()
     digest.update(bytes.fromhex(LOCK["patch_stack_sha256"]))
     digest.update((INTEGRATION / "provider.cpp").read_bytes())
+    digest.update(
+        json.dumps(LOCK["approved_presets"], sort_keys=True, separators=(",", ":")).encode()
+    )
     return digest.hexdigest()
+
+
+def approved_preset_ids() -> list[str]:
+    return list(LOCK["approved_presets"])
 
 
 def _checked_runtime(checkout: Path, build: Path) -> dict[str, str]:
@@ -64,7 +71,12 @@ def _checked_runtime(checkout: Path, build: Path) -> dict[str, str]:
 def _approved_preset(request_path: Path, request) -> Path:
     if request.plugins or len(request.assets) != 1:
         raise ProjectMError("projectm_unsupported_inputs", "one approved preset asset; no plugins")
-    if request.parameters != {"preset_id": "mvt-wave", "policy": "locked-single"}:
+    preset_id = request.parameters.get("preset_id")
+    if (
+        not isinstance(preset_id, str)
+        or preset_id not in LOCK["approved_presets"]
+        or request.parameters != {"preset_id": preset_id, "policy": "locked-single"}
+    ):
         raise ProjectMError("projectm_unsupported_parameters", request.parameters)
     project_path = resolve_record_path(request_path, request.project.path)
     try:
@@ -76,7 +88,7 @@ def _approved_preset(request_path: Path, request) -> Path:
         asset = resolve_record_path(request_path, request.assets[0].path)
         if preset != asset or item["sha256"] != request.assets[0].sha256:
             raise ValueError("project preset differs from checked asset")
-        if sha256_file(preset) != LOCK["preset_sha256"]:
+        if sha256_file(preset) != LOCK["approved_presets"][preset_id]:
             raise ValueError("preset is not on the approved list")
     except (OSError, UnicodeError, ValueError, TypeError, KeyError) as exc:
         raise ProjectMError("projectm_invalid_project", str(exc)) from exc

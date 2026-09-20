@@ -23,6 +23,7 @@ from .lyrics import LyricsError, import_lyrics
 from .plan import PlanError, resolve_plan
 from .preview import PreviewError, render_preview
 from .projectm import ProjectMAdapterError, projectm_doctor, run_projectm
+from .projectm_provider import approved_preset_ids
 from .provider_bundle import BundleError, bundle_provider_previews
 from .provider_composition import CompositionError, compose_provider_preview
 from .render import RenderError, render_minimal, renderer_doctor
@@ -168,8 +169,8 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "version": __version__,
                 "schema_version": "0.1",
-                "stage": "s14",
-                "production_stage": "s14",
+                "stage": "s15",
+                "production_stage": "s15",
                 "available": AVAILABLE,
                 "planned": PLANNED,
                 "can_render": True,
@@ -194,7 +195,7 @@ def main(argv: list[str] | None = None) -> int:
                         "result_contract": "provider_manifest",
                         "status": projectm_doctor()["state"],
                         "command": "provider projectm",
-                        "approved_presets": ["mvt-wave"],
+                        "approved_presets": approved_preset_ids(),
                     },
                 },
                 "analysis_scope": (

@@ -13,8 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_capabilities_are_honest(capsys):
     assert main(["capabilities"]) == 0
     report = json.loads(capsys.readouterr().out)
-    assert report["stage"] == "s14"
-    assert report["production_stage"] == "s14"
+    assert report["stage"] == "s15"
+    assert report["production_stage"] == "s15"
     assert report["can_render"] is True
     assert "render" in report["available"]
     assert "render" not in report["planned"]
@@ -34,7 +34,11 @@ def test_capabilities_are_honest(capsys):
     assert "provider projectm" in report["available"]
     assert "provider compose" in report["available"]
     assert "provider bundle" in report["available"]
-    assert report["external_visual_providers"]["projectm"]["approved_presets"] == ["mvt-wave"]
+    assert report["external_visual_providers"]["projectm"]["approved_presets"] == [
+        "mvt-wave",
+        "study-soft-flow",
+        "study-beat-petals",
+    ]
     assert "1080x1920/30" in report["render_scope"]
 
 

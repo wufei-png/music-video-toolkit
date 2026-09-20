@@ -16,7 +16,12 @@ from music_video_toolkit.contracts import LandscapeOutputProfile, ProviderReques
 from music_video_toolkit.documents import read_document
 from music_video_toolkit.project import preflight_source, resolve_record_path, sha256_file
 from music_video_toolkit.projectm import run_projectm
-from music_video_toolkit.projectm_provider import INTEGRATION, LOCK, integration_identity
+from music_video_toolkit.projectm_provider import (
+    INTEGRATION,
+    LOCK,
+    approved_preset_ids,
+    integration_identity,
+)
 from music_video_toolkit.provider import validate_provider_result
 from music_video_toolkit.provider_bundle import bundle_provider_previews
 from music_video_toolkit.provider_composition import compose_provider_preview
@@ -29,7 +34,7 @@ def _write(path: Path, value: object) -> None:
 def _request(
     directory: Path, *, source, profile, sample_range, preset: Path, preset_project: Path
 ) -> Path:
-    parameters = {"preset_id": "mvt-wave", "policy": "locked-single"}
+    parameters = {"preset_id": preset.stem, "policy": "locked-single"}
     parameter_hash = hashlib.sha256(
         json.dumps(parameters, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
@@ -75,6 +80,7 @@ def main() -> None:
     parser.add_argument("--checkout", type=Path, required=True)
     parser.add_argument("--build", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--preset-id", choices=approved_preset_ids(), default="mvt-wave")
     args = parser.parse_args()
     source = preflight_source(args.project)
     control = RenderManifest.model_validate(read_document(args.control_preview))
@@ -118,8 +124,8 @@ def main() -> None:
             parser.error("control range is not on a 30 fps frame boundary")
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
-    preset = output / "mvt-wave.milk"
-    shutil.copyfile(INTEGRATION / "presets/mvt-wave.milk", preset)
+    preset = output / f"{args.preset_id}.milk"
+    shutil.copyfile(INTEGRATION / "presets" / preset.name, preset)
     preset_project = output / "project.json"
     _write(preset_project, {"preset": {"path": preset.name, "sha256": sha256_file(preset)}})
     report: dict[str, object] = {
@@ -128,6 +134,7 @@ def main() -> None:
         "control_preview_sha256": sha256_file(args.control_preview),
         "backend_commit": LOCK["commit"],
         "integration_patch_sha256": integration_identity(),
+        "preset_id": args.preset_id,
         "preset_sha256": sha256_file(preset),
         "ranges": [],
     }
@@ -184,7 +191,7 @@ def main() -> None:
                 },
                 {
                     "id": "projectm",
-                    "label": "projectM locked mvt-wave",
+                    "label": f"projectM locked {args.preset_id}",
                     "preview_manifest_path": bundle["manifest"],
                 },
             ],

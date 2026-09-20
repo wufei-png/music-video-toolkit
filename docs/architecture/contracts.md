@@ -85,6 +85,11 @@ S13 adds renderer-neutral `provider-request` and `provider-manifest` artifacts. 
 
 The pinned Astrofox checkout runs outside this repository and exports through its patched hidden Electron job controller and existing frame/FFmpeg path. `mvt provider astrofox` invokes that executable as a child process and validates its result. The explicit build records hashes for the ignored renderer bundle and installed dependencies; doctor and jobs refuse drift. The CLI locks its destination against concurrent jobs and clears its readiness deadline before a long export. S14 adds `mvt provider projectm` for exactly the hash-approved MIT `mvt-wave` preset and `locked-single` policy. Its separately pinned LGPL library build uses a seeded patch, consumes canonical PCM from frame zero, and emits only the requested global frames. Its adapter checks the runtime, request and output across a process boundary. Both providers return silent media. `mvt provider compose` revalidates a result, makes a checked local video asset, then uses the existing MVT plan/preview path for canonical audio and optional saved lyrics. Each composition retains its provider and resolved-plan hashes. `mvt provider bundle` revalidates ordered compositions and creates an aggregate preview for S11 comparison; ranges must share source/profile and remain ordered without overlap. Composition and comparison output directories install atomically and never replace stale results. Rendering is offline; setup/build are explicit separate operations.
 
+S15 extends that bounded provider to the three hash-approved IDs in
+`integrations/projectm/lock.json`. Each request still binds exactly one matching
+preset asset and uses `{"preset_id":"ID","policy":"locked-single"}`. The
+catalog is part of the backend identity; earlier projectM requests are historical.
+
 ## Command contract
 
 Bootstrap commands are `--help`, `--version`, `capabilities`, `doctor`, `validate` and `schema`. S01 implements `decode`; S02–S05 extend `render`; S03 implements `analyze`; S04 implements `plan resolve`; S05 implements `assets check`; S06 implements `lyrics import`; S07 implements `lyrics align` and `lyrics apply-edits`; S08 implements `preview`; S11 implements `compare`; S12 implements `structure analyze` and `structure apply`; S13 implements Astrofox; S14 implements the bounded projectM provider:

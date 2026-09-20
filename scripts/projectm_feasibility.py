@@ -88,7 +88,7 @@ def make_inputs(directory: Path) -> tuple[Path, Path, Path, Path]:
     texture = texture_dir / "mvt-synthetic.png"
     texture.write_bytes(png_bytes())
     if (
-        sha256_file(preset) != LOCK["preset_sha256"]
+        sha256_file(preset) != LOCK["approved_presets"]["mvt-wave"]
         or sha256_file(texture) != LOCK["texture_sha256"]
     ):
         raise ValueError("self-authored preset or texture differs from lock")
@@ -278,7 +278,7 @@ def main() -> None:
         "eval_submodule_commit": LOCK["eval_submodule_commit"],
         "core_license": LOCK["license"],
         "preset_texture_license": LOCK["preset_texture_license"],
-        "preset_sha256": LOCK["preset_sha256"],
+        "preset_sha256": LOCK["approved_presets"]["mvt-wave"],
         "texture_sha256": LOCK["texture_sha256"],
         "provider_source_sha256": LOCK["provider_source_sha256"],
         "source_sha256": sha256_file(audio),
