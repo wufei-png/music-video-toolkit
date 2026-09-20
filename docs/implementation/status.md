@@ -1,9 +1,18 @@
 # Implementation status
 
+## Repository publication — 2026-09-21
+
+The public repository is `https://github.com/wufei-png/music-video-toolkit`;
+`main` was initially pushed through `8606b84`. This documentation follow-up
+replaces host-specific evidence paths with repository-relative `../projects/`
+paths or home-relative `~/.cache/mvt/` paths. Those external artifacts remain
+outside Git. The next development action remains the S15 handoff below;
+no tag or package release has been made.
+
 ## S15 projectM preset catalog — 2026-09-21
 
 Implementation commit: `6497399`; this status handoff is the following local
-documentation commit. No push or publication was requested.
+documentation commit. At that handoff, no push or publication was requested.
 
 The user accepted both original visual studies for the toolkit catalog and
 prefers `study-soft-flow` for `soft-harm`; `study-beat-petals` may suit another
@@ -17,7 +26,7 @@ bytes to differ. The filled petal visual remains, and both old and new contact
 sheets were inspected.
 
 The pinned macOS checkout/build passed `scripts/projectm_env.py check`.
-Real synthetic acceptance under `/Users/wufei2/.cache/mvt/projectm/` passed for
+Real synthetic acceptance under `~/.cache/mvt/projectm/` passed for
 both new presets: repeated excerpt MP4 bytes, silent CFR provider manifests,
 landscape and portrait composition, saved-artifact rerender, and S11 comparison.
 Soft-flow and petals had decoded full/excerpt PSNR 60.53 dB and 63.00 dB.
@@ -159,7 +168,7 @@ and uses the existing MVT audio/caption/bundle/comparison path. A local checkout
 and build remain prerequisites; `mvt doctor` reports their current readiness.
 
 The real synthetic S14 acceptance under
-`/Users/wufei2/.cache/mvt/projectm/s14-synthetic-acceptance/` used one second of
+`~/.cache/mvt/projectm/s14-synthetic-acceptance/` used one second of
 public 48 kHz PCM. A 30-frame full run and nonzero 15–20-frame excerpt had identical
 corresponding raw RGBA frame hashes; repeated encoded excerpts had the same SHA-256
 `4721769ba73c479b884854d83719c01f9754a22a98261fce7d7de75b85b2be60`.
@@ -250,7 +259,7 @@ At the S13 handoff, projectM remained feasibility only. `integrations/projectm/l
 `1e7ef7803b69024d1e0656705670adda2ffac817`, evaluation submodule, LGPL license, MIT synthetic
 preset/texture and provider source hashes. An isolated build fed canonical PCM and rendered six
 1920x1080/30 silent-CFR frames twice; both results conformed, with explicit 0–5/30 s frame times. The exact
-report and manifests are at `/Users/wufei2/.cache/mvt/projectm/feasibility-final/`. The output
+report and manifests are at `~/.cache/mvt/projectm/feasibility-final/`. The output
 SHA-256s differed (`6f213fa…` and `5c5d8e…`), and nonzero global-range replay was unproven.
 S14 subsequently resolved the bounded determinism/global-time gates above.
 
@@ -259,11 +268,11 @@ passed **163 tests in 233.74 s** after the delegated-review fixes; focused
 CLI/S13 tests passed 25; `uv run --locked ruff check .`, `ruff format --check .` and
 `scripts/export_schemas.py --check` passed with 18 generated schemas; frozen-lock renderer install
 and `pnpm --dir renderer check` passed 25 Node tests. A fresh external checkout at
-`/Users/wufei2/.cache/mvt/astrofox/stage10-clean` passed prepare, build, lock/diff and build-tree
+`~/.cache/mvt/astrofox/stage10-clean` passed prepare, build, lock/diff and build-tree
 checks, hidden smoke (including network and invalid-input denial), real silent-CFR plugin/asset export, active
 SIGINT cancellation and cleanup, canonical-audio caption composition and byte-identical
 saved-artifact rerender. A retained public synthetic proof is at
-`/Users/wufei2/.cache/mvt/astrofox/stage10-proof/`; after the v3 song repeat, `mvt doctor` reports
+`~/.cache/mvt/astrofox/stage10-proof/`; after the v3 song repeat, `mvt doctor` reports
 `proven` against `../projects/soft-harm/s13/v3/sparse-provider-repeat/provider-manifest.json`.
 The synthetic captioned clip and rerender both hash to
 `a9bd102b50e9449815ddcfc53f62c7d3f6fc4779a9f195963b7374102c994e30`. This is a macOS
@@ -456,7 +465,7 @@ Both full local songs completed real model runs on vocals. soft-harm aligned 48/
 
 Enabled lyrics now require a checked font asset. Resolved plans rebase the lyric path and bind its hash; render verifies lyric/audio/font identity without running alignment. The browser embeds the pinned font, uses half-open cue ownership and a 100 ms sample-clock fade, wraps up to five centered lines inside a fixed safe-area panel, and leaves lyric gaps clear. Off mode carries no lyric path, font or hash and does not open the default lyric file.
 
-The 2.5-second acceptance encoded 75 frames with Chinese/English multiline text, punctuation, a long sentence and an empty interlude. Frame 10 showed the first bilingual cue, frame 30 had no caption, and frame 50 showed the wrapped long cue; automated lower-frame comparisons and visual inspection confirmed timing and margins. Persistent output is outside Git at `/Users/wufei2/github.com/wufei-png/music/projects/synthetic-s06/project/`. The local Arial Unicode system font proves this host only and is neither copied nor claimed as distributable.
+The 2.5-second acceptance encoded 75 frames with Chinese/English multiline text, punctuation, a long sentence and an empty interlude. Frame 10 showed the first bilingual cue, frame 30 had no caption, and frame 50 showed the wrapped long cue; automated lower-frame comparisons and visual inspection confirmed timing and margins. Persistent output is outside Git at `../projects/synthetic-s06/project/`. The local Arial Unicode system font proves this host only and is neither copied nor claimed as distributable.
 
 ## S05 media and hybrid composition complete — 2026-09-15
 
@@ -464,7 +473,7 @@ The 2.5-second acceptance encoded 75 frames with Chinese/English multiline text,
 
 The resolver and fixed-frame renderer now execute image/video media layers in B mood plans and reuse those layer implementations with S04 objects in C hybrid plans. Closed parameters cover fit, placement, scale, bounded motion, z, opacity, circle mask and blend mode. Video uses global sample offsets, half-open source-frame trims and explicit `error|loop|hold`; media audio is always excluded. Section transitions preserve the previous and current media configurations and crossfade them on the canonical sample clock.
 
-The S05 acceptance encoded A/B/C from the same one-second timeline without analysis. A six-frame 2 fps known-color video, carrying its own 880 Hz audio, proved source-frame selection and loop/hold behavior while the rendered audio remained canonical silence. Pixel samples at frames 14/18/23 proved red-to-blue section crossfade; the contact sheets also show the circle mask, alpha overlay and A+B hybrid composition. Persistent synthetic outputs and review sheets are outside Git at `/Users/wufei2/github.com/wufei-png/music/projects/synthetic-s05/project/`. Chromium again reported SwiftShader.
+The S05 acceptance encoded A/B/C from the same one-second timeline without analysis. A six-frame 2 fps known-color video, carrying its own 880 Hz audio, proved source-frame selection and loop/hold behavior while the rendered audio remained canonical silence. Pixel samples at frames 14/18/23 proved red-to-blue section crossfade; the contact sheets also show the circle mask, alpha overlay and A+B hybrid composition. Persistent synthetic outputs and review sheets are outside Git at `../projects/synthetic-s05/project/`. Chromium again reported SwiftShader.
 
 ## S04 abstract visuals and section routing complete — 2026-09-15
 
@@ -568,7 +577,7 @@ this song. For a different song, review samples before choosing petals.
 
 S15 is complete within three approved presets and the pinned macOS runtime
 boundary. Broader host validation and the P3 GUI/editor remain later slices.
-No toolkit push or publication was requested.
+The toolkit repository is now public; no tag or package release has been made.
 
 On the original host the parent workspace has `projects/README.md`, `projects/soft-harm/case.json`
 and `projects/zhi-mai-yi-ren-fen/case.json`. These are updated local source inventories, not runtime

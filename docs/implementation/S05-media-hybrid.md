@@ -36,7 +36,7 @@
 
 浏览器渲染器复用相同图层生命周期生成 A/B/C；视频先由 FFmpeg 完整解码成零起始编号 PNG，再由全局样本时钟选择源帧。段落切换同时保留前后媒体的独立素材、布局、mask、blend 和 opacity，并按 `transition_samples` 交叉淡化。
 
-自动验收用同一 1 秒 timeline 实际编码 30 帧 A/B/C。带 880 Hz 自有音轨的 6 帧、2 fps 彩色视频证明 trim/offset/loop/hold 与源帧编号；输出音轨仍为 canonical 静音。帧 14/18/23 证明红色背景经中间混合帧转为蓝色，circle mask、alpha 叠加和三模式输出差异均通过像素或哈希检查。持久演示及 contact sheets 位于 `/Users/wufei2/github.com/wufei-png/music/projects/synthetic-s05/project/`，不进入 Git；人工查看与像素证据一致。当前浏览器仍报告 SwiftShader。
+自动验收用同一 1 秒 timeline 实际编码 30 帧 A/B/C。带 880 Hz 自有音轨的 6 帧、2 fps 彩色视频证明 trim/offset/loop/hold 与源帧编号；输出音轨仍为 canonical 静音。帧 14/18/23 证明红色背景经中间混合帧转为蓝色，circle mask、alpha 叠加和三模式输出差异均通过像素或哈希检查。持久演示及 contact sheets 位于 `../projects/synthetic-s05/project/`，不进入 Git；人工查看与像素证据一致。当前浏览器仍报告 SwiftShader。
 
 ## 提交与交接
 

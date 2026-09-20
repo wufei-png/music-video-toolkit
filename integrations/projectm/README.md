@@ -33,7 +33,7 @@ reads an offscreen framebuffer, and encodes two silent H.264/yuv420p 1920×1080/
 result has a provider manifest that passes `validate_provider_result`. Output and build products stay
 outside Git. `feasibility-report.json` retains revisions, licenses, timings and result hashes.
 
-Observed on 2026-09-19 at `/Users/wufei2/.cache/mvt/projectm/feasibility-final/`: the core and
+Observed on 2026-09-19 at `~/.cache/mvt/projectm/feasibility-final/`: the core and
 provider compiled on macOS arm64. Both six-frame results passed silent-CFR, exact frame-count,
 profile, input and output hash checks. The first MP4 SHA-256 was
 `6f213fa226fe43c46606e91e286c81249bbc85c5d40d2b6f146509f01b54956c`; the second was
@@ -62,7 +62,7 @@ uv run --locked python scripts/projectm_env.py check --checkout /absolute/extern
 `check` verifies the pinned commit, evaluation submodule, license, exact applied
 patch diff, untracked source, CMake origin and built library hash. A source or binary
 change requires explicit rebuild and a fresh evidence record. The retained patched
-six-frame probe at `/Users/wufei2/.cache/mvt/projectm/s14-seeded-probe/` produced
+six-frame probe at `~/.cache/mvt/projectm/s14-seeded-probe/` produced
 the same encoded SHA-256 twice:
 `ed79f203d65222cee0f350c93b507b298019e7334df45f76428957773985f559`.
 This intermediate probe proved only the short self-authored feasibility preset on this Mac.
@@ -123,7 +123,7 @@ uv run --locked python scripts/projectm_acceptance_check.py --checkout /absolute
 # Select either new preset with --preset-id study-soft-flow or --preset-id study-beat-petals.
 ```
 
-The retained run under `/Users/wufei2/.cache/mvt/projectm/s14-synthetic-acceptance/`
+The retained run under `~/.cache/mvt/projectm/s14-synthetic-acceptance/`
 found exact raw global-frame equality, byte-identical repeat excerpts and 51.89 dB
 decoded full/excerpt PSNR. Both profile compositions, saved rerender and S11
 comparison passed. This is a synthetic technical proof, not song-level artistic
