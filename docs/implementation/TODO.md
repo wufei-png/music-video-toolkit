@@ -85,8 +85,22 @@ pre-roll, both closed profiles, silent-CFR output and the existing MVT compositi
 Synthetic acceptance proved exact raw full/excerpt global frames, byte-identical repeated excerpts,
 both profiles and saved-artifact composition. External `soft-harm/s14/projectm-v1/` completed the
 three exact S11 ranges with matching decoded audio and a byte-identical first-range repeat. The
-waveform's artistic value still needs song-workspace feedback; arbitrary presets, preset switching,
-other hosts and full-song projectM output remain outside the proven boundary.
+user subsequently rejected that line waveform for `soft-harm`; its technical
+evidence remains historical. Arbitrary presets, preset switching, other hosts
+and full-song projectM output remain outside the proven boundary.
+
+### Post-S14 projectM visual study — samples ready, selection pending
+
+Two self-authored, review-only candidates now exist: soft filled-light flow and
+beat-reactive filled petals. Their `soft-harm` overlays use the same accepted C
+preview, canonical audio and three S11 ranges. The external study under
+`../projects/soft-harm/projectm-exploration-20260920/study-v1/` has a three-way
+reel, contact sheet, provider/request manifests, repeat evidence and objective
+media checks. The existing `mvt-wave` line effect was rejected for this song;
+the two new candidates await user viewing and feedback. They are **not** in the
+production preset allowlist. Promote a selected visual only through a separate
+hash, repeat/global-time, licensing, same-audio and song-review gate; do not
+infer full-song approval from technically valid short samples.
 
 Pinned upstream references:
 
@@ -110,5 +124,6 @@ Pinned upstream references:
 ## Confirmed sequence
 
 S14 is complete with the evidence in [status](status.md). Its bounded approved-preset projectM
-route is available when the pinned local runtime is ready. The next development slice requires a
-new choice; GUI, broader host validation, 4K/60 and MCP remain later work.
+route is available when the pinned local runtime is ready. The immediate next
+action is user review of the two post-S14 visual samples; GUI, broader host
+validation, 4K/60 and MCP remain later work.

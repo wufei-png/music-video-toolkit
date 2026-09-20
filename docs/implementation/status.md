@@ -1,5 +1,42 @@
 # Implementation status
 
+## Two review-only projectM visual studies — 2026-09-21
+
+Local commit `07c9aea` adds two original MIT projectM preset candidates,
+`study-soft-flow` and `study-beat-petals`, plus an external-output-only visual
+study script. The production `mvt provider projectm` allowlist, S14 lock,
+capabilities and schemas remain at the sole `mvt-wave` preset. The new presets
+are not production-approved.
+
+External `../projects/soft-harm/projectm-exploration-20260920/study-v1/` holds
+the review-only result. The pinned S14 checkout/build passed its exact source,
+patch and library check. Both candidates rendered silent 1920x1080/30 projectM
+video at the accepted 10–22, 39–51 and 190–202 second global ranges, then were
+added at the same 0.9 mix to the accepted C preview. Each of the six overlays has
+360 frames and copied AAC packet hashes matching its control. A three-variant S11
+comparison passed shared source, ranges, profile, stream and decoded-audio checks;
+its range-major reel and contact sheet are in `study-v1/comparison/`. Each
+candidate's first-range provider video repeated byte-identically at 360 frames:
+`17da7b3b41c0adedcdc07bc30d6c95401046227b5b1baecc24bdb9d3bfa558ce`
+for soft flow and
+`2589316cf70ceb6b64cde496c6bc1cae43f9e0982b5d2c1a6b571d8cd255214a`
+for beat petals. Blackdetect found no interval of at least 0.1 s in the six
+overlays. The checked comparison SHA-256 is
+`edc001df71753de88d6ce9036ed009bd029aadb1ba8dc5854a489cd509455e41`;
+`qa.json`, `repeat-check/qa.json`, `blackdetect.json`, and `review-notes.md` keep
+the detailed outside-Git evidence. Contact-sheet inspection found distinct
+visuals and readable captions; motion, musical fit and subjective style await
+the user's review. No full-song projectM result was made.
+
+Checks: `uv sync --locked --group dev`, `uv run --locked pytest -q` (**167 passed
+in 264.88 s**), focused S14 tests (**4 passed**), Ruff lint and format,
+`scripts/export_schemas.py --check`, `pnpm --dir renderer install
+--frozen-lockfile`, `pnpm --dir renderer check` (**25 passed**),
+`mvt validate --kind comparison`, pinned runtime check, six real provider jobs,
+two real repeat jobs, comparison, copied-audio checks, blackdetect and
+`git diff --check` passed. These are same-host technical checks, not visual
+approval. No private song input or generated media entered Git.
+
 ## Two full-song Astrofox overlays complete — 2026-09-20
 
 The user explicitly requested the retained Astrofox bar effect on both completed
@@ -471,18 +508,17 @@ Model installation/inference, browser/WebGL rendering, external media compositio
 
 ## Exact next action
 
-The retained Astrofox look has been rendered over both accepted full videos.
-Next, explore a new projectM visual on `soft-harm`; its sole approved `mvt-wave`
-line preset was rejected by the user, so additional visual forms require a
-new self-authored preset, review samples and a separate capability gate before
-being described as production-ready.
+Review the nine-clip, range-major reel and contact sheet under
+`../projects/soft-harm/projectm-exploration-20260920/study-v1/comparison/`.
+The user should choose soft flow, beat petals, revisions, or neither based on
+the actual motion and song fit. If a candidate is selected, run a separate
+production preset allowlist/capability gate before a full-song render. The
+previous `mvt-wave` line visual remains rejected for this song.
 
 S14 is complete within the single approved projectM preset and pinned macOS runtime
-boundary. The exact next development action is to choose a separate later slice:
-broader host validation, the P3 GUI/editor, or additional projectM preset work after
-its own selection and licensing/quality gates. Subjective selection among built-in,
-Astrofox and projectM variants remains in the song workspace. No push or publication
-occurred in S14.
+boundary. Broader host validation and the P3 GUI/editor remain later slices.
+Subjective selection among built-in, Astrofox and projectM variants remains in
+the song workspace. No toolkit push or publication was requested for this study.
 
 On the original host the parent workspace has `projects/README.md`, `projects/soft-harm/case.json`
 and `projects/zhi-mai-yi-ren-fen/case.json`. These are updated local source inventories, not runtime
