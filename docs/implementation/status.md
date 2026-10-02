@@ -1,5 +1,32 @@
 # Implementation status
 
+## S02 fixed-frame capture maintenance — 2026-10-02
+
+The maintenance commit containing this entry replaces DOM element screenshots
+with direct PNG readback of the preserved WebGL canvas after each deterministic
+frame render. A production full-song job timed out in Playwright's element
+stability wait after fonts had loaded; capture no longer depends on that
+wall-clock animation-frame barrier. Existing host/scene hash bindings invalidate
+old cache identities automatically. Python protocols and JSON schemas did not
+change.
+
+Checks: locked `pnpm --dir renderer check` (**26 passed**), including real
+Chromium capture with animation-frame callbacks disabled in both profiles;
+locked S02/S06/S12 integration tests (**18 passed**); full locked Python suite
+(**173 passed in 159.39 s**); Ruff lint/format, schema export check and
+`git diff --check` passed. External
+`../projects/releases-20261002/songs/01-68b31531/native-recheck-v3-serial/`
+contains two completed four-second real-song clips with the new capture path.
+Opening and ending frames were inspected for background coverage and readable
+titles. This host uses SwiftShader software drawing; full-song completion and
+subjective acceptance remain unproven by these short checks.
+
+Exact next action: resume the authorized 24-song production from its external
+batch ledger, render the first full base into a new output version, then perform
+the checked Astrofox overlay and media QA. Run renderer build/render commands
+serially while they share `renderer/dist`; concurrent rebuild/loading was not
+added to this maintenance slice. No push or package publication is authorized.
+
 ## Repository publication — 2026-09-21
 
 The public repository is `https://github.com/wufei-png/music-video-toolkit`;

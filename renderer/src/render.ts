@@ -272,10 +272,13 @@ async function main(): Promise<void> {
     for (let frame = 0; frame < config.frameCount; frame += 1) {
       const globalFrame = frameStart + frame;
       const media = await mediaFrames(config, globalFrame);
-      await page.evaluate(async ({currentFrame, mediaFrames}) => {
+      const dataUrl = await page.evaluate(async ({currentFrame, mediaFrames}) => {
         await (globalThis as any).MvtScene.renderFrame(currentFrame, mediaFrames);
+        return (globalThis as any).MvtScene.capturePng() as string;
       }, {currentFrame: globalFrame, mediaFrames: media});
-      const png = await page.locator("#mvt-canvas").screenshot({type: "png"});
+      const prefix = "data:image/png;base64,";
+      if (!dataUrl.startsWith(prefix)) throw new Error("canvas PNG readback failed");
+      const png = Buffer.from(dataUrl.slice(prefix.length), "base64");
       if (!encoderInput.write(png)) await once(encoderInput, "drain");
     }
     encoderInput.end();

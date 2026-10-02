@@ -817,6 +817,13 @@ export async function renderFrame(
   }
 }
 
+// All visible layers, including captions, are in this preserved WebGL buffer.
+// Readback completes the draw without waiting for wall-clock animation frames
+// or the element-stability/scroll barriers of a DOM screenshot.
+export function capturePng(): string {
+  return renderer.domElement.toDataURL("image/png");
+}
+
 export function seekFrame(frame: number): void {
   if (!Number.isSafeInteger(frame) || frame < 0) throw new RangeError("frame must be non-negative");
   smoothedRoutes.clear();

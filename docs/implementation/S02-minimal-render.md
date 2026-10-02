@@ -38,3 +38,13 @@
 - `uv run --locked pytest tests/stages/test_s02.py -q`：2 passed。5 秒/150 帧合成 click 项目在 1/2/3 秒产生音频 click 与第 30/60/90 帧视觉脉冲，解码后误差不超过 1 帧。
 - 两次输出的 MP4 SHA-256 完全相同；测试仍按同机解码 luma 最大误差≤2执行。ffprobe 确认 H.264、AAC、1920×1080、30/1、150 帧、48kHz 双声道。
 - 中文 canvas glyph ink 与本地 PNG readiness 均有机器检查。Chromium 报告 ANGLE SwiftShader，属于软件绘制；未证明硬件加速。
+
+## 固定帧捕获维护 — 2026-10-02
+
+生产整曲任务在 `locator.screenshot` 的元素稳定性等待阶段超时。资源与字体已就绪，但该 DOM 截图路径仍依赖实时动画帧；S02 的音乐时钟不应依赖这个等待。
+
+host 现在在每个 `renderFrame` 完成后，直接读取已启用 `preserveDrawingBuffer` 的 WebGL canvas PNG。背景、素材、抽象图层和字幕都在同一个画布内；没有改变样本时钟、输出 profile、编码或协议。host/scene 内容哈希已属于既有缓存身份，因此历史输出不会被当作新捕获路径的缓存命中。
+
+新增真实 Chromium 检查禁用 `requestAnimationFrame`，验证横竖两种 profile 的 PNG 尺寸、指定脉冲帧、相邻帧恢复和重复帧像素一致。原有 S02 音画同步、S06 字幕、S12 竖屏集成检查通过（18 passed）；完整 Python 回归 173 passed，Node 26 passed，Ruff 和 schema check 通过。当前主机仍为 SwiftShader 软件绘制。
+
+外部生产目录 `../projects/releases-20261002/` 保存失败记录和修复后的两段共 8 秒实曲复查。开头与结尾截图已检查，标题可读、背景覆盖完整。这只证明当前复查区间，不代表整曲成功或用户审阅通过。共享 renderer/dist 的重建与另一任务加载同时发生时会产生竞争；当前生产命令串行运行，未在此维护中引入并发构建支持。
