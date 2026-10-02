@@ -2,7 +2,8 @@
 
 ## S02 fixed-frame capture maintenance — 2026-10-02
 
-The maintenance commit containing this entry replaces DOM element screenshots
+Implementation commit: `49ab179`; this evidence handoff is a subsequent local
+documentation commit. The maintenance replaces DOM element screenshots
 with direct PNG readback of the preserved WebGL canvas after each deterministic
 frame render. A production full-song job timed out in Playwright's element
 stability wait after fonts had loaded; capture no longer depends on that
@@ -18,12 +19,20 @@ locked S02/S06/S12 integration tests (**18 passed**); full locked Python suite
 `../projects/releases-20261002/songs/01-68b31531/native-recheck-v3-serial/`
 contains two completed four-second real-song clips with the new capture path.
 Opening and ending frames were inspected for background coverage and readable
-titles. This host uses SwiftShader software drawing; full-song completion and
-subjective acceptance remain unproven by these short checks.
+titles. This host uses SwiftShader software drawing.
+
+The subsequent external `base-native-v3/full.mp4` completed at 6,442 frames,
+1920x1080/30, H.264/AAC. The checked full Astrofox composition completed and
+passed single-artifact validation, full media decode and blackdetect with no
+interval of at least 0.1 seconds. Its copied AAC stream hash matches the base;
+six full-song frames were inspected for title/spectrum placement and background
+coverage. `evidence/first-cut-qa-v1.json` binds the external result and checks.
+This is a same-host technical first-cut result; subjective acceptance and
+distribution remain pending.
 
 Exact next action: resume the authorized 24-song production from its external
-batch ledger, render the first full base into a new output version, then perform
-the checked Astrofox overlay and media QA. Run renderer build/render commands
+batch ledger and complete the other 23 first cuts before concentrated human
+review and the requested distribution. Run renderer build/render commands
 serially while they share `renderer/dist`; concurrent rebuild/loading was not
 added to this maintenance slice. No push or package publication is authorized.
 
