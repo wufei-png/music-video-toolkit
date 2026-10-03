@@ -1,5 +1,31 @@
 # Implementation status
 
+## S04 independent ribbon length — 2026-10-03
+
+Implementation and check evidence are in the commit containing this entry.
+Ribbon `length` now controls static horizontal extent in `[0.1, 1.0]`,
+independently of line width and routed amplitude. Its default is `1.0`;
+older saved resolved plans retain that default in the renderer. Existing section
+overrides and transitions apply. Python protocol envelopes and generated schemas
+remain unchanged; an older resolver must be updated for explicit `length`.
+
+Checks: locked full Python suite **178 passed in 127.50 s**, focused S04
+**14 passed**, locked renderer check **27 passed**, Ruff lint/format,
+schema export check and `git diff --check` passed. The added actual
+Chromium/WebGL check compares legacy/default PNG bytes and measures 75%
+horizontal ink with unchanged vertical bounds in landscape and portrait.
+Three external three-second real-song clips completed under
+`../projects/releases-20261002/songs/01-68b31531/preview-review-v2/`;
+23-second and 105-second frames were inspected for complete background coverage
+and narrower curves. These checks prove the bounded geometry behavior, not
+subjective song acceptance.
+
+Exact next action: complete the specifically authorized first-two-song review
+revisions in the external batch, then hand them to the user. The global 24-song
+queue remains stopped pending feedback; this supersedes the earlier production
+next action below. Production artwork, tuning choices and approval records
+stay outside Git. No push or publication is authorized.
+
 ## S02 fixed-frame capture maintenance — 2026-10-02
 
 Implementation commit: `49ab179`; this evidence handoff is a subsequent local

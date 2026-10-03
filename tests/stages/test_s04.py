@@ -203,6 +203,32 @@ def test_automatic_novelty_has_candidate_identity_without_semantic_label(tmp_pat
     assert resolved.spans[-1].end_sample == 144_000
 
 
+def test_ribbon_length_defaults_and_section_override(tmp_path):
+    project, plan_path = write_project(tmp_path)
+    plan = json.loads(plan_path.read_text())
+    plan["sections"][0]["layers"].append(
+        {"layer_id": "drum-ribbon", "parameters": {"length": 0.75}}
+    )
+    plan_path.write_text(json.dumps(plan))
+    resolved, _ = resolve_plan(project, plan_path)
+    ribbons = [
+        next(layer for layer in span.layers if layer.id == "drum-ribbon") for span in resolved.spans
+    ]
+    assert [layer.parameters["length"] for layer in ribbons] == [1.0, 1.0, 0.75, 1.0]
+    assert all(layer.parameters["amplitude"] == 0.18 for layer in ribbons)
+
+
+@pytest.mark.parametrize("length", [0.0, 0.09, 1.01, True])
+def test_ribbon_length_rejects_out_of_bounds_values(tmp_path, length):
+    project, plan_path = write_project(tmp_path)
+    plan = json.loads(plan_path.read_text())
+    plan["layers"][1]["parameters"]["length"] = length
+    plan_path.write_text(json.dumps(plan))
+    with pytest.raises(PlanError) as caught:
+        resolve_plan(project, plan_path)
+    assert caught.value.code == "invalid_layer_parameter"
+
+
 @pytest.mark.parametrize(
     ("mutation", "code"),
     [

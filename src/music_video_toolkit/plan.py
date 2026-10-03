@@ -37,6 +37,7 @@ LAYER_SPECS: dict[str, dict[str, tuple[object, float | None, float | None]]] = {
         "color": ("#55d6ff", None, None),
     },
     "ribbon": {
+        "length": (1.0, 0.1, 1.0),
         "width": (0.12, 0.01, 0.5),
         "amplitude": (0.18, 0.0, 1.0),
         "y": (0.0, -1.0, 1.0),

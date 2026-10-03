@@ -620,10 +620,11 @@ function numericParameter(
   previous: LayerConfig | undefined,
   name: string,
   progress: number,
+  fallback = Number.NaN,
 ): number {
-  const end = Number(current.parameters[name]);
+  const end = Number(current.parameters[name] ?? fallback);
   if (previous === undefined || progress >= 1) return end;
-  const start = Number(previous.parameters[name]);
+  const start = Number(previous.parameters[name] ?? fallback);
   return start + (end - start) * progress;
 }
 
@@ -642,8 +643,8 @@ function configureObject(
       ? definition.opacity
       : previous.opacity + (definition.opacity - previous.opacity) * progress;
   target.material.color.copy(color(definition.parameters.color));
-  const parameter = (name: string) =>
-    values[name] ?? numericParameter(definition, previous, name, progress);
+  const parameter = (name: string, fallback = Number.NaN) =>
+    values[name] ?? numericParameter(definition, previous, name, progress, fallback);
   if (target.kind === "orb") {
     const radius = parameter("radius");
     target.object.scale.set(radius, radius, 1);
@@ -651,9 +652,10 @@ function configureObject(
     target.object.position.y = parameter("y");
     target.object.rotation.z = seconds * 0.08;
   } else if (target.kind === "ribbon") {
+    const length = parameter("length", 1);
     const width = parameter("width");
     const amplitude = parameter("amplitude");
-    target.object.scale.set(outputLayout.aspect, width + amplitude, 1);
+    target.object.scale.set(outputLayout.aspect * length, width + amplitude, 1);
     target.object.position.y = parameter("y");
     target.object.rotation.z = Math.sin(seconds * 0.7) * amplitude * 0.25;
   } else {

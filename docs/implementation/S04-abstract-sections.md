@@ -39,3 +39,10 @@
 - orb/ribbon/particles 参数和 route target 均使用闭合白名单及范围；linear/threshold/smooth 参数完整校验。信号线性采样、尾值保持、attack/release 和 section transition 都在固定帧路径执行。
 - 合成 stem isolation 中只有 bass 信号变化；bass orb 响应，drums ribbon 与 vocals particles 保持各自最小路由值。未知参数、信号、section、target、重复 override 和禁用必需图层均硬失败。
 - soft-harm 的真实 20 秒 S03 timeline 已渲染为 600 帧抽象样片。代表帧视觉检查确认青色 orb、洋红 ribbon、暖色 particles 的对象身份和前中后层级可辨识；记录保存在外部 `projects/soft-harm/s04/`。
+
+## 2026-10-03 兼容维护
+
+- Ribbon 新增静态 `length` 参数，范围 `[0.1, 1.0]`，默认 `1.0`；支持已有段落覆盖与过渡，不新增音频路由目标。长度与线宽、纵向幅度独立。
+- 旧 resolved plan 缺少此字段时，浏览器使用 `1.0`。实际 Chromium/WebGL 检查确认旧计划和显式默认值像素相同；`0.75` 将水平墨迹范围缩至 75%，纵向范围保持不变，两种输出比例均通过。
+- 锁定环境检查：S04 Python **14 passed**，完整 Python **178 passed in 127.50 s**，渲染器 **27 passed**；Ruff、schema export check、`git diff --check` 通过。Python 协议 envelope 未改，JSON schemas 无漂移；旧 resolver 需要升级后才能处理显式 `length`。
+- 外部 `../projects/releases-20261002/songs/01-68b31531/preview-review-v2/` 的三个真实三秒片段完成；23 秒与 105 秒帧已查看，背景覆盖完整、曲线长度收窄。歌曲视觉批准与后续整曲检查仍在外部生产工作区，不能由这些代码检查代替。
