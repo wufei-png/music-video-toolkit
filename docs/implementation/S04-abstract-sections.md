@@ -53,3 +53,9 @@
 - 实际 Chromium/WebGL 在两种输出比例检查旧计划与显式默认值像素相同；固定方向的 0 秒和 10 秒画面一致，反向 seek 不改变结果。Python 检查默认、段落覆盖、非法值与禁止音频路由。
 - 锁定完整 Python **184 passed in 138.04 s**，S04 **20 passed**，渲染器 **28 passed**；Ruff、schema export check、`git diff --check` 通过。协议 envelope 与 JSON schemas 未变。实际歌曲声部映射短片与主观审阅属于外部生产工作，不构成本片自动测试结论。
 - 外部 `../projects/releases-20261002/review/STEM-MAPPING-STUDY-v1.md` 已交付有人声、多乐器纯音乐与独奏三组各十秒的新旧短片。六片段的解码、帧数、黑场与音频保留检查及三组正式比较通过；新版代表帧已查看。主观视觉和听审待用户完成，未恢复整曲队列。
+
+### 曲线画宽范围扩展
+
+- `length` 上限由 `1.0` 扩至 `4/3`，默认仍为 `1.0`。原几何占未倾斜画宽的 75%，因此 `16/15` 对应画宽 80%、两侧各 10%；`4/3` 对应完整画宽。保留原有音频驱动的轻微倾斜，不声称逐帧锁定倾斜边缘。
+- Python resolver 检查整体和段落覆盖的新范围及越界拒绝；实际 Chromium/WebGL 在两种输出比例测量 80% 宽度、两侧 10% 边界、完整画宽上限，保留旧默认 PNG 一致性与纵向范围。
+- 锁定检查：S04 **22 passed**，完整 Python **186 passed in 131.46 s**，渲染器 **28 passed**；Ruff 与 schema export check 通过。协议 envelope 和 JSON schemas 未变；旧 resolver 需要升级才接受大于 1 的显式长度。生产项目中的具体默认比例与发布审核保存在外部工作区。
