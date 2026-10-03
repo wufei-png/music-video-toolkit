@@ -233,6 +233,47 @@ def test_particle_rotation_defaults_and_section_override(tmp_path):
     assert [layer.parameters["rotation_speed"] for layer in particles] == [0.05, 0.05, 0, 0.05]
 
 
+def test_ribbon_sway_defaults_and_section_override(tmp_path):
+    project, plan_path = write_project(tmp_path)
+    plan = json.loads(plan_path.read_text())
+    plan["sections"][0]["layers"].append(
+        {"layer_id": "drum-ribbon", "parameters": {"sway_multiplier": 0.2}}
+    )
+    plan_path.write_text(json.dumps(plan))
+    resolved, _ = resolve_plan(project, plan_path)
+    ribbons = [
+        next(layer for layer in span.layers if layer.id == "drum-ribbon") for span in resolved.spans
+    ]
+    assert [layer.parameters["sway_multiplier"] for layer in ribbons] == [1, 1, 0.2, 1]
+    assert all(layer.parameters["amplitude"] == 0.18 for layer in ribbons)
+
+
+def test_ribbon_sway_can_be_disabled_for_whole_plan(tmp_path):
+    project, plan_path = write_project(tmp_path)
+    plan = json.loads(plan_path.read_text())
+    plan["layers"][1]["parameters"]["sway_multiplier"] = 0
+    plan_path.write_text(json.dumps(plan))
+    resolved, _ = resolve_plan(project, plan_path)
+    assert all(
+        next(layer for layer in span.layers if layer.id == "drum-ribbon").parameters[
+            "sway_multiplier"
+        ]
+        == 0
+        for span in resolved.spans
+    )
+
+
+@pytest.mark.parametrize("multiplier", [-0.01, 1.01, True, "0.2"])
+def test_ribbon_sway_rejects_invalid_values(tmp_path, multiplier):
+    project, plan_path = write_project(tmp_path)
+    plan = json.loads(plan_path.read_text())
+    plan["layers"][1]["parameters"]["sway_multiplier"] = multiplier
+    plan_path.write_text(json.dumps(plan))
+    with pytest.raises(PlanError) as caught:
+        resolve_plan(project, plan_path)
+    assert caught.value.code == "invalid_layer_parameter"
+
+
 @pytest.mark.parametrize("speed", [-0.01, 0.26, True, "0"])
 def test_particle_rotation_rejects_out_of_bounds_values(tmp_path, speed):
     project, plan_path = write_project(tmp_path)
@@ -283,6 +324,10 @@ def test_ribbon_length_rejects_out_of_bounds_values(tmp_path, length):
         ),
         (
             lambda plan: plan["routes"][2].update(target_parameter="rotation_speed"),
+            "unsupported_route_target",
+        ),
+        (
+            lambda plan: plan["routes"][1].update(target_parameter="sway_multiplier"),
             "unsupported_route_target",
         ),
         (lambda plan: plan["sections"][0].update(section_id="absent"), "unknown_section"),

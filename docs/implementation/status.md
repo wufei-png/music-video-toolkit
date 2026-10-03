@@ -1,5 +1,28 @@
 # Implementation status
 
+## S04 independent ribbon sway — 2026-10-03
+
+Implementation and check evidence are in the commit containing this entry.
+Ribbon `sway_multiplier` is a static multiplier in `[0.0, 1.0]`, default `1.0`,
+for the existing global-time, amplitude-driven tilt. `0.2` reduces angular
+excursion to one fifth while preserving vertical shape scale, length, line width
+and tilt timing; `0.0` fixes orientation. Section overrides and transitions use
+the existing parameter contract. It is not an audio route target.
+
+Checks: locked S04 Python **29 passed**, complete Python **193 passed in
+132.49 s**, locked renderer check **29 passed**, Ruff lint/format, schema export
+check and `git diff --check` passed. Actual Chromium/WebGL pixel measurements
+in both output profiles verify the one-fifth angular excursion, invariant image
+shape axes, zero-sway time/seek invariance and exact legacy/default PNG identity.
+Protocol envelopes and generated schemas are unchanged; older resolvers must
+be upgraded before accepting explicit `sway_multiplier`.
+
+Exact next action: render the external project's specifically authorized
+12-second song-20 reduced-sway sample while retaining its previous doubled
+vertical response. The eight-song whole-render queue remains stopped for
+actual sample acceptance; project defaults and subjective approvals stay in
+the external production workspace. No push or platform publication is authorized.
+
 ## S04 ribbon canvas extent — 2026-10-03
 
 Implementation and check evidence are in the commit containing this entry.

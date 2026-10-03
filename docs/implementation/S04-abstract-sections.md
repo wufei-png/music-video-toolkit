@@ -59,3 +59,9 @@
 - `length` 上限由 `1.0` 扩至 `4/3`，默认仍为 `1.0`。原几何占未倾斜画宽的 75%，因此 `16/15` 对应画宽 80%、两侧各 10%；`4/3` 对应完整画宽。保留原有音频驱动的轻微倾斜，不声称逐帧锁定倾斜边缘。
 - Python resolver 检查整体和段落覆盖的新范围及越界拒绝；实际 Chromium/WebGL 在两种输出比例测量 80% 宽度、两侧 10% 边界、完整画宽上限，保留旧默认 PNG 一致性与纵向范围。
 - 锁定检查：S04 **22 passed**，完整 Python **186 passed in 131.46 s**，渲染器 **28 passed**；Ruff 与 schema export check 通过。协议 envelope 和 JSON schemas 未变；旧 resolver 需要升级才接受大于 1 的显式长度。生产项目中的具体默认比例与发布审核保存在外部工作区。
+
+### 曲线倾斜独立控制
+
+- Ribbon 新增静态 `sway_multiplier`，范围 `[0.0, 1.0]`，默认与旧 resolved plan 回退值为 `1.0`。`0.2` 将原全局时间与幅度驱动的倾斜角度降至五分之一，`0.0` 固定方向；纵向形状缩放、线宽、长度及原摇摆频率/相位保留。段落覆盖及过渡沿用已有规则，不增加音频路由目标。
+- Python 检查默认、整体与段落覆盖、非法值及禁止音频路由；实际 Chromium/WebGL 在横竖两种比例用图像主轴测量五分之一角度变化与不变的形状轴长，检查零摇摆、反向 seek 及旧默认 PNG 一致性。
+- 锁定检查：S04 **29 passed**，完整 Python **193 passed in 132.49 s**，renderer **29 passed**；Ruff、schema export check 与 `git diff --check` 通过。协议 envelope 和 schemas 未变，旧 resolver 需升级才接受显式字段。外部歌曲样片与项目默认等待实际用户审核；旧整曲队列不恢复。

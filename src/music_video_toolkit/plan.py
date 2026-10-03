@@ -38,6 +38,7 @@ LAYER_SPECS: dict[str, dict[str, tuple[object, float | None, float | None]]] = {
     },
     "ribbon": {
         "length": (1.0, 0.1, 4 / 3),
+        "sway_multiplier": (1.0, 0.0, 1.0),
         "width": (0.12, 0.01, 0.5),
         "amplitude": (0.18, 0.0, 1.0),
         "y": (0.0, -1.0, 1.0),

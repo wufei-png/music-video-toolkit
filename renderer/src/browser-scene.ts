@@ -657,7 +657,7 @@ function configureObject(
     const amplitude = parameter("amplitude");
     target.object.scale.set(outputLayout.aspect * length, width + amplitude, 1);
     target.object.position.y = parameter("y");
-    target.object.rotation.z = Math.sin(seconds * 0.7) * amplitude * 0.25;
+    target.object.rotation.z = Math.sin(seconds * 0.7) * amplitude * 0.25 * parameter("sway_multiplier", 1);
   } else {
     const points = target.object as THREE.Points;
     const size = parameter("size");
