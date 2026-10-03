@@ -3,12 +3,12 @@ import {fileURLToPath} from "node:url";
 import {test} from "node:test";
 import {chromium} from "playwright";
 
-test("ribbon length narrows real canvas ink while omitted legacy length retains pixels", async () => {
+test("ribbon length fits centered canvas fields while omitted legacy length retains pixels", async () => {
   const browser = await chromium.launch({headless: true});
   try {
     for (const [width, height] of [[1920, 1080], [1080, 1920]]) {
       const results = [];
-      for (const length of [undefined, 1, 0.75]) {
+      for (const length of [undefined, 1, 0.75, 16 / 15, 4 / 3]) {
         const page = await browser.newPage({viewport: {width, height}, deviceScaleFactor: 1});
         await page.setContent(`<canvas id="mvt-canvas" width="${width}" height="${height}"></canvas>`);
         await page.addScriptTag({path: fileURLToPath(new URL("../dist/browser-scene.js", import.meta.url))});
@@ -38,7 +38,7 @@ test("ribbon length narrows real canvas ink while omitted legacy length retains 
               }
             }
           }
-          return {png: window.MvtScene.capturePng(), width: right - left + 1,
+          return {png: window.MvtScene.capturePng(), left, right, width: right - left + 1,
             height: top - bottom + 1};
         }));
         await page.close();
@@ -47,6 +47,11 @@ test("ribbon length narrows real canvas ink while omitted legacy length retains 
       assert.ok(results[1].width > width * 0.7);
       assert.ok(Math.abs(results[2].width - results[1].width * 0.75) <= 2);
       assert.ok(Math.abs(results[2].height - results[1].height) <= 2);
+      assert.ok(Math.abs(results[3].width - width * 0.8) <= 2);
+      assert.ok(Math.abs(results[3].left - width * 0.1) <= 2);
+      assert.ok(Math.abs(results[3].right + 1 - width * 0.9) <= 2);
+      assert.ok(Math.abs(results[3].height - results[1].height) <= 2);
+      assert.ok(Math.abs(results[4].width - width) <= 2);
     }
   } finally {
     await browser.close();

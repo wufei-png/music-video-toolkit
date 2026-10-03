@@ -244,7 +244,24 @@ def test_particle_rotation_rejects_out_of_bounds_values(tmp_path, speed):
     assert caught.value.code == "invalid_layer_parameter"
 
 
-@pytest.mark.parametrize("length", [0.0, 0.09, 1.01, True])
+@pytest.mark.parametrize("length", [16 / 15, 4 / 3])
+def test_ribbon_length_accepts_wider_canvas_fields_and_section_overrides(tmp_path, length):
+    project, plan_path = write_project(tmp_path)
+    plan = json.loads(plan_path.read_text())
+    plan["layers"][1]["parameters"]["length"] = length
+    plan["sections"][0]["layers"].append(
+        {"layer_id": "drum-ribbon", "parameters": {"length": 16 / 15}}
+    )
+    plan_path.write_text(json.dumps(plan))
+    resolved, _ = resolve_plan(project, plan_path)
+    ribbons = [
+        next(layer for layer in span.layers if layer.id == "drum-ribbon") for span in resolved.spans
+    ]
+    assert [layer.parameters["length"] for layer in ribbons] == [length, length, 16 / 15, length]
+    assert all(layer.parameters["amplitude"] == 0.18 for layer in ribbons)
+
+
+@pytest.mark.parametrize("length", [0.0, 0.09, 4 / 3 + 0.01, True])
 def test_ribbon_length_rejects_out_of_bounds_values(tmp_path, length):
     project, plan_path = write_project(tmp_path)
     plan = json.loads(plan_path.read_text())

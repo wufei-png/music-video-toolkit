@@ -1,5 +1,30 @@
 # Implementation status
 
+## S04 ribbon canvas extent — 2026-10-03
+
+Implementation and check evidence are in the commit containing this entry.
+Ribbon `length` now accepts `[0.1, 4/3]`, with its default still `1.0`.
+It scales the original geometry, which spans 75% of the unrotated canvas:
+`16/15` produces an 80% field with 10% margins, and `4/3` reaches the
+full canvas. Existing length values, section transitions, line width,
+amplitude and legacy browser fallback retain their behavior. Audio-driven
+tilt remains; the field definition does not lock tilted endpoints to pixels.
+
+Checks: locked S04 Python **22 passed**, complete Python **186 passed in
+131.46 s**, locked renderer check **28 passed**, Ruff lint/format,
+schema export check and `git diff --check` passed. Actual Chromium/WebGL
+checks measure the 80% width and both 10% margins in both output profiles,
+retain vertical ink bounds and legacy/default PNG identity, and exercise the
+full-canvas limit. Protocol envelopes and generated schemas are unchanged;
+older resolvers must be upgraded to accept lengths above `1.0`.
+
+Exact next action: prepare the external release project's user-authorized
+10%-90% defaults and selected whole-song review batch, then start its detached
+serial worker. The worker must stop for actual visual acceptance before the
+remaining songs and the conditionally authorized platform uploads. Song plans,
+coverage selection, publication details and subjective approvals stay outside
+Git. No push or package publication is authorized.
+
 ## S04 fixed particle orientation — 2026-10-03
 
 Implementation and check evidence are in the commit containing this entry.
