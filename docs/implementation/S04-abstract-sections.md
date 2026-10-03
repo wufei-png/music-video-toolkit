@@ -46,3 +46,9 @@
 - 旧 resolved plan 缺少此字段时，浏览器使用 `1.0`。实际 Chromium/WebGL 检查确认旧计划和显式默认值像素相同；`0.75` 将水平墨迹范围缩至 75%，纵向范围保持不变，两种输出比例均通过。
 - 锁定环境检查：S04 Python **14 passed**，完整 Python **178 passed in 127.50 s**，渲染器 **27 passed**；Ruff、schema export check、`git diff --check` 通过。Python 协议 envelope 未改，JSON schemas 无漂移；旧 resolver 需要升级后才能处理显式 `length`。
 - 外部 `../projects/releases-20261002/songs/01-68b31531/preview-review-v2/` 的三个真实三秒片段完成；23 秒与 105 秒帧已查看，背景覆盖完整、曲线长度收窄。歌曲视觉批准与后续整曲检查仍在外部生产工作区，不能由这些代码检查代替。
+
+### 固定粒子方向
+
+- Particles 新增静态 `rotation_speed`，范围 `[0.0, 0.25]` rad/s，默认及旧 resolved plan 的浏览器回退值均为 `0.05`。设为 `0.0` 后整片粒子方向固定，现有 size 路由仍有效；不增加音频路由目标或动态透明度功能。
+- 实际 Chromium/WebGL 在两种输出比例检查旧计划与显式默认值像素相同；固定方向的 0 秒和 10 秒画面一致，反向 seek 不改变结果。Python 检查默认、段落覆盖、非法值与禁止音频路由。
+- 锁定完整 Python **184 passed in 138.04 s**，S04 **20 passed**，渲染器 **28 passed**；Ruff、schema export check、`git diff --check` 通过。协议 envelope 与 JSON schemas 未变。实际歌曲声部映射短片与主观审阅属于外部生产工作，不构成本片自动测试结论。

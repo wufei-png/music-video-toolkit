@@ -1,5 +1,29 @@
 # Implementation status
 
+## S04 fixed particle orientation — 2026-10-03
+
+Implementation and check evidence are in the commit containing this entry.
+Particles now accept static `rotation_speed` in `[0.0, 0.25]` radians per
+second; `0.0` fixes the field while existing audio size routes still work.
+The default and legacy browser fallback remain `0.05`. Section overrides use
+the existing transition policy. This adds no audio route target or opacity
+control. Python protocol envelopes and generated schemas remain unchanged;
+older resolvers need an update to accept the explicit parameter.
+
+Checks: locked full Python suite **184 passed in 138.04 s**, focused S04
+**20 passed**, locked renderer check **28 passed**, Ruff lint/format,
+schema export check and `git diff --check` passed. Actual Chromium/WebGL
+tests compare legacy/default pixels and verify fixed particle positions at
+0 and 10 seconds, including reverse seeking, in both supported profiles.
+These checks prove the static control, not the quality of a song mapping.
+
+Exact next action: produce the authorized old/new short mapping samples for
+vocal, multi-instrument and solo cases in the external batch; obtain user
+review before applying sample tuning to whole songs. The first two complete
+v4 videos have passed external technical checks and await visual review.
+The global 24-song queue remains stopped. Production plans and approval
+records stay outside Git; no push or platform publication is authorized.
+
 ## S04 independent ribbon length — 2026-10-03
 
 Implementation and check evidence are in the commit containing this entry.

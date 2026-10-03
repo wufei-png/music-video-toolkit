@@ -37,6 +37,8 @@ S04 resolves editable abstract plans into `resolved-plan.json`. Its contiguous s
 
 Ribbon `length` is a static horizontal extent multiplier in `[0.1, 1.0]`, independent of `width` and the routed vertical `amplitude`. The default is `1.0`; saved resolved plans predating this parameter render with the same default. Section overrides can change it with the existing transition policy. This additive parameter uses the existing `0.1` parameter envelope; no artifact migration is required. Older resolvers reject explicitly supplied `length` and must be updated before resolving such plans.
 
+Particles `rotation_speed` is a static global-time angular multiplier in `[0.0, 0.25]` radians per second. `0.0` fixes the field orientation while audio can still drive particle size. The default and legacy renderer fallback are `0.05`. Existing section overrides and transitions apply to the multiplier; it is not an audio route target. The `0.1` parameter envelope and schemas are unchanged. Older resolvers must be updated before resolving plans with an explicit `rotation_speed`.
+
 ## Structure analysis and reviewed application
 
 S12 `structure.json` is separate from the timeline. It binds the canonical source, exact base timeline hash, locked librosa runtime, analyzer/adapter hashes, configuration and cache identity derived from both the input configuration and completed candidate content. A schema-valid edit to boundaries or groups is not a cache hit. Beat-synchronized cells combine existing normalized `mix.rms` and 12-bin `mix.chroma.*`; cosine self-similarity produces deterministic novelty boundaries and unlabeled repeated-span groups with confidence and anchor provenance. It does not infer semantic section names, downbeats, bars, pitch or melody.

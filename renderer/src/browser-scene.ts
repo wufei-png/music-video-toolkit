@@ -664,7 +664,7 @@ function configureObject(
     const spread = parameter("spread");
     (target.material as THREE.PointsMaterial).size = size * config.height;
     points.scale.set(spread, spread, 1);
-    points.rotation.z = seconds * 0.05;
+    points.rotation.z = seconds * parameter("rotation_speed", 0.05);
     const count = Math.floor(Number(definition.parameters.count));
     target.particleGeometry?.setDrawRange(0, count);
   }

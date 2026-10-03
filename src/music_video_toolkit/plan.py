@@ -47,6 +47,7 @@ LAYER_SPECS: dict[str, dict[str, tuple[object, float | None, float | None]]] = {
         "count": (320, 16, 2000),
         "size": (0.025, 0.001, 0.2),
         "spread": (1.4, 0.1, 2.0),
+        "rotation_speed": (0.05, 0.0, 0.25),
         "color": ("#ffe178", None, None),
     },
 }

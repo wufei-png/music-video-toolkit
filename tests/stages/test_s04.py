@@ -218,6 +218,32 @@ def test_ribbon_length_defaults_and_section_override(tmp_path):
     assert all(layer.parameters["amplitude"] == 0.18 for layer in ribbons)
 
 
+def test_particle_rotation_defaults_and_section_override(tmp_path):
+    project, plan_path = write_project(tmp_path)
+    plan = json.loads(plan_path.read_text())
+    plan["sections"][0]["layers"].append(
+        {"layer_id": "vocal-particles", "parameters": {"rotation_speed": 0}}
+    )
+    plan_path.write_text(json.dumps(plan))
+    resolved, _ = resolve_plan(project, plan_path)
+    particles = [
+        next(layer for layer in span.layers if layer.id == "vocal-particles")
+        for span in resolved.spans
+    ]
+    assert [layer.parameters["rotation_speed"] for layer in particles] == [0.05, 0.05, 0, 0.05]
+
+
+@pytest.mark.parametrize("speed", [-0.01, 0.26, True, "0"])
+def test_particle_rotation_rejects_out_of_bounds_values(tmp_path, speed):
+    project, plan_path = write_project(tmp_path)
+    plan = json.loads(plan_path.read_text())
+    plan["layers"][2]["parameters"]["rotation_speed"] = speed
+    plan_path.write_text(json.dumps(plan))
+    with pytest.raises(PlanError) as caught:
+        resolve_plan(project, plan_path)
+    assert caught.value.code == "invalid_layer_parameter"
+
+
 @pytest.mark.parametrize("length", [0.0, 0.09, 1.01, True])
 def test_ribbon_length_rejects_out_of_bounds_values(tmp_path, length):
     project, plan_path = write_project(tmp_path)
@@ -236,6 +262,10 @@ def test_ribbon_length_rejects_out_of_bounds_values(tmp_path, length):
         (lambda plan: plan["routes"][0].update(source="missing.rms"), "missing_route_signal"),
         (
             lambda plan: plan["routes"][0].update(target_parameter="color"),
+            "unsupported_route_target",
+        ),
+        (
+            lambda plan: plan["routes"][2].update(target_parameter="rotation_speed"),
             "unsupported_route_target",
         ),
         (lambda plan: plan["sections"][0].update(section_id="absent"), "unknown_section"),
