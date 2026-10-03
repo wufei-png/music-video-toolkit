@@ -17,9 +17,15 @@ tests compare legacy/default pixels and verify fixed particle positions at
 0 and 10 seconds, including reverse seeking, in both supported profiles.
 These checks prove the static control, not the quality of a song mapping.
 
-Exact next action: produce the authorized old/new short mapping samples for
-vocal, multi-instrument and solo cases in the external batch; obtain user
-review before applying sample tuning to whole songs. The first two complete
+The external batch's `review/STEM-MAPPING-STUDY-v1.md` now contains three
+ten-second old/new comparisons for vocal, multi-instrument and solo cases.
+All six 1080p clips passed complete decode, frame count, blackdetect and
+audio preservation checks; formal comparisons verified source/range/profile
+compatibility. Representative new frames were inspected. These are sample
+results awaiting visual/listening review, not approval for whole songs.
+
+Exact next action: obtain user review of those samples before applying
+sample tuning to whole songs. The first two complete
 v4 videos have passed external technical checks and await visual review.
 The global 24-song queue remains stopped. Production plans and approval
 records stay outside Git; no push or platform publication is authorized.
