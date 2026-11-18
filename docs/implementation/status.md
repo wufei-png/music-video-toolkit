@@ -1,5 +1,37 @@
 # Implementation status
 
+## CI quality gate — 2026-11-19
+
+Implementation commits: `0c6352b` (read-only workflow and expanded Ruff rules), `946e600`
+(Linux-portable font fixtures), `e768456` (bounded FFmpeg installation); this evidence
+handoff is the following documentation commit.
+
+`.github/workflows/ci.yml` runs on `main` pushes and pull requests with `contents: read`.
+Both jobs pin checkout v7.0.1, setup-node v7.1.0 and setup-uv v10.3.3 by full commit SHA.
+Python checks use uv 0.12.4, Python 3.12, FFmpeg, Node 24.15.0, Corepack pnpm 11.25.0 and
+Playwright Chromium, then run locked sync, Ruff lint and format check, schema drift check
+and the full pytest suite. Renderer checks use the same Node/pnpm/Chromium setup, a frozen
+pnpm install and `pnpm --dir renderer check`. The Python job installs Chromium because S04,
+S05 and S13 composition tests invoke the real renderer; macOS-only font checks now skip
+explicitly when their fixture or metadata tools are absent.
+
+Ruff keeps the existing `select` and extends it with `C4`, `ASYNC`, `DTZ`, `PIE`, `S501`,
+`S502`, `S506`, `S608`. The tracked tree already met both lint and format gates (100 files).
+
+Checks: current macOS checkout `uv run --locked pytest -q` **193 passed in 135.86 s**;
+locked renderer check **29 passed** with Corepack pnpm 11.25.0; Ruff lint/format, schema
+export check and `git diff --check` passed. GitHub Actions
+[run 44377192998](https://github.com/wufei-png/music-video-toolkit/actions/runs/44377192998)
+for `e768456` passed both jobs: Python **190 passed, 3 skipped in 625.86 s** (11m42s job),
+Renderer **29 passed** (1m20s job). The three Linux skips are the macOS system-font tests
+in S05/S06. The first Linux run exposed nine hardcoded system-font failures, fixed by
+`946e600`; a renderer-only apt index stall led to the bounded install fallback in
+`e768456`.
+
+The push trigger is verified. The pull-request trigger and branch protection were not
+exercised, and no real song, provider, GPU or hardware path was run. Synthetic CI evidence
+does not approve song quality.
+
 ## S04 independent ribbon sway — 2026-10-03
 
 Implementation and check evidence are in the commit containing this entry.
