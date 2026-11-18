@@ -15,6 +15,8 @@ pnpm --dir renderer check
 git diff --check
 ```
 
+The same locked Python and renderer checks run in [CI](.github/workflows/ci.yml) for `main` pushes and pull requests. The Python job installs FFmpeg, Node/Corepack and Playwright Chromium so the browser-backed stage tests exercise real synthetic renders instead of skipping; macOS-only font checks remain skipped on Linux. Workflow actions are pinned to full commit SHAs and the workflow has read-only repository permissions.
+
 Regenerate schema snapshots with `uv run --locked python scripts/export_schemas.py` after model changes. Semantic Python validation goes beyond JSON Schema; maintain both. Version breaking contract changes and explain how saved production artifacts migrate.
 
 Use synthetic reproducible audio/media in public tests. Verify real Mac rendering/model paths in the stages that introduce them, and record actual evidence separately from mocked or static checks. Never require the original two private production songs to install or test the open-source toolkit.
