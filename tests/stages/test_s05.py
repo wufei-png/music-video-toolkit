@@ -15,6 +15,12 @@ from music_video_toolkit.audio import decode_audio
 from music_video_toolkit.plan import PlanError, resolve_plan
 from music_video_toolkit.render import render_minimal
 
+MACOS_FONT = Path("/System/Library/Fonts/SFNSMono.ttf")
+FONT_FIXTURE_AVAILABLE = platform.system() == "Darwin" and MACOS_FONT.is_file()
+FONT_PROBE_FAILURE_CODE = (
+    "font_probe_failed" if platform.system() == "Darwin" else "font_probe_unavailable"
+)
+
 
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -133,8 +139,9 @@ def fixture(tmp_path: Path) -> tuple[Path, Path, dict[str, Path]]:
     png(first, 160, 90, (210, 35, 35))
     png(second, 160, 90, (35, 55, 220))
     video = make_video(assets_dir)
-    font = Path("/System/Library/Fonts/SFNSMono.ttf")
-    files = {"red": first, "blue": second, "numbered": video, "font": font}
+    files = {"red": first, "blue": second, "numbered": video}
+    if FONT_FIXTURE_AVAILABLE:
+        files["font"] = MACOS_FONT
     manifest = {
         "schema_version": "0.1",
         "assets": [
@@ -260,7 +267,10 @@ def test_asset_preflight_checks_image_video_font_and_cache_identity(tmp_path):
     assert (by_id["red"].width, by_id["red"].height) == (160, 90)
     assert (by_id["numbered"].frame_count, by_id["numbered"].fps_num) == (6, 2)
     assert by_id["numbered"].has_audio is True
-    assert by_id["font"].font_families
+    if FONT_FIXTURE_AVAILABLE:
+        assert by_id["font"].font_families
+    else:
+        assert "font" not in by_id
     assert check_assets(project, manifest_path)[2] is True
     first_key = checked.cache_key
 
@@ -276,12 +286,12 @@ def test_asset_preflight_checks_image_video_font_and_cache_identity(tmp_path):
 
 
 @pytest.mark.skipif(
-    platform.system() != "Darwin"
+    not FONT_FIXTURE_AVAILABLE
     or not all(shutil.which(name) for name in ("mdls", "mdimport", "plutil")),
-    reason="macOS font metadata tools required",
+    reason="macOS font fixture and metadata tools required",
 )
 def test_font_preflight_accepts_valid_font_outside_spotlight_index(tmp_path):
-    source = Path("/System/Library/Fonts/SFNSMono.ttf")
+    source = MACOS_FONT
     font = tmp_path / "local-font.ttf"
     shutil.copyfile(source, font)
     manifest = tmp_path / "assets.json"
@@ -314,7 +324,7 @@ def test_font_preflight_accepts_valid_font_outside_spotlight_index(tmp_path):
         (lambda item: item.update(path="missing.png"), "missing_asset"),
         (lambda item: item.update(sha256="0" * 64), "asset_hash_mismatch"),
         (lambda item: item.update(path="https://example.com/a.png"), "remote_asset_forbidden"),
-        (lambda item: item.update(type="font"), "font_probe_failed"),
+        (lambda item: item.update(type="font"), FONT_PROBE_FAILURE_CODE),
     ],
 )
 def test_asset_preflight_reports_explicit_failures(tmp_path, change, code):

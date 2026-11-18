@@ -1,5 +1,6 @@
 import hashlib
 import json
+import platform
 import shutil
 import subprocess
 import wave
@@ -13,6 +14,9 @@ from music_video_toolkit.contracts import Lyrics
 from music_video_toolkit.lyrics import LyricsError, import_lyrics
 from music_video_toolkit.plan import PlanError, resolve_plan
 from music_video_toolkit.render import render_minimal
+
+MACOS_FONT = Path("/System/Library/Fonts/Supplemental/Arial Unicode.ttf")
+FONT_FIXTURE_AVAILABLE = platform.system() == "Darwin" and MACOS_FONT.is_file()
 
 
 def sha256(path: Path) -> str:
@@ -53,7 +57,7 @@ def write_assets(project: Path, with_font: bool) -> str | None:
     assets = []
     font_id = None
     if with_font:
-        font = Path("/System/Library/Fonts/Supplemental/Arial Unicode.ttf")
+        font = MACOS_FONT
         font_id = "subtitle-font"
         assets.append(
             {
@@ -247,6 +251,10 @@ def test_off_mode_does_not_read_invalid_default_lyrics(tmp_path):
     assert resolved.lyrics_sha256 is None
 
 
+@pytest.mark.skipif(
+    not FONT_FIXTURE_AVAILABLE,
+    reason="macOS font preflight fixture required",
+)
 def test_resolver_rejects_wrong_audio_or_font_identity(tmp_path):
     project = project_fixture(tmp_path)
     font_id = write_assets(project, with_font=True)
@@ -280,7 +288,8 @@ def test_resolver_rejects_wrong_audio_or_font_identity(tmp_path):
 
 
 @pytest.mark.skipif(
-    not all(shutil.which(name) for name in ("ffmpeg", "ffprobe", "node", "pnpm", "mdls")),
+    not FONT_FIXTURE_AVAILABLE
+    or not all(shutil.which(name) for name in ("ffmpeg", "ffprobe", "node", "pnpm", "mdls")),
     reason="render and macOS font dependencies required",
 )
 def test_bilingual_captions_render_on_exact_cues_with_safe_interlude(tmp_path):
