@@ -251,13 +251,11 @@ def test_off_mode_does_not_read_invalid_default_lyrics(tmp_path):
     assert resolved.lyrics_sha256 is None
 
 
-@pytest.mark.skipif(
-    not FONT_FIXTURE_AVAILABLE,
-    reason="macOS font preflight fixture required",
-)
-def test_resolver_rejects_wrong_audio_or_font_identity(tmp_path):
+def imported_plan_fixture(
+    tmp_path: Path, font_id: str = "subtitle-font"
+) -> tuple[Path, Path, Path]:
     project = project_fixture(tmp_path)
-    font_id = write_assets(project, with_font=True)
+    write_assets(project, with_font=False)
     source = tmp_path / "captions.srt"
     source.write_text("1\n00:00:00,000 --> 00:00:01,000\nText\n", encoding="utf-8")
     _, lyrics_path, _ = import_lyrics(source, project, "en")
@@ -268,6 +266,12 @@ def test_resolver_rejects_wrong_audio_or_font_identity(tmp_path):
         ),
         encoding="utf-8",
     )
+    return project, plan, lyrics_path
+
+
+def test_resolver_rejects_mismatched_lyrics_audio_without_font_asset(tmp_path):
+    project, plan, lyrics_path = imported_plan_fixture(tmp_path)
+    assert json.loads((project / "assets.json").read_text())["assets"] == []
     lyrics = json.loads(lyrics_path.read_text())
     lyrics["audio_sha256"] = "0" * 64
     lyrics_path.write_text(json.dumps(lyrics), encoding="utf-8")
@@ -275,13 +279,10 @@ def test_resolver_rejects_wrong_audio_or_font_identity(tmp_path):
         resolve_plan(project, plan)
     assert caught.value.code == "lyrics_audio_mismatch"
 
-    plan_document = json.loads(plan.read_text())
-    plan_document["lyrics"]["font_asset_id"] = "unknown-font"
-    plan.write_text(json.dumps(plan_document), encoding="utf-8")
-    lyrics["audio_sha256"] = json.loads((project / "source/source.json").read_text())["canonical"][
-        "sha256"
-    ]
-    lyrics_path.write_text(json.dumps(lyrics), encoding="utf-8")
+
+def test_resolver_rejects_unknown_font_id_without_os_font(tmp_path):
+    project, plan, _ = imported_plan_fixture(tmp_path, font_id="unknown-font")
+    assert json.loads((project / "assets.json").read_text())["assets"] == []
     with pytest.raises(PlanError) as caught:
         resolve_plan(project, plan)
     assert caught.value.code == "invalid_lyrics_font"
