@@ -114,3 +114,103 @@ jobs:
 
       - name: Build and test renderer
         run: pnpm --dir renderer check
+
+  macos:
+    name: macOS font and caption checks
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up locked uv and Python
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.12.4"
+          python-version: "3.12"
+          enable-cache: true
+          cache-python: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24.15.0"
+          package-manager-cache: false
+
+      - name: Enable Corepack and pinned pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.25.0 --activate
+          pnpm --version
+
+      - name: Install locked Python dependencies
+        run: uv sync --locked --group dev
+
+      - name: Install FFmpeg
+        timeout-minutes: 20
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        run: |
+          if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
+            brew install ffmpeg
+          fi
+          brew_prefix="$(brew --prefix)"
+          echo "$brew_prefix/bin" >> "$GITHUB_PATH"
+          export PATH="$brew_prefix/bin:$PATH"
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
+
+      - name: Install locked Node dependencies
+        run: pnpm --dir renderer install --frozen-lockfile
+
+      - name: Install pinned Playwright Chromium
+        run: pnpm --dir renderer exec playwright install chromium
+
+      - name: Verify macOS font and media prerequisites
+        run: |
+          uv run --locked python - <<'PY'
+          import platform
+          import shutil
+          from pathlib import Path
+
+          if platform.system() != "Darwin" or platform.machine() != "arm64":
+              raise SystemExit(
+                  f"expected macOS arm64, got {platform.system()} {platform.machine()}"
+              )
+          fonts = [
+              Path("/System/Library/Fonts/SFNSMono.ttf"),
+              Path("/System/Library/Fonts/Supplemental/Arial Unicode.ttf"),
+          ]
+          tools = ["mdls", "mdimport", "plutil", "ffmpeg", "ffprobe", "node", "pnpm"]
+          missing_fonts = [str(path) for path in fonts if not path.is_file()]
+          missing_tools = [tool for tool in tools if shutil.which(tool) is None]
+          if missing_fonts or missing_tools:
+              raise SystemExit(
+                  f"missing macOS prerequisites: fonts={missing_fonts} tools={missing_tools}"
+              )
+          print(
+              f"macOS {platform.machine()} font fixtures and media tools are present"
+          )
+          PY
+
+      - name: Run macOS font and caption tests without skips
+        run: |
+          uv run --locked pytest -q tests/stages/test_s05.py tests/stages/test_s06.py \
+            --junitxml="$RUNNER_TEMP/macos-font-tests.xml"
+          uv run --locked python - <<'PY'
+          import os
+          import xml.etree.ElementTree as ET
+
+          report = os.path.join(os.environ["RUNNER_TEMP"], "macos-font-tests.xml")
+          skipped = [
+              case.get("name")
+              for case in ET.parse(report).getroot().iter("testcase")
+              if case.find("skipped") is not None
+          ]
+          if skipped:
+              raise SystemExit("unexpected macOS test skips: " + ", ".join(skipped))
+          print("macOS font and caption tests completed without skips")
+          PY
